@@ -137,6 +137,7 @@ int cClient::run_receiver() {
             //get rtt in millisecond
 
             rtt = ((curTv.tv_sec - ping_pkt->sec) * 1000 + (curTv.tv_usec - ping_pkt->usec) / 1000.0);
+            if (rtt<0) perror("wrong RTT value !!!\n");
             //cout << curTv.tv_sec << "\t" << ping_pkt->sec << "\t" << curTv.tv_usec <<"\t" << ping_pkt->usec <<endl;
             //get tSent in millisecond
             sent_ts = ((ping_pkt->sec - start_ts.tv_sec) * 1000 + (ping_pkt->usec - start_ts.tv_usec) / 1000.0);
@@ -169,7 +170,7 @@ int cClient::run_receiver() {
                 }
                 ss << msg;
                 if (setup->showBitrate()) {
-                    sprintf(msg, " delta=%.2f ms bitrate=%.2f kbit/s ", delta, (1000 / delta) * nRet * 8 / 1000);
+                    sprintf(msg, " delta=%.2f ms rx_rate=%.2f kbit/s ", delta, (1000 / delta) * nRet * 8 / 1000);
                     ss << msg;
                 }
 
@@ -405,7 +406,7 @@ int cClient::run_sender() {
                 sprintf(msg, "[%d.%06d] ", ts.tv_sec, ts.tv_usec);
                 ss << msg;
             }
-            sprintf(msg, "%d bytes to $s: req=$d delta=%.2f ms bitrate=%.2f kbit/s \n", nRet, setup->getHostname().c_str(), ping_pkt->seq, delta / 1000, (1000 / delta) * nRet * 8);
+            sprintf(msg, "%d bytes to %s: req=%d delta=%.2f ms tx_rate=%.2f kbit/s \n", nRet, setup->getHostname().c_str(), ping_pkt->seq, delta / 1000, (1000 / delta) * nRet * 8);
             ss << msg;
             fprintf(fp, "%s", ss.str().c_str());
         }

@@ -79,7 +79,7 @@ int cServer::run() {
 #endif        
         ping_pkt = (struct Ping_Pkt*) (packet);
         if (ping_pkt->type == PING) {
-            if (setup->isAsym()) ret_size = 20;
+            if (setup->isAsym()) ret_size = MIN_PKT_SIZE;
             sendto(this->sock, packet, ret_size, 0, (struct sockaddr *) &saClient, addr_len);
         }
         if (ping_pkt->type == CONTROL) {
@@ -124,7 +124,7 @@ int cServer::run() {
                 refTv.tv_sec = 0;
                 count = 0;
             }
-            ret_size = 40;
+            ret_size = 64;
             sendto(this->sock, packet, ret_size, 0, (struct sockaddr *) &saClient, addr_len);
         }
 
@@ -149,7 +149,8 @@ int cServer::run() {
                         rec_size, client_ip, ping_pkt->seq, delta);
                 if (setup->showBitrate()) {
 
-                    fprintf(fp, " bitrate=%.2f kbit/s ", (1000 / delta) * ret_size * 8 / 1000);
+                    fprintf(fp, " rx_rate=%.2f kbit/s ", (1000 / delta) * rec_size * 8 / 1000);
+                    fprintf(fp, " tx_rate=%.2f kbit/s ", (1000 / delta) * ret_size * 8 / 1000);
                 }
                 fprintf(fp, "\n");
 

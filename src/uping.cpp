@@ -82,10 +82,10 @@ int main(int argc, char** argv) {
 
     char str[80];
 #ifdef xENV_32
-    strcpy(str, "x86_32 1.1.3");
+    strcpy(str, "x86_32 1.1.5");
 #endif    
 #ifdef xENV_64
-    strcpy(str, "x86_64 1.1.3");
+    strcpy(str, "x86_64 1.1.5");
 #endif    
     
     strcat(str, " (");
