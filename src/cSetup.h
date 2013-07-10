@@ -64,6 +64,8 @@ public:
     bool silent(void);
     bool showBitrate(void);
     bool showSendBitrate(void);
+    bool is_vonly(void);
+    string get_version(void);
     u_int32_t getTime_t();
     u_int32_t getTime_T();
     double getTime_R();
@@ -122,6 +124,7 @@ private:
     bool U_par;
     bool W_par;
     bool u_par;
+    bool vonly;
     bool _par;
     int port;
     double interval_i;  // 1s

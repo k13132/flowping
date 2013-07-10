@@ -82,10 +82,10 @@ int main(int argc, char** argv) {
 
     char str[80];
 #ifdef xENV_32
-    strcpy(str, "x86_32 1.1.5");
+    strcpy(str, "x86_32 1.1.6");
 #endif    
 #ifdef xENV_64
-    strcpy(str, "x86_64 1.1.5");
+    strcpy(str, "x86_64 1.1.6");
 #endif    
     
     strcat(str, " (");
@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
     }
     if (setup->self_check() == SETUP_CHCK_VER) {
         setup->show_version();
-        return EXIT_SUCCESS;
+        if (setup->is_vonly()) return EXIT_SUCCESS;
     }
     if (setup->self_check() == SETUP_CHCK_ERR) {
         setup->usage();

@@ -235,6 +235,8 @@ int cClient::run_sender() {
         if (fp == NULL) {
             perror("Unable to open file, redirecting to STDOUT");
             fp = stdout;
+        }else{
+            if(setup->self_check() == SETUP_CHCK_VER) fprintf(fp, setup->get_version().c_str());
         }
     } else {
         fp = setup->getFP();

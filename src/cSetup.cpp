@@ -17,6 +17,7 @@
 cSetup::cSetup(int argc, char **argv, string version) {
     this->version = "Not Defined";
     fp = stdout; //output to terminal
+    this->vonly = true;
     this->a_par = false;
     this->A_par = false;
     this->v_par = false;
@@ -74,67 +75,84 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 break;
             case 'a':
                 this->a_par = true;
+                this->vonly=false;
                 break;
             case 'A':
                 this->A_par = true;
+                this->vonly=false;
                 break;
             case 'q':
                 this->q_par = true;
+                this->vonly=false;
                 break;
             case 'Q':
                 this->Q_par = true;
+                this->vonly=false;
                 break;
             case 'p':
                 this->p_par = true;
+                this->vonly=false;
                 this->port = atoi(optarg);
                 break;
             case 'P':
                 this->P_par = true;
+                this->vonly=false;
                 break;
             case 'd':
                 this->d_par = true;
+                this->vonly=false;
                 break;
             case 'I':
+                this->vonly=false;
                 this->I_par = true;
                 this->interval_I = atof(optarg)*1000000;
                 if (this->interval_I > MAX_INTERVAL) this->interval_I = MAX_INTERVAL;
                 if (this->interval_I < MIN_INTERVAL) this->interval_I = MIN_INTERVAL;
                 break;
             case 'i':
+                this->vonly=false;
                 this->i_par = true;
                 this->interval_i = atof(optarg)*1000000;
                 if (this->interval_i > MAX_INTERVAL) this->interval_i = MAX_INTERVAL;
                 if (this->interval_i < MIN_INTERVAL) this->interval_i = MIN_INTERVAL;
                 break;
             case 't': //T1
+                this->vonly=false;
                 this->t_par = true;
                 this->time_t = atof(optarg);
                 break;
             case 'T': //T2
+                this->vonly=false;
                 this->T_par = true;
                 this->time_T = atof(optarg);
                 break;
             case 'b':
+                this->vonly=false;
                 this->b_par = true;
                 this->rate_b = atoi(optarg);
                 break;
             case 'B':
+                this->vonly=false;
                 this->B_par = true;
                 this->rate_B = atoi(optarg);
                 break;
             case 'r': //STEP
+                this->vonly=false;
                 this->r_par = true;
                 this->step = atoi(optarg);
                 break;
             case 'R': //T3
+                this->vonly=false;
                 this->R_par = true;
                 this->time_R = atof(optarg);
                 break;
             case 'f':
+                this->vonly=false;
                 this->f_par = true;
                 this->filename = optarg;
                 break;
             case 'u':
+                this->vonly=false;
                 this->u_par = true;
                 this->srcfile = optarg;
                 if (this->parseSrcFile()) {
@@ -142,46 +160,59 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 }
                 break;
             case 'h':
+                this->vonly=false;
                 this->h_par = true;
                 this->host = optarg;
                 break;
             case 'H':
+                this->vonly=false;
                 this->H_par = true;
                 break;
             case 'F':
+                this->vonly=false;
                 this->F_par = true;
                 break;
             case 'X':
+                this->vonly=false;
                 this->X_par = true;
                 break;
             case 'U':
+                this->vonly=false;
                 this->U_par = true;
                 break;
             case 'e':
+                this->vonly=false;
                 this->e_par = true;
                 break;
             case 'E':
+                this->vonly=false;
                 this->E_par = true;
                 break;
             case 'S':
+                this->vonly=false;
                 this->S_par = true;
                 break;
             case 'c':
+                this->vonly=false;
                 this->c_par = true;
                 this->count = atol(optarg);
                 break;
             case 'D':
+                this->vonly=false;
                 this->D_par = true;
                 break;
             case 'w':
+                this->vonly=false;
                 this->w_par = true;
                 this->deadline = atoi(optarg);
                 break;
             case 'n':
+                this->vonly=false;
                 //nedala nic;
                 break;
             case 's':
                 this->s_par = true;
+                this->vonly=false;
                 if (atoi(optarg) > MAX_PKT_SIZE) {
                     this->size = MAX_PKT_SIZE;
                 } else {
@@ -190,6 +221,7 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 break;
             case '?':
                 this->_par = true;
+                this->vonly=false;
                 break;
 
             default:
@@ -245,8 +277,15 @@ bool cSetup::isClient() {
 }
 
 void cSetup::show_version() {
-    cout << endl << " Application:\e[1;37m uPing\e[0;37m (UDP based Ping)\e[0m" << endl;
-    cout << " Version: \e[1;37m" << this->version << "\e[0m" << endl << endl;
+    cout << endl << "Application:\e[1;37m uPing\e[0;37m (UDP based Ping)\e[0m" << endl;
+    cout << "Version: \e[1;37m" << this->version << "\e[0m" << endl << endl;
+}
+
+string cSetup::get_version() {
+    stringstream ss;
+    ss.str("");
+    ss << "uPing " << this->version << endl << endl;
+    return ss.str();
 }
 
 void cSetup::usage() {
@@ -527,7 +566,7 @@ double cSetup::getRTBitrate(u_int64_t ts) {
                 ets = td_tmp.ts;
                 erate = td_tmp.bitrate;
                 setPayoadSize(td_tmp.len);
-                cerr<<ets<<"\t"<<erate<<"\t"<<td_tmp.len<<endl;
+                cerr << ets << "\t" << erate << "\t" << td_tmp.len << endl;
                 tpoints.pop_back();
                 //bitrate change / usec
                 if ((ets - bts) != 0) {
@@ -550,6 +589,10 @@ double cSetup::getRTBitrate(u_int64_t ts) {
     return (brate * 1000 + bchange * 1000 * (ts - bts * 1000000));
 }
 
-void cSetup::setPayoadSize(u_int16_t psize){
-    this->size=psize;
+void cSetup::setPayoadSize(u_int16_t psize) {
+    this->size = psize;
+}
+
+bool cSetup::is_vonly() {
+    return this->vonly;
 }

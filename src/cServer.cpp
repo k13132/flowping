@@ -96,6 +96,8 @@ int cServer::run() {
                     perror("Unable to open file, redirecting to STDOUT");
                     fp = stdout;
                     ping_msg->code = CNT_OUTPUT_REDIR;
+                } else {
+                   if(setup->self_check() == SETUP_CHCK_VER) fprintf(fp, setup->get_version().c_str());
                 }
             }
             if (ping_msg->code == CNT_NOFNAME) {
@@ -138,11 +140,12 @@ int cServer::run() {
                 } else {
                     refTv = curTv;
                 }
-                curTv.tv_sec = ping_pkt->sec;
-                curTv.tv_usec = ping_pkt->usec;
+                //curTv.tv_sec = ping_pkt->sec;
+                //curTv.tv_usec = ping_pkt->usec;
+                gettimeofday(&curTv, NULL);
                 double delta = ((double) (curTv.tv_sec - refTv.tv_sec)*1000.0 + (double) (curTv.tv_usec - refTv.tv_usec) / 1000.0);
                 if (setup->showTimeStamps()) {
-                    fprintf(fp, "[%d.%06d] ", ping_pkt->sec, ping_pkt->usec);
+                    fprintf(fp, "[%d.%06d] ", curTv.tv_sec, curTv.tv_usec);
                 }
 
                 fprintf(fp, "%d bytes from %s: req=%d ttl=xx delta=%.2f ms",
