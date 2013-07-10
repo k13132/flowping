@@ -137,7 +137,7 @@ int cClient::run_receiver() {
             //get rtt in millisecond
 
             rtt = ((curTv.tv_sec - ping_pkt->sec) * 1000 + (curTv.tv_usec - ping_pkt->usec) / 1000.0);
-            if (rtt<0) perror("wrong RTT value !!!\n");
+            if (rtt < 0) perror("wrong RTT value !!!\n");
             //cout << curTv.tv_sec << "\t" << ping_pkt->sec << "\t" << curTv.tv_usec <<"\t" << ping_pkt->usec <<endl;
             //get tSent in millisecond
             sent_ts = ((ping_pkt->sec - start_ts.tv_sec) * 1000 + (ping_pkt->usec - start_ts.tv_usec) / 1000.0);
@@ -235,8 +235,8 @@ int cClient::run_sender() {
         if (fp == NULL) {
             perror("Unable to open file, redirecting to STDOUT");
             fp = stdout;
-        }else{
-            if(setup->self_check() == SETUP_CHCK_VER) fprintf(fp, setup->get_version().c_str());
+        } else {
+            if (setup->self_check() == SETUP_CHCK_VER) fprintf(fp, setup->get_version().c_str());
         }
     } else {
         fp = setup->getFP();
@@ -477,11 +477,17 @@ u_int64_t cClient::getInterval(void) {
             //cout << "Stage 1 - inteval:" << interval << endl;
         } else {
             //cout << "Shape definition NOT in use" << endl;
-            gettimeofday(&cur_ts, NULL);
-            time = ((cur_ts.tv_sec * 1000000 + cur_ts.tv_usec)-(this->start_ts.tv_sec * 1000000 + this->start_ts.tv_usec)) % this->t2;
-            double tmp1 = setup->getPacketSize()*8000000;
-            double tmp2 = setup->getBaseRate()+(time - this->t1) * this->bchange;
-            interval = (u_int64_t) (tmp1 / tmp2);
+            if (time<this->t1) {
+                interval = this->base_interval;
+            } else {
+                gettimeofday(&cur_ts, NULL);
+                time = ((cur_ts.tv_sec * 1000000 + cur_ts.tv_usec)-(this->start_ts.tv_sec * 1000000 + this->start_ts.tv_usec)) % this->t2;
+                double tmp1 = setup->getPacketSize()*8000000;
+                double tmp2 = setup->getBaseRate()+(time - this->t1) * this->bchange;
+                interval = (u_int64_t) (tmp1 / tmp2);
+                //cout << "\e[0;31m DEBUG \e[1;37m INTERVAL = " << interval << " TMP1 = " << tmp1 << " TMP2 = " << tmp2 << " TIME = " << time << " BRATE  = " << setup->getBaseRate() << " BCHANGE = " << this->bchange << "\e[0m" << endl;
+            }
+
 #ifdef DEBUG
             if (setup->debug()) cout << "-D- * T2 * ";
             //cout << "Bitrate:" << setup->getBaseRate()+(time - this->t1) * this->bchange << endl;
