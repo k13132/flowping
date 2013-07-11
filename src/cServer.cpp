@@ -97,7 +97,7 @@ int cServer::run() {
                     fp = stdout;
                     ping_msg->code = CNT_OUTPUT_REDIR;
                 } else {
-                   if(setup->self_check() == SETUP_CHCK_VER) fprintf(fp, setup->get_version().c_str());
+                    if (setup->self_check() == SETUP_CHCK_VER) fprintf(fp, setup->get_version().c_str());
                 }
             }
             if (ping_msg->code == CNT_NOFNAME) {
@@ -107,6 +107,8 @@ int cServer::run() {
                         perror("Unable to open file, redirecting to STDOUT");
                         fp = stdout;
                         ping_msg->code = CNT_OUTPUT_REDIR;
+                    } else {
+                        if (setup->self_check() == SETUP_CHCK_VER) fprintf(fp, setup->get_version().c_str());
                     }
                 } else {
                     fp = setup->getFP();

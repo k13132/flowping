@@ -366,9 +366,12 @@ int cClient::run_sender() {
                 curTime = curTv.tv_usec + curTv.tv_sec * 1000000;
             }
             gettimeofday(&curTv, NULL);
-            delta = ((double) (curTv.tv_sec - refTv.tv_sec)*1000.0 + (double) (curTv.tv_usec - refTv.tv_usec) / 1000.0);
+            //delta = ((double) (curTv.tv_sec - refTv.tv_sec)*1000.0 + (double) (curTv.tv_usec - refTv.tv_usec) / 1000.0);
+            
+            //Delta in nsec
+            delta = ((double) (curTv.tv_sec - refTv.tv_sec)*1000000 + (curTv.tv_usec - refTv.tv_usec));
             gettimeofday(&refTv, NULL);
-            correction = (int) ((interval + correction) - delta * 1000);
+            correction = (int) ((interval + correction) - delta);
             if (-correction > interval - 1) {
                 correction = -(interval - 1);
             }
@@ -388,6 +391,7 @@ int cClient::run_sender() {
             clock_gettime(CLOCK_MONOTONIC, &tt);
             gettimeofday(&curTv, NULL);
             delta = ((double) (curTv.tv_sec - refTv.tv_sec)*1000000 + (curTv.tv_usec - refTv.tv_usec));
+            //delta = ((double) (curTv.tv_sec - refTv.tv_sec)*1000.0 + (double) (curTv.tv_usec - refTv.tv_usec) / 1000.0);
             gettimeofday(&refTv, NULL);
             correction = (int) ((interval + correction) - delta);
             if (-correction > interval - 1) {
@@ -408,7 +412,7 @@ int cClient::run_sender() {
                 sprintf(msg, "[%d.%06d] ", ts.tv_sec, ts.tv_usec);
                 ss << msg;
             }
-            sprintf(msg, "%d bytes to %s: req=%d delta=%.2f ms tx_rate=%.2f kbit/s \n", nRet, setup->getHostname().c_str(), ping_pkt->seq, delta / 1000, (1000 / delta) * nRet * 8);
+            sprintf(msg, "%d bytes to %s: req=%d delta=%.2f ms tx_rate=%.2f kbit/s \n", nRet, setup->getHostname().c_str(), ping_pkt->seq, delta/1000, (1000 / delta) * nRet * 8);
             ss << msg;
             fprintf(fp, "%s", ss.str().c_str());
         }
