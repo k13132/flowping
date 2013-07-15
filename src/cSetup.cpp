@@ -66,6 +66,7 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->bts = 0;
     this->ets = 0;
     this->tp_exhausted = false;
+    this->first_brate = true;
 
     this->version = version;
     while ((c = getopt(argc, argv, "XUeEaAQSqdDPH?w:p:c:h:s:i:nFf:u:vI:t:T:b:B:r:R:")) != EOF) {
@@ -75,84 +76,84 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 break;
             case 'a':
                 this->a_par = true;
-                this->vonly=false;
+                this->vonly = false;
                 break;
             case 'A':
                 this->A_par = true;
-                this->vonly=false;
+                this->vonly = false;
                 break;
             case 'q':
                 this->q_par = true;
-                this->vonly=false;
+                this->vonly = false;
                 break;
             case 'Q':
                 this->Q_par = true;
-                this->vonly=false;
+                this->vonly = false;
                 break;
             case 'p':
                 this->p_par = true;
-                this->vonly=false;
+                this->vonly = false;
                 this->port = atoi(optarg);
                 break;
             case 'P':
                 this->P_par = true;
-                this->vonly=false;
+                this->vonly = false;
                 break;
             case 'd':
                 this->d_par = true;
-                this->vonly=false;
+                this->vonly = false;
                 break;
             case 'I':
-                this->vonly=false;
+                this->vonly = false;
                 this->I_par = true;
                 this->interval_I = atof(optarg)*1000000;
                 if (this->interval_I > MAX_INTERVAL) this->interval_I = MAX_INTERVAL;
                 if (this->interval_I < MIN_INTERVAL) this->interval_I = MIN_INTERVAL;
                 break;
             case 'i':
-                this->vonly=false;
+                this->vonly = false;
                 this->i_par = true;
                 this->interval_i = atof(optarg)*1000000;
                 if (this->interval_i > MAX_INTERVAL) this->interval_i = MAX_INTERVAL;
                 if (this->interval_i < MIN_INTERVAL) this->interval_i = MIN_INTERVAL;
                 break;
             case 't': //T1
-                this->vonly=false;
+                this->vonly = false;
                 this->t_par = true;
                 this->time_t = atof(optarg);
                 break;
             case 'T': //T2
-                this->vonly=false;
+                this->vonly = false;
                 this->T_par = true;
                 this->time_T = atof(optarg);
                 break;
             case 'b':
-                this->vonly=false;
+                this->vonly = false;
                 this->b_par = true;
                 this->rate_b = atoi(optarg);
                 break;
             case 'B':
-                this->vonly=false;
+                this->vonly = false;
                 this->B_par = true;
                 this->rate_B = atoi(optarg);
                 break;
             case 'r': //STEP
-                this->vonly=false;
+                this->vonly = false;
                 this->r_par = true;
                 this->step = atoi(optarg);
                 break;
             case 'R': //T3
-                this->vonly=false;
+                this->vonly = false;
                 this->R_par = true;
                 this->time_R = atof(optarg);
                 break;
             case 'f':
-                this->vonly=false;
+                this->vonly = false;
                 this->f_par = true;
                 this->filename = optarg;
                 break;
             case 'u':
-                this->vonly=false;
+                this->vonly = false;
                 this->u_par = true;
                 this->srcfile = optarg;
                 if (this->parseSrcFile()) {
@@ -160,59 +161,59 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 }
                 break;
             case 'h':
-                this->vonly=false;
+                this->vonly = false;
                 this->h_par = true;
                 this->host = optarg;
                 break;
             case 'H':
-                this->vonly=false;
+                this->vonly = false;
                 this->H_par = true;
                 break;
             case 'F':
-                this->vonly=false;
+                this->vonly = false;
                 this->F_par = true;
                 break;
             case 'X':
-                this->vonly=false;
+                this->vonly = false;
                 this->X_par = true;
                 break;
             case 'U':
-                this->vonly=false;
+                this->vonly = false;
                 this->U_par = true;
                 break;
             case 'e':
-                this->vonly=false;
+                this->vonly = false;
                 this->e_par = true;
                 break;
             case 'E':
-                this->vonly=false;
+                this->vonly = false;
                 this->E_par = true;
                 break;
             case 'S':
-                this->vonly=false;
+                this->vonly = false;
                 this->S_par = true;
                 break;
             case 'c':
-                this->vonly=false;
+                this->vonly = false;
                 this->c_par = true;
                 this->count = atol(optarg);
                 break;
             case 'D':
-                this->vonly=false;
+                this->vonly = false;
                 this->D_par = true;
                 break;
             case 'w':
-                this->vonly=false;
+                this->vonly = false;
                 this->w_par = true;
                 this->deadline = atoi(optarg);
                 break;
             case 'n':
-                this->vonly=false;
+                this->vonly = false;
                 //nedala nic;
                 break;
             case 's':
                 this->s_par = true;
-                this->vonly=false;
+                this->vonly = false;
                 if (atoi(optarg) > MAX_PKT_SIZE) {
                     this->size = MAX_PKT_SIZE;
                 } else {
@@ -221,7 +222,7 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 break;
             case '?':
                 this->_par = true;
-                this->vonly=false;
+                this->vonly = false;
                 break;
 
             default:
@@ -565,6 +566,10 @@ double cSetup::getRTBitrate(u_int64_t ts) {
                 td_tmp = (time_def) tpoints.back();
                 ets = td_tmp.ts;
                 erate = td_tmp.bitrate;
+                if (this->first_brate){
+                    this->first_brate=false;
+                    this->brate=this->erate;
+                }
                 setPayoadSize(td_tmp.len);
                 cerr << ets << "\t" << erate << "\t" << td_tmp.len << endl;
                 tpoints.pop_back();
@@ -585,7 +590,7 @@ double cSetup::getRTBitrate(u_int64_t ts) {
         }
     }
     //cout << "bitrate: " << (brate * 1000 + bchange * 1000 * (ts-bts*1000000)) << endl;
-
+    //cout << "X " << brate << "\t" << bchange << "\t" << ts << "\t" << bts << endl;
     return (brate * 1000 + bchange * 1000 * (ts - bts * 1000000));
 }
 
@@ -595,4 +600,12 @@ void cSetup::setPayoadSize(u_int16_t psize) {
 
 bool cSetup::is_vonly() {
     return this->vonly;
+}
+
+bool cSetup::wholeFrame() {
+    return this->H_par;
+}
+
+void cSetup::setHPAR(bool value) {
+    this->H_par = value;
 }

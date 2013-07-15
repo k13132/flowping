@@ -71,7 +71,6 @@ int cServer::run() {
 
     int ip;
     char client_ip[INET_ADDRSTRLEN];
-
     while (!stop) {
         rec_size = ret_size = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, (struct sockaddr *) &saClient, (socklen_t *) & addr_len);
 #ifdef DEBUG        
@@ -128,20 +127,21 @@ int cServer::run() {
                 refTv.tv_sec = 0;
                 count = 0;
             }
+            if (ping_msg->params & 1) {
+                setup->setHPAR(true);
+            } else {
+                setup->setHPAR(false);
+            }
             ret_size = 64;
             sendto(this->sock, packet, ret_size, 0, (struct sockaddr *) &saClient, addr_len);
+            gettimeofday(&curTv, NULL);
         }
 
 
         //stats
         if (ping_pkt->type == PING) {
             if (show) {
-                if (refTv.tv_sec == 0) {
-                    refTv.tv_sec = ping_pkt->sec;
-                    refTv.tv_usec = ping_pkt->usec;
-                } else {
-                    refTv = curTv;
-                }
+                refTv = curTv;
                 //curTv.tv_sec = ping_pkt->sec;
                 //curTv.tv_usec = ping_pkt->usec;
                 gettimeofday(&curTv, NULL);
@@ -153,9 +153,13 @@ int cServer::run() {
                 fprintf(fp, "%d bytes from %s: req=%d ttl=xx delta=%.2f ms",
                         rec_size, client_ip, ping_pkt->seq, delta);
                 if (setup->showBitrate()) {
-
-                    fprintf(fp, " rx_rate=%.2f kbit/s ", (1000 / delta) * rec_size * 8 / 1000);
-                    fprintf(fp, " tx_rate=%.2f kbit/s ", (1000 / delta) * ret_size * 8 / 1000);
+                    if (setup->wholeFrame()) {
+                        fprintf(fp, " rx_rate=%.2f kbit/s ", (1000 / delta) * (rec_size + 42) * 8 / 1000);
+                        fprintf(fp, " tx_rate=%.2f kbit/s ", (1000 / delta) * (ret_size + 42) * 8 / 1000);
+                    } else {
+                        fprintf(fp, " rx_rate=%.2f kbit/s ", (1000 / delta) * rec_size * 8 / 1000);
+                        fprintf(fp, " tx_rate=%.2f kbit/s ", (1000 / delta) * ret_size * 8 / 1000);
+                    }
                 }
                 fprintf(fp, "\n");
 

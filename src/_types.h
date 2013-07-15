@@ -26,6 +26,8 @@
 #define CNT_FNAME_OK 5
 #define CNT_OUTPUT_REDIR 6
 
+#define CNT_HPAR 1  //0000 0001
+
 #if __WORDSIZE == 64
 #define xENV_64
 #else
@@ -44,7 +46,10 @@ struct Ping_Msg {
     u_int32_t type;
     u_int32_t code;
     u_int32_t count;
-    u_int32_t padding1;
+    u_int8_t params;    /// 00000001 - H_PAR //Bit encoded
+    u_int8_t padding1;
+    u_int8_t padding2;
+    u_int8_t padding3;
     char msg[MAX_PKT_SIZE];
 };
 

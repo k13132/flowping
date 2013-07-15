@@ -79,6 +79,8 @@ public:
     double getInterval_I();
     double getBchange();
     double getSchange();
+    bool wholeFrame(void);
+    void setHPAR(bool);
     double getRTBitrate(u_int64_t ts);
     u_int64_t getPacketSize();
     u_int64_t getMinInterval(void);
@@ -144,6 +146,7 @@ private:
     FILE *fp;
     int32_t brate,erate;
     u_int64_t bts,ets;
+    bool first_brate;
     bool tp_exhausted;
     struct time_def td_tmp;
     double bchange;
