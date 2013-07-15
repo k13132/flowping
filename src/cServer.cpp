@@ -146,19 +146,20 @@ int cServer::run() {
                 //curTv.tv_usec = ping_pkt->usec;
                 gettimeofday(&curTv, NULL);
                 double delta = ((double) (curTv.tv_sec - refTv.tv_sec)*1000.0 + (double) (curTv.tv_usec - refTv.tv_usec) / 1000.0);
+                
                 if (setup->showTimeStamps()) {
-                    fprintf(fp, "[%d.%06d] ", curTv.tv_sec, curTv.tv_usec);
+                    fprintf(fp, "[%d.%06d]", curTv.tv_sec, curTv.tv_usec);
                 }
 
-                fprintf(fp, "%d bytes from %s: req=%d ttl=xx delta=%.2f ms",
+                fprintf(fp, " %d bytes from %s: req=%d ttl=xx delta=%.2f ms",
                         rec_size, client_ip, ping_pkt->seq, delta);
                 if (setup->showBitrate()) {
                     if (setup->wholeFrame()) {
-                        fprintf(fp, " rx_rate=%.2f kbit/s ", (1000 / delta) * (rec_size + 42) * 8 / 1000);
-                        fprintf(fp, " tx_rate=%.2f kbit/s ", (1000 / delta) * (ret_size + 42) * 8 / 1000);
+                        fprintf(fp, " rx_rate=%.2f kbit/s", (1000 / delta) * (rec_size + 42) * 8 / 1000);
+                        fprintf(fp, " tx_rate=%.2f kbit/s", (1000 / delta) * (ret_size + 42) * 8 / 1000);
                     } else {
-                        fprintf(fp, " rx_rate=%.2f kbit/s ", (1000 / delta) * rec_size * 8 / 1000);
-                        fprintf(fp, " tx_rate=%.2f kbit/s ", (1000 / delta) * ret_size * 8 / 1000);
+                        fprintf(fp, " rx_rate=%.2f kbit/s", (1000 / delta) * rec_size * 8 / 1000);
+                        fprintf(fp, " tx_rate=%.2f kbit/s", (1000 / delta) * ret_size * 8 / 1000);
                     }
                 }
                 fprintf(fp, "\n");
