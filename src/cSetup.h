@@ -1,11 +1,25 @@
 /* 
  * File:   cSetup.h
- * 
- * Author: Ondrej Vondrous
- * Email: vondrous@0xFF.cz
+  * 
+ * Author: Ondrej Vondrous, KTT, CVUT
+ * Email: vondrond@fel.cvut.cz
+ * Copyright: Department of Telecommunication Engineering, FEE, CTU in Prague 
+ * License: Creative Commons 3.0 BY-NC-SA
+
+ * This file is part of FlowPing.
  *
- * Created on 26. červen 2012, 22:38
+ *  FlowPing is free software: you can redistribute it and/or modify
+ *  it under the terms of the Creative Commons BY-NC-SA License v 3.0.
+ *
+ *  FlowPing is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY.
+ *
+ *  You should have received a copy of the Creative Commons 3.0 BY-NC-SA License
+ *  along with FlowPing.
+ *  If not, see <http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode>. 
+ *   
  */
+
 
 #ifndef SETUP_H
 #define	SETUP_H
@@ -18,19 +32,6 @@
 #define SETUP_CHCK_SHOW 2
 #define SETUP_CHCK_OK 3
 
-#include <sys/types.h>
-#include <string>
-#include <sstream>
-#include <climits>
-#include <stdlib.h>
-#include <libio.h>
-#include <getopt.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <vector>
-#include <stdint.h>
 #include "_types.h"
 
 using namespace std;
@@ -45,10 +46,11 @@ public:
     bool isClient(void);
     u_int8_t self_check(void);
     int getPort();
-    bool debug(void);
     FILE * getFP(void);
     bool showTimeStamps(void);
     bool isAsym(void);
+    bool isAntiAsym(void);
+    void setAntiAsym(bool val);
     bool sendFilename(void);
     bool outToFile(void);
     bool pkSizeChange(void);
@@ -59,6 +61,10 @@ public:
     bool raisePriority(void); // usech SHED FIFO and raise Priority.
     bool npipe(void);
     bool shape(void);
+    bool toCSV(void);
+    void setCPAR(bool);
+    void setXPAR(bool);
+    void restoreXPAR(void);
     string getFilename(void);
     string getSrcFilename();
     bool silent(void);
@@ -80,19 +86,26 @@ public:
     double getBchange();
     double getSchange();
     bool wholeFrame(void);
+    bool useInterface(void);
+    string getInterface(void);
     void setHPAR(bool);
+    void setWPAR(bool);
     double getRTBitrate(u_int64_t ts);
     u_int64_t getPacketSize();
     u_int64_t getMinInterval(void);
     u_int64_t getMaxInterval(void);
     u_int64_t getBaseRate(void);
+    void setExtFilename(string);
+    string getExtFilename(void);
+    uint8_t extFilenameLen(void);
     int parseSrcFile();
-    vector<time_def> r_tpoints;
-    vector<time_def> tpoints;
-    
-    
-    
+    int prepTimedBuffer();
+    bool useTimedBuffer();
+    timed_packet_t getNextPacket();
+    bool nextPacket();
     virtual ~cSetup();
+    
+    
 private:
     bool v_par;
     bool a_par;
@@ -111,12 +124,14 @@ private:
     bool H_par;
     bool F_par;
     bool c_par;
+    bool C_par;
     bool D_par;
     bool w_par;
     bool n_par;
     bool s_par;
     bool S_par;
     bool X_par;
+    bool XR_par;
     bool r_par;
     bool R_par;
     bool P_par;
@@ -128,29 +143,37 @@ private:
     bool u_par;
     bool vonly;
     bool _par;
+    bool antiAsym;
     int port;
     double interval_i;  // 1s
     double interval_I;  // 1s
     double time_t;           // 10s
     double time_T;           // 10s
     double time_R;           // 10s
-    u_int16_t size;          // 64B Payload
+    u_int16_t size,bsize,esize;          // 64B Payload
     int rate_b;         // 1kbit/s
     int rate_B;         // 1kbit/s
     u_int32_t step;     // 1ms
     u_int32_t deadline;       // 0s
     u_int64_t count;   
-    string filename,srcfile;
-    string host;
+    string filename,srcfile,extfilename;
+    string host,interface;
     string version;
     FILE *fp;
     int32_t brate,erate;
     u_int64_t bts,ets;
     bool first_brate;
     bool tp_exhausted;
-    struct time_def td_tmp;
+    struct tpoint_def_t td_tmp;
     double bchange;
-    
+    //vector<tpoint_def_t> r_tpoints;
+    queue<tpoint_def_t> tpoints;
+    //vector<tpoint_def_t> tpoints_copy;
+    //cTimedBuffer * tBuffer;
+    queue<timed_packet_t> pbuffer; 
+    struct ts_t getNextPacketTS(struct ts_t ts, struct ts_t sts, struct ts_t ets, u_int32_t srate, u_int32_t erate, u_int16_t len); //return interval in usecs//
+    long longFromTS(ts_t ts);
+    timed_packet_t tmp_tpck;
 };
 
 #endif	/* SETUP_H */

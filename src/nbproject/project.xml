@@ -3,7 +3,7 @@
     <type>org.netbeans.modules.cnd.makeproject</type>
     <configuration>
         <data xmlns="http://www.netbeans.org/ns/make-project/1">
-            <name>uPing</name>
+            <name>FlowPing</name>
             <c-extensions/>
             <cpp-extensions>cpp</cpp-extensions>
             <header-extensions>h</header-extensions>
@@ -27,7 +27,18 @@
                     <name>Release_64</name>
                     <type>1</type>
                 </confElem>
+                <confElem>
+                    <name>Release_64-local</name>
+                    <type>1</type>
+                </confElem>
+                <confElem>
+                    <name>Release_win_32</name>
+                    <type>1</type>
+                </confElem>
             </confList>
+            <formatting>
+                <project-formatting-style>false</project-formatting-style>
+            </formatting>
         </data>
     </configuration>
 </project>

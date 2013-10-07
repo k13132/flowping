@@ -38,7 +38,7 @@ OBJECTFILES= \
 	${OBJECTDIR}/cClient.o \
 	${OBJECTDIR}/cServer.o \
 	${OBJECTDIR}/cSetup.o \
-	${OBJECTDIR}/uping.o
+	${OBJECTDIR}/flowping.o
 
 
 # C Compiler Flags
@@ -59,31 +59,31 @@ LDLIBSOPTIONS=
 
 # Build Targets
 .build-conf: ${BUILD_SUBPROJECTS}
-	"${MAKE}"  -f nbproject/Makefile-${CND_CONF}.mk ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/uping
+	"${MAKE}"  -f nbproject/Makefile-${CND_CONF}.mk ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/flowping
 
-${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/uping: ${OBJECTFILES}
+${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/flowping: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
-	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/uping ${OBJECTFILES} ${LDLIBSOPTIONS}
+	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/flowping ${OBJECTFILES} ${LDLIBSOPTIONS}
 
 ${OBJECTDIR}/cClient.o: cClient.cpp 
 	${MKDIR} -p ${OBJECTDIR}
-	${RM} $@.d
-	$(COMPILE.cc) -g -lpthread -lrt -MMD -MP -MF $@.d -o ${OBJECTDIR}/cClient.o cClient.cpp
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/cClient.o cClient.cpp
 
 ${OBJECTDIR}/cServer.o: cServer.cpp 
 	${MKDIR} -p ${OBJECTDIR}
-	${RM} $@.d
-	$(COMPILE.cc) -g -lpthread -lrt -MMD -MP -MF $@.d -o ${OBJECTDIR}/cServer.o cServer.cpp
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/cServer.o cServer.cpp
 
 ${OBJECTDIR}/cSetup.o: cSetup.cpp 
 	${MKDIR} -p ${OBJECTDIR}
-	${RM} $@.d
-	$(COMPILE.cc) -g -lpthread -lrt -MMD -MP -MF $@.d -o ${OBJECTDIR}/cSetup.o cSetup.cpp
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/cSetup.o cSetup.cpp
 
-${OBJECTDIR}/uping.o: uping.cpp 
+${OBJECTDIR}/flowping.o: flowping.cpp 
 	${MKDIR} -p ${OBJECTDIR}
-	${RM} $@.d
-	$(COMPILE.cc) -g -lpthread -lrt -MMD -MP -MF $@.d -o ${OBJECTDIR}/uping.o uping.cpp
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/flowping.o flowping.cpp
 
 # Subprojects
 .build-subprojects:
@@ -91,7 +91,7 @@ ${OBJECTDIR}/uping.o: uping.cpp
 # Clean Targets
 .clean-conf: ${CLEAN_SUBPROJECTS}
 	${RM} -r ${CND_BUILDDIR}/${CND_CONF}
-	${RM} ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/uping
+	${RM} ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/flowping
 
 # Subprojects
 .clean-subprojects:

@@ -1,6 +1,6 @@
 /* 
- * File:   server.h
- * 
+ * File:   flowping.h
+ *
  * Author: Ondrej Vondrous, KTT, CVUT
  * Email: vondrond@fel.cvut.cz
  * Copyright: Department of Telecommunication Engineering, FEE, CTU in Prague 
@@ -21,26 +21,16 @@
  */
 
 
-
-#ifndef SERVER_H
-#define	SERVER_H
-
+#ifndef FLOWPING_H
+#define	FLOWPING_H
 #include "_types.h"
+#include "cClient.h"
+#include "cServer.h"
 #include "cSetup.h"
-//#include "uping.h"
 
-class cServer {
-public:
-    cServer(cSetup *setup);
-    void terminate(void);
-    virtual ~cServer();
-    int run(void);
-private:
-    vector <string> msg_store;
-    cSetup *setup;
-    int sock;
-    bool stop;
-};
 
-#endif	/* SERVER_H */
+//#define DEBUG
+
+
+#endif	/* FLOWPING_H */
 

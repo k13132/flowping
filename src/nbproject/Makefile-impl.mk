@@ -24,14 +24,14 @@ CLEAN_SUBPROJECTS=${CLEAN_SUBPROJECTS_${SUBPROJECTS}}
 
 
 # Project Name
-PROJECTNAME=uPing
+PROJECTNAME=FlowPing
 
 # Active Configuration
 DEFAULTCONF=Debug
 CONF=${DEFAULTCONF}
 
 # All Configurations
-ALLCONFS=Debug Release Release_32 Release_64 
+ALLCONFS=Debug Release Release_32 Release_64 Release_64-local Release_win_32 
 
 
 # build

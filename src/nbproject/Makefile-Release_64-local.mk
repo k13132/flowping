@@ -23,7 +23,7 @@ AS=as
 # Macros
 CND_PLATFORM=GNU-Linux-x86
 CND_DLIB_EXT=so
-CND_CONF=Release_32
+CND_CONF=Release_64-local
 CND_DISTDIR=dist
 CND_BUILDDIR=build
 
@@ -38,15 +38,15 @@ OBJECTFILES= \
 	${OBJECTDIR}/cClient.o \
 	${OBJECTDIR}/cServer.o \
 	${OBJECTDIR}/cSetup.o \
-	${OBJECTDIR}/flowping.o
+	${OBJECTDIR}/uping.o
 
 
 # C Compiler Flags
 CFLAGS=-m32 -lpthread
 
 # CC Compiler Flags
-CCFLAGS=-m32 -lpthread -lrt
-CXXFLAGS=-m32 -lpthread -lrt
+CCFLAGS=-m64 -lpthread -lrt
+CXXFLAGS=-m64 -lpthread -lrt
 
 # Fortran Compiler Flags
 FFLAGS=
@@ -59,31 +59,31 @@ LDLIBSOPTIONS=
 
 # Build Targets
 .build-conf: ${BUILD_SUBPROJECTS}
-	"${MAKE}"  -f nbproject/Makefile-${CND_CONF}.mk ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/flowping
+	"${MAKE}"  -f nbproject/Makefile-${CND_CONF}.mk ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/uping
 
-${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/flowping: ${OBJECTFILES}
+${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/uping: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
-	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/flowping ${OBJECTFILES} ${LDLIBSOPTIONS}
+	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/uping ${OBJECTFILES} ${LDLIBSOPTIONS}
 
 ${OBJECTDIR}/cClient.o: cClient.cpp 
 	${MKDIR} -p ${OBJECTDIR}
-	${RM} "$@.d"
-	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/cClient.o cClient.cpp
+	${RM} $@.d
+	$(COMPILE.cc) -O2 -lpthread -lrt -MMD -MP -MF $@.d -o ${OBJECTDIR}/cClient.o cClient.cpp
 
 ${OBJECTDIR}/cServer.o: cServer.cpp 
 	${MKDIR} -p ${OBJECTDIR}
-	${RM} "$@.d"
-	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/cServer.o cServer.cpp
+	${RM} $@.d
+	$(COMPILE.cc) -O2 -lpthread -lrt -MMD -MP -MF $@.d -o ${OBJECTDIR}/cServer.o cServer.cpp
 
 ${OBJECTDIR}/cSetup.o: cSetup.cpp 
 	${MKDIR} -p ${OBJECTDIR}
-	${RM} "$@.d"
-	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/cSetup.o cSetup.cpp
+	${RM} $@.d
+	$(COMPILE.cc) -O2 -lpthread -lrt -MMD -MP -MF $@.d -o ${OBJECTDIR}/cSetup.o cSetup.cpp
 
-${OBJECTDIR}/flowping.o: flowping.cpp 
+${OBJECTDIR}/uping.o: uping.cpp 
 	${MKDIR} -p ${OBJECTDIR}
-	${RM} "$@.d"
-	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/flowping.o flowping.cpp
+	${RM} $@.d
+	$(COMPILE.cc) -O2 -lpthread -lrt -MMD -MP -MF $@.d -o ${OBJECTDIR}/uping.o uping.cpp
 
 # Subprojects
 .build-subprojects:
@@ -91,7 +91,7 @@ ${OBJECTDIR}/flowping.o: flowping.cpp
 # Clean Targets
 .clean-conf: ${CLEAN_SUBPROJECTS}
 	${RM} -r ${CND_BUILDDIR}/${CND_CONF}
-	${RM} ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/flowping
+	${RM} ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/uping
 
 # Subprojects
 .clean-subprojects:
