@@ -52,14 +52,12 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->s_par = false;
     this->S_par = false;
     this->X_par = false;
-    this->XR_par = false;
     this->P_par = false;
     this->R_par = false;
     this->r_par = false;
     this->Q_par = false;
     this->W_par = false;
     this->_par = false;
-    this->antiAsym = false;
     this->port = 2424;
     this->interval_i = 1000000; // 1s
     this->interval_I = 1000000; // 1s
@@ -195,7 +193,6 @@ cSetup::cSetup(int argc, char **argv, string version) {
             case 'X':
                 this->vonly = false;
                 this->X_par = true;
-                this->XR_par = true;
                 break;
             case 'U':
                 this->vonly = false;
@@ -283,7 +280,7 @@ u_int8_t cSetup::self_check(void) {
             return SETUP_CHCK_ERR;
         }
     } else {
-        if (S_par) {
+        if (X_par || S_par) {
             return SETUP_CHCK_ERR;
         }
     }
@@ -327,9 +324,9 @@ void cSetup::usage() {
     cout << "|         [-p port]     [2424]       Port number                                                |" << endl;
     cout << "|         [-q]                       Silent (suppress ping output to STDOUT)                    |" << endl;
     cout << "|         [-v]                       Print version                                              |" << endl;
-    cout << "|         [-X]                       Asymetric mode (Payload in reply is limited to 28B)        |" << endl;
     cout << "| Server:                                                                                       |" << endl;
     cout << "|         [-S]                       Run server                                                 |" << endl;
+    cout << "|         [-X]                       Asymetric mode (Payload in server reply is limited to 20B) |" << endl;
     cout << "| Client:                                                                                       |" << endl;
     cout << "|         [-a]                       Busy-waiting mode! (100% CPU usage), more accurate bitrate |" << endl;
     cout << "|         [-b kbit/s]                BitRate (Lower limit)                                      |" << endl;
@@ -593,10 +590,6 @@ int cSetup::parseSrcFile() {
         tpoint_def_t tmp, check;
         check.ts = 0;
         infile.open(this->getSrcFilename().c_str());
-        if (!infile.is_open()){
-                cerr << "Can't open source file! \""<< this->getSrcFilename()<<"\"" << endl;
-                exit(1);
-        }
         while (getline(infile, stmp)) {
             str = strdup(stmp.c_str());
             xstr = strtok(str, "\t ,;");
@@ -807,26 +800,10 @@ string cSetup::getInterface() {
     return this->interface;
 }
 
-bool cSetup::toCSV(void) {
+bool cSetup::toCSV(void){
     return C_par;
 }
 
-void cSetup::setCPAR(bool val) {
-    C_par = val;
-}
-
-void cSetup::setXPAR(bool val) {
-    X_par = val;
-}
-
-void cSetup::restoreXPAR() {
-    X_par = XR_par;
-}
-
-bool cSetup::isAntiAsym() {
-    return this->antiAsym;
-}
-
-void cSetup::setAntiAsym(bool val){
-    this->antiAsym=val;
+void cSetup::setCPAR(bool val){
+    C_par=val;
 }

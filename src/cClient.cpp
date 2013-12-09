@@ -359,16 +359,11 @@ int cClient::run_sender() {
     if (setup->wholeFrame()) {
         ping_msg->params = (ping_msg->params | CNT_HPAR);
     }
-    if (setup->useTimedBuffer()) {
-        ping_msg->params = (ping_msg->params | CNT_WPAR);
-    }
-    if (setup->isAsym()) {
-        ping_msg->params = (ping_msg->params | CNT_XPAR);
-        ping_msg->size = setup->getPayloadSize();
-        setup->setPayoadSize(MIN_PKT_SIZE);
-    }
     if (setup->toCSV()) {
         ping_msg->params = (ping_msg->params | CNT_CPAR);
+    }
+    if (setup->useTimedBuffer()) {
+        ping_msg->params = (ping_msg->params | CNT_WPAR);
     }
     if (setup->getFilename().length() && setup->sendFilename()) {
         strcpy(ping_msg->msg, setup->getFilename().c_str());
@@ -468,7 +463,7 @@ int cClient::run_sender() {
         if (setup->useTimedBuffer()) {
             if (!setup->nextPacket()) {
                 tinfo = setup->getNextPacket();
-                payload_size = tinfo.len - HEADER_LENGTH;
+                payload_size = tinfo.len;
             } else {
                 stop = true;
                 break;
@@ -510,10 +505,10 @@ int cClient::run_sender() {
         if (setup->useTimedBuffer()) {
             tgTime = (start_ts.tv_usec + start_ts.tv_sec * 1000000)+(tinfo.usec + tinfo.sec * 1000000);
             gettimeofday(&curTv, NULL);
+            delta = (((double) (curTv.tv_sec - refTv.tv_sec)*1000000 + (curTv.tv_usec - refTv.tv_usec)));
             while ((curTv.tv_usec + curTv.tv_sec * 1000000) < tgTime) {
                 gettimeofday(&curTv, NULL);
             }
-            delta = (((double) (curTv.tv_sec - refTv.tv_sec)*1000000 + (curTv.tv_usec - refTv.tv_usec)));
             gettimeofday(&refTv, NULL);
         } else {
             if (speedup) {
@@ -574,21 +569,19 @@ int cClient::run_sender() {
             }
         }
         if (setup->showSendBitrate()) {
-            ss.str("");
-            //"C_TimeStamp;RX/TX;C_PacketSize;C_From;C_Sequence;C_RTT;C_Delta;C_RX_Rate;C_To;C_TX_Rate;"
-            if (setup->showTimeStamps()) {
-                if (setup->toCSV()) {
-                    sprintf(msg, "%d.%06d;", ts.tv_sec, ts.tv_usec);
+            if (setup->toCSV()) {
+                ss.str("");
+                //"C_TimeStamp;RX/TX;C_PacketSize;C_From;C_Sequence;C_RTT;C_Delta;C_RX_Rate;C_To;C_TX_Rate;"
+                if (setup->showTimeStamps()) {
+                    if (setup->toCSV()) {
+                        sprintf(msg, "%d.%06d;", ts.tv_sec, ts.tv_usec);
+                    } else
+                        sprintf(msg, "[%d.%06d] ", ts.tv_sec, ts.tv_usec);
                 } else {
-                    sprintf(msg, "[%d.%06d] ", ts.tv_sec, ts.tv_usec);
-                }
-            } else {
-                if (setup->toCSV()) {
                     sprintf(msg, ";");
                 }
+                ss << msg;
             }
-            ss << msg;
-
             if (setup->wholeFrame()) {
                 if (setup->toCSV()) {
                     sprintf(msg, "tx;%d;;%d;;%.3f;;%s;%.2f;;;\n", nRet, ping_pkt->seq, delta / 1000, setup->getHostname().c_str(), (1000 / delta) * (nRet + 42) * 8);

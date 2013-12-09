@@ -98,7 +98,6 @@ int cServer::run() {
         ping_pkt = (struct ping_pkt_t*) (packet);
         if (ping_pkt->type == PING) {
             if (setup->isAsym()) ret_size = MIN_PKT_SIZE;
-            if (setup->isAntiAsym()) ret_size = setup->getPayloadSize();
             sendto(this->sock, packet, ret_size, 0, (struct sockaddr *) &saClient, addr_len);
             if (show) {
                 refTv = curTv;
@@ -212,7 +211,6 @@ int cServer::run() {
             if (ping_msg->code == CNT_FNAME_OK) {
                 message.str("");
                 message << endl << ".::. Test from " << client_ip << " started. \t\t[";
-                setup->setAntiAsym(false);
                 if (setup->extFilenameLen()) {
                     message << "F";
                 }
@@ -228,17 +226,11 @@ int cServer::run() {
                 } else {
                     setup->setWPAR(false);
                 }
-                if (ping_msg->params & CNT_XPAR) {
-                    setup->setXPAR(false);
-                    message << "X";
-                    setup->setPayoadSize(ping_msg->size);
-                    setup->setAntiAsym(true);
-                } else {
-                    setup->restoreXPAR();
-                }
                 if (ping_msg->params & CNT_CPAR) {
                     setup->setCPAR(true);
                     message << "C";
+
+
                 } else {
                     setup->setCPAR(false);
                 }
@@ -246,9 +238,7 @@ int cServer::run() {
                 cout << message.str() << endl;
                 if (show) {
                     ss.str("");
-                    if (setup->toCSV()) {
-                        sprintf(msg, "S_TimeStamp;S_PacketSize;S_From;S_Sequence;S_TTL;S_Delta;S_RX_Rate;S_TX_Rate;\n");
-                    }
+                    sprintf(msg, "S_TimeStamp;S_PacketSize;S_From;S_Sequence;S_TTL;S_Delta;S_RX_Rate;S_TX_Rate;\n");
                     ss << msg;
                     if (setup->useTimedBuffer()) {
                         msg_store.push_back(ss.str());

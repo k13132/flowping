@@ -69,7 +69,6 @@
 #define CNT_HPAR 1  //0000 0001
 #define CNT_WPAR 2  //0000 0010
 #define CNT_CPAR 4  //0000 0100
-#define CNT_XPAR 8  //0000 1000
 
 #if __WORDSIZE == 64
 #define xENV_64
@@ -88,7 +87,7 @@ struct event_t{
 };
 
 
-struct ping_pkt_t {         //Min PK SIZE 28B
+struct ping_pkt_t {
     u_int32_t type;
     int64_t sec;
     int64_t usec;
@@ -97,11 +96,10 @@ struct ping_pkt_t {         //Min PK SIZE 28B
     char padding[MAX_PKT_SIZE];
 };
 
-struct ping_msg_t {         
+struct ping_msg_t {
     u_int32_t type;
     u_int32_t code;
     u_int64_t count;
-    u_int16_t size;
     u_int8_t params;    /// 00000001 - H_PAR //Bit encoded
     u_int8_t padding1;
     u_int8_t padding2;

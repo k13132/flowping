@@ -49,8 +49,6 @@ public:
     FILE * getFP(void);
     bool showTimeStamps(void);
     bool isAsym(void);
-    bool isAntiAsym(void);
-    void setAntiAsym(bool val);
     bool sendFilename(void);
     bool outToFile(void);
     bool pkSizeChange(void);
@@ -63,8 +61,6 @@ public:
     bool shape(void);
     bool toCSV(void);
     void setCPAR(bool);
-    void setXPAR(bool);
-    void restoreXPAR(void);
     string getFilename(void);
     string getSrcFilename();
     bool silent(void);
@@ -131,7 +127,6 @@ private:
     bool s_par;
     bool S_par;
     bool X_par;
-    bool XR_par;
     bool r_par;
     bool R_par;
     bool P_par;
@@ -143,7 +138,6 @@ private:
     bool u_par;
     bool vonly;
     bool _par;
-    bool antiAsym;
     int port;
     double interval_i;  // 1s
     double interval_I;  // 1s

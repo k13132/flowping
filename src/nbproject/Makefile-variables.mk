@@ -46,14 +46,6 @@ CND_ARTIFACT_PATH_Release_64-local=dist/Release_64-local/GNU-Linux-x86/uping
 CND_PACKAGE_DIR_Release_64-local=dist/Release_64-local/GNU-Linux-x86/package
 CND_PACKAGE_NAME_Release_64-local=uping.tar
 CND_PACKAGE_PATH_Release_64-local=dist/Release_64-local/GNU-Linux-x86/package/uping.tar
-# Release_win_32 configuration
-CND_PLATFORM_Release_win_32=MinGW-Windows
-CND_ARTIFACT_DIR_Release_win_32=dist/Release_win_32/MinGW-Windows
-CND_ARTIFACT_NAME_Release_win_32=flowping
-CND_ARTIFACT_PATH_Release_win_32=dist/Release_win_32/MinGW-Windows/flowping
-CND_PACKAGE_DIR_Release_win_32=dist/Release_win_32/MinGW-Windows/package
-CND_PACKAGE_NAME_Release_win_32=flowping.tar
-CND_PACKAGE_PATH_Release_win_32=dist/Release_win_32/MinGW-Windows/package/flowping.tar
 #
 # include compiler specific variables
 #
