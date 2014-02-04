@@ -229,8 +229,6 @@ int cServer::run() {
                 if (ping_msg->params & CNT_CPAR) {
                     setup->setCPAR(true);
                     message << "C";
-
-
                 } else {
                     setup->setCPAR(false);
                 }
@@ -238,7 +236,9 @@ int cServer::run() {
                 cout << message.str() << endl;
                 if (show) {
                     ss.str("");
-                    sprintf(msg, "S_TimeStamp;S_PacketSize;S_From;S_Sequence;S_TTL;S_Delta;S_RX_Rate;S_TX_Rate;\n");
+                    if (setup->toCSV()) {
+                        sprintf(msg, "S_TimeStamp;S_PacketSize;S_From;S_Sequence;S_TTL;S_Delta;S_RX_Rate;S_TX_Rate;\n");
+                    }
                     ss << msg;
                     if (setup->useTimedBuffer()) {
                         msg_store.push_back(ss.str());

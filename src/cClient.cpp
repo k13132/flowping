@@ -569,19 +569,18 @@ int cClient::run_sender() {
             }
         }
         if (setup->showSendBitrate()) {
-            if (setup->toCSV()) {
-                ss.str("");
-                //"C_TimeStamp;RX/TX;C_PacketSize;C_From;C_Sequence;C_RTT;C_Delta;C_RX_Rate;C_To;C_TX_Rate;"
-                if (setup->showTimeStamps()) {
-                    if (setup->toCSV()) {
-                        sprintf(msg, "%d.%06d;", ts.tv_sec, ts.tv_usec);
-                    } else
-                        sprintf(msg, "[%d.%06d] ", ts.tv_sec, ts.tv_usec);
-                } else {
-                    sprintf(msg, ";");
-                }
-                ss << msg;
+            ss.str("");
+            //"C_TimeStamp;RX/TX;C_PacketSize;C_From;C_Sequence;C_RTT;C_Delta;C_RX_Rate;C_To;C_TX_Rate;"
+            if (setup->showTimeStamps()) {
+                if (setup->toCSV()) {
+                    sprintf(msg, "%d.%06d;", ts.tv_sec, ts.tv_usec);
+                } else
+                    sprintf(msg, "[%d.%06d] ", ts.tv_sec, ts.tv_usec);
+            } else {
+                sprintf(msg, ";");
             }
+            ss << msg;
+
             if (setup->wholeFrame()) {
                 if (setup->toCSV()) {
                     sprintf(msg, "tx;%d;;%d;;%.3f;;%s;%.2f;;;\n", nRet, ping_pkt->seq, delta / 1000, setup->getHostname().c_str(), (1000 / delta) * (nRet + 42) * 8);
