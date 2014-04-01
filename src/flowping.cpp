@@ -120,10 +120,10 @@ int main(int argc, char** argv) {
 
     char str[80];
 #ifdef xENV_32
-    strcpy(str, "x86_32 1.2.0-rc5");
+    strcpy(str, "x86_32 1.2.1");
 #endif    
 #ifdef xENV_64
-    strcpy(str, "x86_64 1.2.0-rc5");
+    strcpy(str, "x86_64 1.2.1");
 #endif    
 
     strcat(str, " (");
@@ -199,7 +199,7 @@ int main(int argc, char** argv) {
         pthread_join(t_cReceiver, NULL);
         delete(client);
         if (setup->npipe()) {
-            system("rm -f /tmp/Flowping");
+            system("rm -f /tmp/flowping");
         }
     }
     delete(setup);

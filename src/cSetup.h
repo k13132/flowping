@@ -49,6 +49,8 @@ public:
     FILE * getFP(void);
     bool showTimeStamps(void);
     bool isAsym(void);
+    bool isAntiAsym(void);
+    void setAntiAsym(bool val);
     bool sendFilename(void);
     bool outToFile(void);
     bool pkSizeChange(void);
@@ -61,6 +63,8 @@ public:
     bool shape(void);
     bool toCSV(void);
     void setCPAR(bool);
+    void setXPAR(bool);
+    void restoreXPAR(void);
     string getFilename(void);
     string getSrcFilename();
     bool silent(void);
@@ -72,6 +76,7 @@ public:
     u_int32_t getTime_T();
     double getTime_R();
     u_int16_t getPayloadSize();
+    u_int16_t getFirstPacketSize();
     void setPayoadSize(u_int16_t);
     string getHostname();
     u_int32_t getDeadline();
@@ -127,6 +132,7 @@ private:
     bool s_par;
     bool S_par;
     bool X_par;
+    bool XR_par;
     bool r_par;
     bool R_par;
     bool P_par;
@@ -138,13 +144,14 @@ private:
     bool u_par;
     bool vonly;
     bool _par;
+    bool antiAsym;
     int port;
     double interval_i;  // 1s
     double interval_I;  // 1s
     double time_t;           // 10s
     double time_T;           // 10s
     double time_R;           // 10s
-    u_int16_t size,bsize,esize;          // 64B Payload
+    u_int16_t size,bsize,esize,fpsize;          // 64B Payload
     int rate_b;         // 1kbit/s
     int rate_B;         // 1kbit/s
     u_int32_t step;     // 1ms
@@ -158,6 +165,7 @@ private:
     u_int64_t bts,ets;
     bool first_brate;
     bool tp_exhausted;
+    bool fpsize_set;
     struct tpoint_def_t td_tmp;
     double bchange;
     //vector<tpoint_def_t> r_tpoints;

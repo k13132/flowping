@@ -52,12 +52,14 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->s_par = false;
     this->S_par = false;
     this->X_par = false;
+    this->XR_par = false;
     this->P_par = false;
     this->R_par = false;
     this->r_par = false;
     this->Q_par = false;
     this->W_par = false;
     this->_par = false;
+    this->antiAsym = false;
     this->port = 2424;
     this->interval_i = 1000000; // 1s
     this->interval_I = 1000000; // 1s
@@ -79,6 +81,8 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->ets = 0;
     this->tp_exhausted = false;
     this->first_brate = true;
+    this->fpsize = 64;
+    this->fpsize_set = false;
 
     this->version = version;
     while ((c = getopt(argc, argv, "CXUWeEaAQSqDPH?w:d:p:c:h:s:i:nFf:u:vI:t:T:b:B:r:R:")) != EOF) {
@@ -173,9 +177,6 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 this->vonly = false;
                 this->u_par = true;
                 this->srcfile = optarg;
-                if (this->parseSrcFile()) {
-                    cout << "Error parsing time_dev file!" << endl;
-                }
                 break;
             case 'h':
                 this->vonly = false;
@@ -193,6 +194,8 @@ cSetup::cSetup(int argc, char **argv, string version) {
             case 'X':
                 this->vonly = false;
                 this->X_par = true;
+                this->XR_par = true;
+                this->antiAsym = true;
                 break;
             case 'U':
                 this->vonly = false;
@@ -240,6 +243,10 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 } else {
                     this->size = atoi(optarg);
                 }
+                if (!fpsize_set) {
+                    fpsize = this->size;
+                    fpsize_set = true;
+                }
                 break;
             case '?':
                 this->_par = true;
@@ -262,6 +269,12 @@ cSetup::cSetup(int argc, char **argv, string version) {
         this->interval_I = (((this->getPacketSize())*8.0)*1000000.0) / (this->rate_B * 1000.0);
     }
     if (this->P_par) this->size = MIN_PKT_SIZE;
+    if (u_par) {
+        if (this->parseSrcFile()) {
+            cout << "Error parsing time_dev file!" << endl;
+            exit(1);
+        }
+    }
 }
 
 cSetup::~cSetup() {
@@ -280,7 +293,7 @@ u_int8_t cSetup::self_check(void) {
             return SETUP_CHCK_ERR;
         }
     } else {
-        if (X_par || S_par) {
+        if (S_par) {
             return SETUP_CHCK_ERR;
         }
     }
@@ -324,9 +337,9 @@ void cSetup::usage() {
     cout << "|         [-p port]     [2424]       Port number                                                |" << endl;
     cout << "|         [-q]                       Silent (suppress ping output to STDOUT)                    |" << endl;
     cout << "|         [-v]                       Print version                                              |" << endl;
+    cout << "|         [-X]                       Asymetric mode (Payload in one direction is limited to 28B)|" << endl;
     cout << "| Server:                                                                                       |" << endl;
     cout << "|         [-S]                       Run server                                                 |" << endl;
-    cout << "|         [-X]                       Asymetric mode (Payload in server reply is limited to 20B) |" << endl;
     cout << "| Client:                                                                                       |" << endl;
     cout << "|         [-a]                       Busy-waiting mode! (100% CPU usage), more accurate bitrate |" << endl;
     cout << "|         [-b kbit/s]                BitRate (Lower limit)                                      |" << endl;
@@ -552,34 +565,6 @@ bool cSetup::shape() {
     return this->u_par;
 }
 
-//int cSetup::parseSrcFile() {
-//    bool setsize = true;
-//    if (this->getSrcFilename().length()) {
-//        ifstream infile;
-//        tpoint_def_t tmp, check;
-//        check.ts = 0;
-//        infile.open(this->getSrcFilename().c_str());
-//        while (infile >> tmp.ts >> tmp.bitrate >> tmp.len) {
-//            if (tmp.len < MIN_PKT_SIZE) tmp.len = MIN_PKT_SIZE;
-//            if (tmp.len > MAX_PKT_SIZE) tmp.len = MAX_PKT_SIZE;
-//            if (tmp.ts < check.ts) {
-//                cerr << "Time inconsistency in source file!" << endl;
-//            }
-//            tpoints.push(tmp);
-//            if (setsize) {
-//                this->size = tmp.len;
-//                this->esize = this->size;
-//                //cerr << this->esize<<endl;
-//                setsize=false;
-//            }
-//        }
-//        infile.close();
-//    } else {
-//        return 1;
-//    }
-//    return 0;
-//}
-
 int cSetup::parseSrcFile() {
     bool setsize = true;
     string stmp;
@@ -590,6 +575,10 @@ int cSetup::parseSrcFile() {
         tpoint_def_t tmp, check;
         check.ts = 0;
         infile.open(this->getSrcFilename().c_str());
+        if (!infile.is_open()) {
+            cerr << "Can't open source file! \"" << this->getSrcFilename() << "\"" << endl;
+            exit(1);
+        }
         while (getline(infile, stmp)) {
             str = strdup(stmp.c_str());
             xstr = strtok(str, "\t ,;");
@@ -609,6 +598,12 @@ int cSetup::parseSrcFile() {
                 cerr << "Can't parse source file!" << endl;
                 exit(1);
             }
+            if (!fpsize_set) {
+                fpsize = atoi(xstr);
+                if (fpsize < MIN_PKT_SIZE) fpsize = MIN_PKT_SIZE;
+                if (fpsize > MAX_PKT_SIZE) fpsize = MAX_PKT_SIZE;
+                fpsize_set = true;
+            }
             tmp.len = atoi(xstr);
             if (tmp.len < MIN_PKT_SIZE) tmp.len = MIN_PKT_SIZE;
             if (tmp.len > MAX_PKT_SIZE) tmp.len = MAX_PKT_SIZE;
@@ -623,6 +618,7 @@ int cSetup::parseSrcFile() {
                 setsize = false;
             }
         }
+        tpoints.push(tmp);
         infile.close();
     } else {
         return 1;
@@ -800,10 +796,30 @@ string cSetup::getInterface() {
     return this->interface;
 }
 
-bool cSetup::toCSV(void){
+bool cSetup::toCSV(void) {
     return C_par;
 }
 
-void cSetup::setCPAR(bool val){
-    C_par=val;
+void cSetup::setCPAR(bool val) {
+    C_par = val;
+}
+
+void cSetup::setXPAR(bool val) {
+    X_par = val;
+}
+
+void cSetup::restoreXPAR() {
+    X_par = XR_par;
+}
+
+bool cSetup::isAntiAsym() {
+    return this->antiAsym;
+}
+
+void cSetup::setAntiAsym(bool val) {
+    this->antiAsym = val;
+}
+
+u_int16_t cSetup::getFirstPacketSize() {
+    return fpsize;
 }

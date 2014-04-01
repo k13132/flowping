@@ -359,11 +359,16 @@ int cClient::run_sender() {
     if (setup->wholeFrame()) {
         ping_msg->params = (ping_msg->params | CNT_HPAR);
     }
-    if (setup->toCSV()) {
-        ping_msg->params = (ping_msg->params | CNT_CPAR);
-    }
     if (setup->useTimedBuffer()) {
         ping_msg->params = (ping_msg->params | CNT_WPAR);
+    }
+    if (setup->isAsym()) {
+        ping_msg->params = (ping_msg->params | CNT_XPAR);
+        ping_msg->size = setup->getFirstPacketSize();
+        setup->setPayoadSize(MIN_PKT_SIZE);
+    }
+    if (setup->toCSV()) {
+        ping_msg->params = (ping_msg->params | CNT_CPAR);
     }
     if (setup->getFilename().length() && setup->sendFilename()) {
         strcpy(ping_msg->msg, setup->getFilename().c_str());
@@ -463,7 +468,7 @@ int cClient::run_sender() {
         if (setup->useTimedBuffer()) {
             if (!setup->nextPacket()) {
                 tinfo = setup->getNextPacket();
-                payload_size = tinfo.len;
+                payload_size = tinfo.len - HEADER_LENGTH;
             } else {
                 stop = true;
                 break;
@@ -495,6 +500,9 @@ int cClient::run_sender() {
         gettimeofday(&ts, NULL);
         ping_pkt->sec = ts.tv_sec;
         ping_pkt->usec = ts.tv_usec;
+        if (setup->isAntiAsym()) {
+            payload_size = 0;
+        }
         nRet = sendto(this->sock, packet, HEADER_LENGTH + payload_size, 0, (struct sockaddr *) &saServer, sizeof (struct sockaddr));
         if (nRet < 0) {
             cerr << "Packet size:" << HEADER_LENGTH + payload_size << endl;
@@ -505,10 +513,10 @@ int cClient::run_sender() {
         if (setup->useTimedBuffer()) {
             tgTime = (start_ts.tv_usec + start_ts.tv_sec * 1000000)+(tinfo.usec + tinfo.sec * 1000000);
             gettimeofday(&curTv, NULL);
-            delta = (((double) (curTv.tv_sec - refTv.tv_sec)*1000000 + (curTv.tv_usec - refTv.tv_usec)));
             while ((curTv.tv_usec + curTv.tv_sec * 1000000) < tgTime) {
                 gettimeofday(&curTv, NULL);
             }
+            delta = (((double) (curTv.tv_sec - refTv.tv_sec)*1000000 + (curTv.tv_usec - refTv.tv_usec)));
             gettimeofday(&refTv, NULL);
         } else {
             if (speedup) {
@@ -553,19 +561,14 @@ int cClient::run_sender() {
                 delta = ((double) (curTv.tv_sec - refTv.tv_sec)*1000000 + (curTv.tv_usec - refTv.tv_usec));
                 //delta = ((double) (curTv.tv_sec - refTv.tv_sec)*1000.0 + (double) (curTv.tv_usec - refTv.tv_usec) / 1000.0);
                 gettimeofday(&refTv, NULL);
-                if (pkt_sent == 1) delta = interval; //First delta shown represents Interval instead of zero value;            correction = (int) ((interval + correction) - delta);
+                if (pkt_sent == 1) delta = interval; //First delta shown represents Interval instead of zero value;            
+                correction = (int) ((interval + correction) - delta);
                 if (-correction > interval - 1) {
                     correction = -(interval - 1);
                 }
                 cinterval = (interval + correction) * 1000L;
-                //cout << "B" << interval << "\t" << correction << endl;
-                if (cinterval + tt.tv_nsec > 999999999) {
-                    req.tv_sec = tt.tv_sec + 1;
-                    req.tv_nsec = ((cinterval + tt.tv_nsec) - 1000000000);
-                } else {
-                    req.tv_sec = tt.tv_sec;
-                    req.tv_nsec = ((cinterval + tt.tv_nsec));
-                }
+                req.tv_sec = tt.tv_sec + (cinterval + tt.tv_nsec)/1000000000L;
+                req.tv_nsec = (cinterval + tt.tv_nsec) % 1000000000L;
             }
         }
         if (setup->showSendBitrate()) {
@@ -574,10 +577,13 @@ int cClient::run_sender() {
             if (setup->showTimeStamps()) {
                 if (setup->toCSV()) {
                     sprintf(msg, "%d.%06d;", ts.tv_sec, ts.tv_usec);
-                } else
+                } else {
                     sprintf(msg, "[%d.%06d] ", ts.tv_sec, ts.tv_usec);
+                }
             } else {
-                sprintf(msg, ";");
+                if (setup->toCSV()) {
+                    sprintf(msg, ";");
+                }
             }
             ss << msg;
 
@@ -728,39 +734,9 @@ u_int16_t cClient::getPacketSize() {
             return payload_size;
         }
     }
-    //cout << "Payload size: " << payload_size << endl;
     return payload_size;
 }
-
-/*
-void cClient::delay(u_int64_t usec) {
-    req.tv_sec = usec / 1000000L;
-    req.tv_nsec = usec * 1000L;
-    while (nanosleep(&req, &rem) == -1) {
-        if (errno == EINTR) {
-            req = rem;
-            cout << "Interupt correction" << endl;
-        }
-    }
-}
- */
-
 
 void cClient::delay(timespec req) {
     int e = clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &req, &req);
 }
-
-
-/* Radove mene presne nez clock_nanosleep
-void cClient::delay(u_int64_t usec) {
-    struct timeval tv;
-    fd_set dummy;
-    int s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-    FD_ZERO(&dummy);
-    FD_SET(s, &dummy);
-    tv.tv_sec = usec / 1000000L;
-    tv.tv_usec = usec % 1000000L;
-    bool sucess = 0 == select(0, 0, 0, &dummy, &tv);
-    close(s);
-}
- */
