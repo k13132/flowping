@@ -313,7 +313,7 @@ int cClient::run_receiver() {
 
 int cClient::run_sender() {
     event_t event;
-    char msg[100] = "";
+    char msg[1000] = {0};
     struct ping_pkt_t *ping_pkt;
     struct ping_msg_t *ping_msg;
     stringstream ss;
@@ -567,7 +567,7 @@ int cClient::run_sender() {
                     correction = -(interval - 1);
                 }
                 cinterval = (interval + correction) * 1000L;
-                req.tv_sec = tt.tv_sec + (cinterval + tt.tv_nsec)/1000000000L;
+                req.tv_sec = tt.tv_sec + (cinterval + tt.tv_nsec) / 1000000000L;
                 req.tv_nsec = (cinterval + tt.tv_nsec) % 1000000000L;
             }
         }
@@ -596,7 +596,7 @@ int cClient::run_sender() {
                 if (setup->toCSV()) {
                     sprintf(msg, "tx;%d;;%d;;%.3f;;%s;%.2f;;;\n", nRet, ping_pkt->seq, delta / 1000, setup->getHostname().c_str(), (1000 / delta) * (nRet) * 8);
                 } else {
-                    sprintf(msg, "%d bytes to %s: req=%d delta=%.3f ms tx_rate=%.2f kbit/s \n", nRet, setup->getHostname().c_str(), ping_pkt->seq, delta / 1000, (1000 / delta) * (nRet) * 8);
+                    sprintf(msg, "%d bytes to %s: req=%d delta=%.3f ms tx_rate=%.2f kbit/s \n", nRet, setup->getHostname().c_str(), ping_pkt->seq, delta/1000, (1000 / delta) * (nRet) * 8);
                 }
             }
             ss << msg;

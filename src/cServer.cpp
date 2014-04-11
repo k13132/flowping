@@ -41,7 +41,7 @@ int cServer::run() {
     FILE * fp = setup->getFP();
     u_int64_t count = 0;
     bool show = not setup->silent();
-    char msg[200] = "";
+    char msg[400] = "";
     stringstream message;
     stringstream ss;
 

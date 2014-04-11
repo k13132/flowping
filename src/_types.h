@@ -53,8 +53,8 @@
 #include <math.h>
 
 #define MAX_PKT_SIZE 1472
-#define MIN_PKT_SIZE 28  //equal to header size
-#define HEADER_LENGTH 28
+#define MIN_PKT_SIZE 32  //equal to header size
+#define HEADER_LENGTH 32
 
 #define CONTROL 1
 #define PING 0
@@ -88,12 +88,12 @@ struct event_t{
 };
 
 
-struct ping_pkt_t {         //Min PK SIZE 28B
+struct ping_pkt_t {         //Min PK SIZE 32B
     u_int32_t type;
+    u_int32_t padding1;
     int64_t sec;
     int64_t usec;
     u_int64_t seq;
-    //u_int32_t padding1;
     char padding[MAX_PKT_SIZE];
 };
 
