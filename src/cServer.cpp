@@ -86,7 +86,7 @@ int cServer::run() {
     struct sockaddr_in saClient;
     struct timeval curTv, refTv;
     refTv.tv_sec = 0;
-    unsigned int cnt = 0;
+
 
     int ip;
     char client_ip[INET_ADDRSTRLEN];
@@ -119,11 +119,17 @@ int cServer::run() {
                     }
                 }
                 if (setup->toCSV()) {
-                    sprintf(msg, "%d;%s;%d;xx;%.3f;", rec_size, client_ip, ping_pkt->seq, delta);
+                    sprintf(msg, "%d;%s;%d;xx;", rec_size, client_ip, ping_pkt->seq);
+                    ss << msg;
+                    sprintf(msg, "%.3f;",delta);
+                    ss << msg;
                 } else {
-                    sprintf(msg, "%d bytes from %s: req=%d ttl=xx delta=%.3f ms", rec_size, client_ip, ping_pkt->seq, delta);
+                    sprintf(msg, "%d bytes from %s: req=%d ttl=xx ", rec_size, client_ip, ping_pkt->seq);
+                    ss << msg;
+                    sprintf(msg, "delta=%.3f ms", delta);
+                    ss << msg;
                 }
-                ss << msg;
+
                 if (setup->showBitrate()) {
                     if (setup->wholeFrame()) {
                         if (setup->toCSV()) {
@@ -179,6 +185,7 @@ int cServer::run() {
 #endif
             if (ping_msg->code == CNT_FNAME) {
                 fp = fopen(ping_msg->msg, "w+"); //RW - overwrite file
+                cout << ping_msg->msg << endl;
                 ping_msg->code = CNT_FNAME_OK;
                 if (fp == NULL) {
                     perror("Unable to open file, redirecting to STDOUT");

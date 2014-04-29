@@ -65,6 +65,7 @@ int cClient::run_receiver_output() {
     while (!done) {
         usleep(200);
     }
+    return 0;
 }
 
 int cClient::run_receiver() {
@@ -370,13 +371,13 @@ int cClient::run_sender() {
     if (setup->toCSV()) {
         ping_msg->params = (ping_msg->params | CNT_CPAR);
     }
-    if (setup->getFilename().length() && setup->sendFilename()) {
-        strcpy(ping_msg->msg, setup->getFilename().c_str());
+    if (setup->getF_Filename().length() && setup->sendFilename()) {
+        strcpy(ping_msg->msg, setup->getF_Filename().c_str());
         ping_msg->code = CNT_FNAME;
     } else {
         ping_msg->code = CNT_NOFNAME;
     }
-    unsigned int pk_len = 20 + strlen(ping_msg->msg); //fixed header len of ping msg=16
+    unsigned int pk_len = HEADER_LENGTH + strlen(ping_msg->msg);
     int timeout = 0;
     // Synchronization point
     int rc = pthread_barrier_wait(&barr);
@@ -573,6 +574,7 @@ int cClient::run_sender() {
         }
         if (setup->showSendBitrate()) {
             ss.str("");
+            memset(msg,0,sizeof(msg));
             //"C_TimeStamp;RX/TX;C_PacketSize;C_From;C_Sequence;C_RTT;C_Delta;C_RX_Rate;C_To;C_TX_Rate;"
             if (setup->showTimeStamps()) {
                 if (setup->toCSV()) {
@@ -589,17 +591,29 @@ int cClient::run_sender() {
 
             if (setup->wholeFrame()) {
                 if (setup->toCSV()) {
-                    sprintf(msg, "tx;%d;;%d;;%.3f;;%s;%.2f;;;\n", nRet, ping_pkt->seq, delta / 1000, setup->getHostname().c_str(), (1000 / delta) * (nRet + 42) * 8);
-                } else
-                    sprintf(msg, "%d bytes to %s: req=%d delta=%.3f ms tx_rate=%.2f kbit/s \n", nRet, setup->getHostname().c_str(), ping_pkt->seq, delta / 1000, (1000 / delta) * (nRet + 42) * 8);
+                    sprintf(msg, "tx;%d;;%d;;", nRet, ping_pkt->seq);
+                    ss << msg;
+                    sprintf(msg, "%.3f;;%s;%.2f;;;\n", (delta / 1000.0), setup->getHostname().c_str(), (1000.0 / delta) * (nRet + 42) * 8);
+                    ss << msg;
+                } else {
+                    sprintf(msg, "%d bytes to %s: req=%d ", nRet, setup->getHostname().c_str(), ping_pkt->seq);
+                    ss << msg;
+                    sprintf(msg, "delta=%.3f ms tx_rate=%.2f kbit/s \n", delta / 1000.0, (1000.0 / delta) * (nRet + 42) * 8);
+                    ss << msg;
+                }
             } else {
                 if (setup->toCSV()) {
-                    sprintf(msg, "tx;%d;;%d;;%.3f;;%s;%.2f;;;\n", nRet, ping_pkt->seq, delta / 1000, setup->getHostname().c_str(), (1000 / delta) * (nRet) * 8);
+                    sprintf(msg, "tx;%d;;%d;;", nRet, ping_pkt->seq);
+                    ss << msg;
+                    sprintf(msg, "%.3f;;%s;%.2f;;;\n", (delta / 1000.0), setup->getHostname().c_str(), (1000.0 / delta) * (nRet) * 8);
+                    ss << msg;
                 } else {
-                    sprintf(msg, "%d bytes to %s: req=%d delta=%.3f ms tx_rate=%.2f kbit/s \n", nRet, setup->getHostname().c_str(), ping_pkt->seq, delta/1000, (1000 / delta) * (nRet) * 8);
+                    sprintf(msg, "%d bytes to %s: req=%d ", nRet, setup->getHostname().c_str(), ping_pkt->seq);
+                    ss << msg;
+                    sprintf(msg, "delta=%.3f ms tx_rate=%.2f kbit/s \n", delta / 1000.0, (1000.0 / delta) * (nRet) * 8);
+                    ss << msg;
                 }
             }
-            ss << msg;
             if (setup->useTimedBuffer()) {
                 event.ts.sec = curTv.tv_sec;
                 event.ts.usec = curTv.tv_usec;
@@ -632,7 +646,7 @@ int cClient::run_sender() {
 #ifdef DEBUG
     cout << setup->getInterval() << endl;
 #endif    
-
+    return 0;
 }
 
 void cClient::report() {

@@ -120,10 +120,10 @@ int main(int argc, char** argv) {
 
     char str[80];
 #ifdef xENV_32
-    strcpy(str, "x86_32 1.2.2");
+    strcpy(str, "x86_32 1.2.3");
 #endif    
 #ifdef xENV_64
-    strcpy(str, "x86_64 1.2.2");
+    strcpy(str, "x86_64 1.2.3");
 #endif    
 
     strcat(str, " (");
@@ -144,8 +144,8 @@ int main(int argc, char** argv) {
         if (setup->is_vonly()) return EXIT_SUCCESS;
     }
     if (setup->self_check() == SETUP_CHCK_ERR) {
+        cout << "Invalid option!" << setup->self_check() << endl<< endl;
         setup->usage();
-        cout << "SETUP_CHCK_CODE=" << setup->self_check() << endl;
         return EXIT_FAILURE;
     }
     if (setup->raisePriority()) {

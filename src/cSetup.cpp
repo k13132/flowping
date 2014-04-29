@@ -72,6 +72,7 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->deadline = 0; // 0s
     this->count = ULONG_MAX;
     this->filename = "";
+    this->F_filename = "";
     this->srcfile = "";
     this->host = "localhost";
     int c;
@@ -85,7 +86,7 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->fpsize_set = false;
 
     this->version = version;
-    while ((c = getopt(argc, argv, "CXUWeEaAQSqDPH?w:d:p:c:h:s:i:nFf:u:vI:t:T:b:B:r:R:")) != EOF) {
+    while ((c = getopt(argc, argv, "CXUWeEaAQSqDPH?w:d:p:c:h:s:i:nF:f:u:vI:t:T:b:B:r:R:")) != EOF) {
         switch (c) {
             case 'v':
                 this->v_par = true;
@@ -190,6 +191,7 @@ cSetup::cSetup(int argc, char **argv, string version) {
             case 'F':
                 this->vonly = false;
                 this->F_par = true;
+                this->F_filename = optarg;
                 break;
             case 'X':
                 this->vonly = false;
@@ -282,20 +284,20 @@ cSetup::~cSetup() {
 }
 
 u_int8_t cSetup::self_check(void) {
-    if (v_par) { //show version, then exit
-        return SETUP_CHCK_VER;
-    }
     if (_par) { //show usage
         return SETUP_CHCK_SHOW;
     }
     if (isServer()) {
-        if (a_par || Q_par || b_par || B_par || c_par || F_par || h_par || H_par || i_par || I_par || s_par || t_par || T_par || R_par || w_par) {
+        if (a_par || Q_par || b_par || B_par || c_par || C_par || F_par || E_par || h_par || H_par || i_par || I_par || s_par || t_par || T_par || R_par || P_par || W_par || U_par || w_par) {
             return SETUP_CHCK_ERR;
         }
     } else {
-        if (S_par) {
+        if (W_par and not u_par) {
             return SETUP_CHCK_ERR;
         }
+    }
+    if (v_par) { //show version
+        return SETUP_CHCK_VER;
     }
     return SETUP_CHCK_OK;
 }
@@ -332,23 +334,23 @@ void cSetup::usage() {
     cout << "|         [-?]                       Usage (Print this table)                                   |" << endl;
     cout << "|         [-A]                       Raise priority to maximum in passive mode (RT if possible) |" << endl;
     cout << "|         [-D]                       Print timestamps in ping output                            |" << endl;
-    cout << "|         [-e]                       Print current receving Bitrate                             |" << endl;
+    cout << "|         [-e]                       Print current RX Bitrate (RX and TX on SERVER)             |" << endl;
     cout << "|         [-f filename]              Store ping output in specified file                        |" << endl;
     cout << "|         [-p port]     [2424]       Port number                                                |" << endl;
     cout << "|         [-q]                       Silent (suppress ping output to STDOUT)                    |" << endl;
     cout << "|         [-v]                       Print version                                              |" << endl;
-    cout << "|         [-X]                       Asymetric mode (Payload in one direction is limited to 28B)|" << endl;
+    cout << "|         [-X]                       Asymetric mode (TX Payload  is limited to 32B)             |" << endl;
     cout << "| Server:                                                                                       |" << endl;
-    cout << "|         [-S]                       Run server                                                 |" << endl;
+    cout << "|         [-S]                       Run as server                                              |" << endl;
     cout << "| Client:                                                                                       |" << endl;
-    cout << "|         [-a]                       Busy-waiting mode! (100% CPU usage), more accurate bitrate |" << endl;
+    cout << "|         [-a]                       Busy-loop mode! (100% CPU usage), more accurate bitrate    |" << endl;
     cout << "|         [-b kbit/s]                BitRate (Lower limit)                                      |" << endl;
     cout << "|         [-B kbit/s]                BitRate (Upper limit)                                      |" << endl;
     cout << "|         [-c count]    [unlimited]  Send specified number of packets                           |" << endl;
     cout << "|         [-C ]                      Output to CSV [;;;;]                                       |" << endl;
     cout << "|         [-d]                       Set source interface                                       |" << endl;
-    cout << "|         [-E]                       Print sending Bitrate                                      |" << endl;
-    cout << "|         [-F filename]              Send FileName to server (prior to server settings)         |" << endl;
+    cout << "|         [-E]                       Print current TX Bitrate                                   |" << endl;
+    cout << "|         [-F filename]              Send FileName to server (overide server settings)          |" << endl;
     cout << "|         [-h hostname] [localhost]  Server hostname or IP address                              |" << endl;
     cout << "|         [-H]                       Consider headers (Use frame size instead payload size)     |" << endl;
     cout << "|         [-i seconds]  [1]          Interval between packets (Upper limit)                     |" << endl;
@@ -362,7 +364,7 @@ void cSetup::usage() {
     cout << "|         [-u filename]              Read Interval and BitRate definitions from file            |" << endl;
     cout << "|         [-U]                       Fill packets with data from named pipe at /tmp/uping       |" << endl;
     cout << "|         [-w seconds]  [unlimited]  Run test for specified time                                |" << endl;
-    cout << "|         [-W]                       Precompute packet intervals, Busy-waiting mode             |" << endl;
+    cout << "|         [-W]                       Precompute packet intervals, Busy-loop mode                |" << endl;
     cout << " -----------------------------------------------------------------------------------------------" << endl;
 }
 
@@ -392,6 +394,11 @@ bool cSetup::sendFilename() {
 
 string cSetup::getFilename() {
     return this->filename;
+}
+
+string cSetup::getF_Filename() {
+    if (this->F_filename.size()) return this->F_filename;
+    else return this->filename;
 }
 
 string cSetup::getSrcFilename() {
@@ -695,7 +702,6 @@ struct ts_t cSetup::getNextPacketTS(struct ts_t ts, struct ts_t sts, struct ts_t
 
     long delta_rate, usec_delta;
     u_int32_t sec, usec;
-    usec_delta;
     u_int32_t delay;
     double interval;
     interval = (double) (ets.sec - sts.sec)+(double) (ets.usec - ets.usec) / 1000000.0;

@@ -1,6 +1,6 @@
 /* 
  * File:   cSetup.h
-  * 
+ * 
  * Author: Ondrej Vondrous, KTT, CVUT
  * Email: vondrond@fel.cvut.cz
  * Copyright: Department of Telecommunication Engineering, FEE, CTU in Prague 
@@ -40,7 +40,7 @@ class cSetup {
 public:
     cSetup(int argc, char **argv, string version);
     void usage(void);
-    void show_version(void);                             //get version;
+    void show_version(void); //get version;
     u_int16_t getMaxPacketSize();
     bool isServer(void);
     bool isClient(void);
@@ -66,6 +66,7 @@ public:
     void setXPAR(bool);
     void restoreXPAR(void);
     string getFilename(void);
+    string getF_Filename(void);
     string getSrcFilename();
     bool silent(void);
     bool showBitrate(void);
@@ -105,8 +106,8 @@ public:
     timed_packet_t getNextPacket();
     bool nextPacket();
     virtual ~cSetup();
-    
-    
+
+
 private:
     bool v_par;
     bool a_par;
@@ -146,23 +147,23 @@ private:
     bool _par;
     bool antiAsym;
     int port;
-    double interval_i;  // 1s
-    double interval_I;  // 1s
-    double time_t;           // 10s
-    double time_T;           // 10s
-    double time_R;           // 10s
-    u_int16_t size,bsize,esize,fpsize;          // 64B Payload
-    int rate_b;         // 1kbit/s
-    int rate_B;         // 1kbit/s
-    u_int32_t step;     // 1ms
-    u_int32_t deadline;       // 0s
-    u_int64_t count;   
-    string filename,srcfile,extfilename;
-    string host,interface;
+    double interval_i; // 1s
+    double interval_I; // 1s
+    double time_t; // 10s
+    double time_T; // 10s
+    double time_R; // 10s
+    u_int16_t size, bsize, esize, fpsize; // 64B Payload
+    int rate_b; // 1kbit/s
+    int rate_B; // 1kbit/s
+    u_int32_t step; // 1ms
+    u_int32_t deadline; // 0s
+    u_int64_t count;
+    string filename, F_filename, srcfile, extfilename;
+    string host, interface;
     string version;
     FILE *fp;
-    int32_t brate,erate;
-    u_int64_t bts,ets;
+    int32_t brate, erate;
+    u_int64_t bts, ets;
     bool first_brate;
     bool tp_exhausted;
     bool fpsize_set;
@@ -172,7 +173,7 @@ private:
     queue<tpoint_def_t> tpoints;
     //vector<tpoint_def_t> tpoints_copy;
     //cTimedBuffer * tBuffer;
-    queue<timed_packet_t> pbuffer; 
+    queue<timed_packet_t> pbuffer;
     struct ts_t getNextPacketTS(struct ts_t ts, struct ts_t sts, struct ts_t ets, u_int32_t srate, u_int32_t erate, u_int16_t len); //return interval in usecs//
     long longFromTS(ts_t ts);
     timed_packet_t tmp_tpck;
