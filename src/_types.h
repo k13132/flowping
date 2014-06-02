@@ -71,6 +71,9 @@
 #define CNT_WPAR 2  //0000 0010
 #define CNT_CPAR 4  //0000 0100
 #define CNT_XPAR 8  //0000 1000
+#define CNT_DPAR 16  //0001 0000
+#define CNT_ePAR 32  //0010 0000
+#define CNT_EPAR 64  //0100 0000
 
 #if __WORDSIZE == 64
 #define xENV_64

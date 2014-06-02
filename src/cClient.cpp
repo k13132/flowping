@@ -33,8 +33,8 @@
 
 cClient::cClient(cSetup *setup) {
     this->setup = setup;
-    this->s_running=false;
-    this->r_running=false;
+    this->s_running = false;
+    this->r_running = false;
     if (pthread_barrier_init(&barr, NULL, 2)) //2 == Sender + Receiver
     {
         printf("Could not create a barrier\n");
@@ -74,9 +74,9 @@ int cClient::run_receiver() {
     event_t event;
     struct hostent *hp;
     stringstream ss;
-    this->r_running=true;
+    this->r_running = true;
     bool show = not setup->silent();
-    cout << ".::. Pinging " << setup->getHostname() << " with " << setup->getPayloadSize() << " bytes of data:" << endl;
+    cout << ".::. Pinging " << setup->getHostname() << " with " << setup->getPacketSize() << " bytes of data:" << endl;
 
     // Find the server
     // Convert the host name as a dotted-decimal number.
@@ -136,6 +136,7 @@ int cClient::run_receiver() {
     char msg[1000] = "";
     gettimeofday(&curTv, NULL);
     while (!done) {
+        if (stop) break;
         ss.str("");
         nFromLen = sizeof (struct sockaddr);
         nRet = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, (struct sockaddr *) &saServer, (socklen_t *) & nFromLen);
@@ -147,7 +148,6 @@ int cClient::run_receiver() {
         //        if (ping_pkt->type == PING){
         //            rcv_queue.push(ping_pkt&);
         //        }
-        if (setup->wholeFrame()) nRet += 42;
         if (ping_pkt->type == CONTROL) {
 #ifdef DEBUG
             if (setup->debug()) printf("-D- Control packet received! code:%d\n", ping_msg->code);
@@ -188,6 +188,7 @@ int cClient::run_receiver() {
             rtt_avg = ((this->pkt_rcvd - 1) * rtt_avg + rtt) / this->pkt_rcvd;
 
             if (show) {
+                if (setup->wholeFrame()) nRet += 42;
                 if (setup->showTimeStamps()) {
                     if (setup->toCSV()) {
                         sprintf(msg, "%d.%06d;", curTv.tv_sec, curTv.tv_usec);
@@ -305,12 +306,12 @@ int cClient::run_receiver() {
         msg_store.clear();
     }
     if (!setup->toCSV()) this->report();
-    this->r_running=false;
+    this->r_running = false;
     return 1;
 }
 
 int cClient::run_sender() {
-    this->s_running=true;
+    this->s_running = true;
     event_t event;
     char msg[1000] = {0};
     struct ping_pkt_t *ping_pkt;
@@ -355,6 +356,15 @@ int cClient::run_sender() {
     ping_msg->params = 0;
     ping_pkt->type = CONTROL; //prepare the first packet
     ping_msg->code = CNT_NONE;
+    if (setup->showTimeStamps()) {
+        ping_msg->params = (ping_msg->params | CNT_DPAR);
+    }
+    if (setup->showBitrate()) {
+        ping_msg->params = (ping_msg->params | CNT_ePAR);
+    }
+    if (setup->showSendBitrate()) {
+        ping_msg->params = (ping_msg->params | CNT_EPAR);
+    }
     if (setup->wholeFrame()) {
         ping_msg->params = (ping_msg->params | CNT_HPAR);
     }
@@ -397,7 +407,7 @@ int cClient::run_sender() {
         }
         usleep(200000); //  5pkt/s
         timeout++;
-        if (timeout == 20) {                    //try contact server fo 4s
+        if (timeout == 50) { //try contact server fo 10s
             printf("Can't connect to server\n");
             exit(1);
         }
@@ -450,9 +460,6 @@ int cClient::run_sender() {
         }
     }
 
-
-
-
     timeval ts;
     timed_packet_t tinfo;
 
@@ -475,7 +482,6 @@ int cClient::run_sender() {
         } else {
             payload_size = this->getPacketSize() - HEADER_LENGTH;
         }
-        if (setup->frameSize()) payload_size -= 42;
         pkt_sent++;
         if (setup->npipe()) {
             payload_size = read(pipe_handle, pipe_buffer, payload_size);
@@ -510,6 +516,10 @@ int cClient::run_sender() {
         if (setup->isAntiAsym()) {
             payload_size = 0;
         }
+
+        if (setup->frameSize()){
+            payload_size-=42;
+        }
         nRet = sendto(this->sock, packet, HEADER_LENGTH + payload_size, 0, (struct sockaddr *) &saServer, sizeof (struct sockaddr));
         if (nRet < 0) {
             cerr << "Packet size:" << HEADER_LENGTH + payload_size << endl;
@@ -517,14 +527,11 @@ int cClient::run_sender() {
             close(this->sock);
             exit(1);
         }
-        if (setup->wholeFrame()) {
-            nRet += 42;
-        }
         if (setup->useTimedBuffer()) {
-            tgTime = (uint64_t)((uint64_t)start_ts.tv_usec + ((uint64_t)start_ts.tv_sec) * 1000000)+(tinfo.usec + tinfo.sec * 1000000);
+            tgTime = (uint64_t) ((uint64_t) start_ts.tv_usec + ((uint64_t) start_ts.tv_sec) * 1000000)+(tinfo.usec + tinfo.sec * 1000000);
             //cout << sizeof(start_ts.tv_sec)<<endl;
             gettimeofday(&curTv, NULL);
-            while (((uint64_t)curTv.tv_usec + ((uint64_t)curTv.tv_sec) * 1000000) < tgTime) {
+            while (((uint64_t) curTv.tv_usec + ((uint64_t) curTv.tv_sec) * 1000000) < tgTime) {
                 gettimeofday(&curTv, NULL);
             }
             delta = (((double) (curTv.tv_sec - refTv.tv_sec)*1000000 + (curTv.tv_usec - refTv.tv_usec)));
@@ -534,15 +541,14 @@ int cClient::run_sender() {
                 interval = speed_int;
             } else {
                 interval = this->getInterval();
-                //cout << "Interval: " << interval << endl;
             }
             if (setup->actWaiting()) {
                 gettimeofday(&curTv, NULL);
-                curTime = (uint64_t)curTv.tv_usec + ((uint64_t)curTv.tv_sec) * 1000000;
+                curTime = (uint64_t) curTv.tv_usec + ((uint64_t) curTv.tv_sec) * 1000000;
                 tgTime = curTime + interval + correction;
                 while (curTime < tgTime) {
                     gettimeofday(&curTv, NULL);
-                    curTime = (uint64_t)curTv.tv_usec + ((uint64_t)curTv.tv_sec) * 1000000;
+                    curTime = (uint64_t) curTv.tv_usec + ((uint64_t) curTv.tv_sec) * 1000000;
                 }
                 gettimeofday(&curTv, NULL);
                 //delta = ((double) (curTv.tv_sec - refTv.tv_sec)*1000.0 + (double) (curTv.tv_usec - refTv.tv_usec) / 1000.0);
@@ -583,6 +589,7 @@ int cClient::run_sender() {
             }
         }
         if (setup->showSendBitrate()) {
+            if (setup->frameSize()) nRet += 42;
             ss.str("");
             memset(msg, 0, sizeof (msg));
             //"C_TimeStamp;RX/TX;C_PacketSize;C_From;C_Sequence;C_RTT;C_Delta;C_RX_Rate;C_To;C_TX_Rate;"
@@ -598,7 +605,6 @@ int cClient::run_sender() {
                 }
             }
             ss << msg;
-
             if (setup->toCSV()) {
                 sprintf(msg, "tx;%d;;%d;;", nRet, ping_pkt->seq);
                 ss << msg;
@@ -642,7 +648,7 @@ int cClient::run_sender() {
 #ifdef DEBUG
     cout << setup->getInterval() << endl;
 #endif
-    this->s_running=false;
+    this->s_running = false;
     return 0;
 }
 
@@ -669,18 +675,14 @@ u_int64_t cClient::getInterval(void) {
     struct timeval cur_ts;
     u_int64_t interval;
     if (setup->pkSizeChange()) {
-#ifdef DEBUG
-        if (setup->debug()) cout << "-D- * T1 * ";
-#endif
         interval = this->base_interval;
-        //cout << "Bitrate:" << setup->getBaseRate() << endl;
     } else {
         gettimeofday(&cur_ts, NULL);
         if (setup->shape()) {
             time = ((cur_ts.tv_sec * 1000000 + cur_ts.tv_usec)-(this->start_ts.tv_sec * 1000000 + this->start_ts.tv_usec));
             // ! setup->getRTBitrate(time) set PayloadSize for setup->getPacketSize()
             double tmp2 = setup->getRTBitrate(time); // Have to be First
-            double tmp1 = setup->getPacketSize()*8000000; // Have to be Second
+            double tmp1 = (double) setup->getPacketSize()*(double) 8000000; // Have to be Second
             interval = (u_int64_t) (tmp1 / tmp2);
             //cout << "Stage 1 - inteval:" << interval << "\ttime:" << time << "\ttmp1:" << tmp1 << "\ttmp2:" << tmp2 << endl;
         } else {
@@ -688,8 +690,8 @@ u_int64_t cClient::getInterval(void) {
             if (time<this->t1) {
                 interval = this->base_interval;
             } else {
-                double tmp1 = setup->getPacketSize()*8000000;
-                double tmp2 = setup->getBaseRate()+(time - this->t1) * this->bchange;
+                double tmp1 = (double) setup->getPacketSize()*(double) 8000000;
+                double tmp2 = (double) setup->getBaseRate()+(double) (time - this->t1) * (double) this->bchange;
                 interval = (u_int64_t) (tmp1 / tmp2);
                 //cerr << "\e[0;31m DEBUG \e[1;37m INTERVAL = " << interval << " TMP1 = " << tmp1 << " TMP2 = " << tmp2 << " TIME = " << time << " BRATE  = " << setup->getBaseRate() << " BCHANGE = " << this->bchange << "\e[0m" << endl;
             }
@@ -732,7 +734,7 @@ u_int64_t cClient::getInterval(void) {
 
 u_int16_t cClient::getPacketSize() {
     struct timeval cur_ts;
-    u_int16_t payload_size = setup->getPayloadSize();
+    u_int16_t payload_size = setup->getPacketSize();
     if (setup->pkSizeChange()) {
         gettimeofday(&cur_ts, NULL);
         time = ((cur_ts.tv_sec * 1000000 + cur_ts.tv_usec)-(this->start_ts.tv_sec * 1000000 + this->start_ts.tv_usec)) % this->t2;
@@ -752,6 +754,6 @@ void cClient::delay(timespec req) {
     int e = clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &req, &req);
 }
 
-bool cClient::status(){
+bool cClient::status() {
     return (this->r_running || this->s_running);
 }

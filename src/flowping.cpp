@@ -80,9 +80,12 @@ void signalHandler(int sig) {
             usleep(200000);
             pthread_cancel(t_sServer);
         } else {
+            u_int16_t cnt;
+            cnt=0;
             client->terminate();
-            while (client->status()){
+            while ((client->status()&&(cnt<100))){
                 usleep(20000);
+                cnt++;
             }
             pthread_cancel(t_cSender);
             pthread_cancel(t_cReceiver);
@@ -125,10 +128,10 @@ int main(int argc, char** argv) {
 
 
 #ifdef xENV_32
-    strcpy(str, "x86_32 1.2.6");
+    strcpy(str, "x86_32 1.3.0");
 #endif    
 #ifdef xENV_64
-    strcpy(str, "x86_64 1.2.6");
+    strcpy(str, "x86_64 1.3.0");
 #endif    
 
 //strcpy(str, "ARM_32 1.2.5");

@@ -27,7 +27,7 @@
 
 cSetup::cSetup(int argc, char **argv, string version) {
     this->version = "Not Defined";
-    this->debug_temp=LONG_MAX;
+    this->debug_temp = LONG_MAX;
     fp = stdout; //output to terminal
     this->vonly = true;
     this->a_par = false;
@@ -335,7 +335,8 @@ void cSetup::usage() {
     cout << "|         [-?]                       Usage (Print this table)                                   |" << endl;
     cout << "|         [-A]                       Raise priority to maximum in passive mode (RT if possible) |" << endl;
     cout << "|         [-D]                       Print timestamps in ping output                            |" << endl;
-    cout << "|         [-e]                       Print current RX Bitrate (RX and TX on SERVER)             |" << endl;
+    cout << "|         [-e]                       Print current RX Bitrate                                   |" << endl;
+    cout << "|         [-E]                       Print current TX Bitrate                                   |" << endl;
     cout << "|         [-f filename]              Store ping output in specified file                        |" << endl;
     cout << "|         [-p port]     [2424]       Port number                                                |" << endl;
     cout << "|         [-q]                       Silent (suppress ping output to STDOUT)                    |" << endl;
@@ -350,7 +351,6 @@ void cSetup::usage() {
     cout << "|         [-c count]    [unlimited]  Send specified number of packets                           |" << endl;
     cout << "|         [-C ]                      Output to CSV [;;;;]                                       |" << endl;
     cout << "|         [-d]                       Set source interface                                       |" << endl;
-    cout << "|         [-E]                       Print current TX Bitrate                                   |" << endl;
     cout << "|         [-F filename]              Send FileName to server (overide server settings)          |" << endl;
     cout << "|         [-h hostname] [localhost]  Server hostname or IP address                              |" << endl;
     cout << "|         [-H]                       Consider headers (Use frame size instead payload size)     |" << endl;
@@ -385,9 +385,18 @@ bool cSetup::showTimeStamps() {
     return this->D_par;
 }
 
+bool cSetup::showTimeStamps(bool val) {
+    return val;
+}
+
 bool cSetup::isAsym() {
     return this->X_par;
 }
+
+bool cSetup::isAsym(bool val) {
+    return val;
+}
+
 
 bool cSetup::sendFilename() {
     return this->F_par;
@@ -423,10 +432,6 @@ double cSetup::getTime_R() {
     return this->time_R;
 
 };
-
-u_int16_t cSetup::getPayloadSize() {
-    return this->size;
-}
 
 string cSetup::getHostname() {
     return this->host;
@@ -503,18 +508,18 @@ double cSetup::getSchange() {
         } else {
             T3 = this->getTime_T();
         }
-        schange = 1450.0 / (T3 * 1000000);
+        schange = 1476.0 / (T3 * 1000000);
         return schange;
     }
     return schange;
 }
 
-u_int64_t cSetup::getPacketSize() {
-    if (this->H_par) {
-        return this->size + 42;
-    } else {
+u_int16_t cSetup::getPacketSize() {
+    //if (this->H_par) {
+    //    return this->size - 42;
+    //} else {
         return this->size;
-    }
+    //}
 }
 
 u_int64_t cSetup::getBaseRate() {
@@ -541,8 +546,16 @@ bool cSetup::showBitrate() {
     return this->e_par;
 }
 
+bool cSetup::showBitrate(bool val) {
+    return val;
+}
+
 bool cSetup::showSendBitrate() {
     return this->E_par;
+}
+
+bool cSetup::showSendBitrate(bool val) {
+    return val;
 }
 
 bool cSetup::speedUP() {
@@ -603,8 +616,8 @@ int cSetup::parseSrcFile() {
             tmp.bitrate = atoi(xstr);
             xstr = strtok(NULL, "\t ,;");
             if (xstr == NULL) {
-                cerr << "Can't parse source file!" << endl;
-                exit(1);
+                cerr << "Empty line!" << endl;
+                //exit(1);
             }
             if (!fpsize_set) {
                 fpsize = atoi(xstr);
@@ -687,6 +700,10 @@ bool cSetup::wholeFrame() {
     return this->H_par;
 }
 
+bool cSetup::wholeFrame(bool val) {
+    return val;
+}
+
 void cSetup::setHPAR(bool value) {
     this->H_par = value;
 }
@@ -699,6 +716,10 @@ bool cSetup::useTimedBuffer() {
     return this->W_par;
 }
 
+bool cSetup::useTimedBuffer(bool val) {
+    return val;
+}
+
 struct ts_t cSetup::getNextPacketTS(struct ts_t ts, struct ts_t sts, struct ts_t ets, u_int32_t srate, u_int32_t erate, u_int16_t len) {
 
     long delta_rate, usec_delta;
@@ -709,8 +730,8 @@ struct ts_t cSetup::getNextPacketTS(struct ts_t ts, struct ts_t sts, struct ts_t
     delta_rate = (int) (erate - srate);
     sec = ts.sec - sts.sec;
     usec = ts.usec - sts.usec;
-    usec_delta = sec * (1000000/interval) + usec / interval;
-    delay = (u_int32_t) (1000000.0 / ((srate + ((delta_rate / 1000000.0)* usec_delta)) / (8.0 * len))); //interval [usec];
+    usec_delta = sec * (1000000 / interval) + usec / interval;
+    delay = (u_int32_t) (1000000.0 / ((srate + ((delta_rate / 1000000.0) * usec_delta)) / (8.0 * len))); //interval [usec];
     //cout << "\t delay:" << delay << "\t srate:" << srate << "\t delta_rate:" << delta_rate << "\t interval:" << interval << "\t usec_delta:" << usec_delta << "\t sec:" << sec << "\t usec:" << usec << "\t len:" << len << endl;
     //if (delay > debug_temp) exit(1);
     //debug_temp=delay;
@@ -812,6 +833,11 @@ bool cSetup::toCSV(void) {
     return C_par;
 }
 
+bool cSetup::toCSV(bool val) {
+    return val;
+}
+
+
 void cSetup::setCPAR(bool val) {
     C_par = val;
 }
@@ -828,10 +854,18 @@ bool cSetup::isAntiAsym() {
     return this->antiAsym;
 }
 
+bool cSetup::isAntiAsym(bool val) {
+    return val;
+}
+
 void cSetup::setAntiAsym(bool val) {
     this->antiAsym = val;
 }
 
 u_int16_t cSetup::getFirstPacketSize() {
     return fpsize;
+}
+
+u_int64_t cSetup::getConnectionID(u_int32_t ip, uint16_t port){
+    return (u_int64_t)ip*(u_int64_t)port;
 }

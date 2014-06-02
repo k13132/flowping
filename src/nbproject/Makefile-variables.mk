@@ -30,14 +30,6 @@ CND_ARTIFACT_PATH_Release_64=dist/Release_64/GNU-Linux-x86/flowping
 CND_PACKAGE_DIR_Release_64=dist/Release_64/GNU-Linux-x86/package
 CND_PACKAGE_NAME_Release_64=flowping.tar
 CND_PACKAGE_PATH_Release_64=dist/Release_64/GNU-Linux-x86/package/flowping.tar
-# Release_win_32 configuration
-CND_PLATFORM_Release_win_32=MinGW-Windows
-CND_ARTIFACT_DIR_Release_win_32=dist/Release_win_32/MinGW-Windows
-CND_ARTIFACT_NAME_Release_win_32=flowping
-CND_ARTIFACT_PATH_Release_win_32=dist/Release_win_32/MinGW-Windows/flowping
-CND_PACKAGE_DIR_Release_win_32=dist/Release_win_32/MinGW-Windows/package
-CND_PACKAGE_NAME_Release_win_32=flowping.tar
-CND_PACKAGE_PATH_Release_win_32=dist/Release_win_32/MinGW-Windows/package/flowping.tar
 # Debug_64 configuration
 CND_PLATFORM_Debug_64=GNU-Linux-x86
 CND_ARTIFACT_DIR_Debug_64=dist/Debug_64/GNU-Linux-x86

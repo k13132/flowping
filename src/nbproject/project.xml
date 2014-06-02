@@ -24,10 +24,6 @@
                     <type>1</type>
                 </confElem>
                 <confElem>
-                    <name>Release_win_32</name>
-                    <type>1</type>
-                </confElem>
-                <confElem>
                     <name>Debug_64</name>
                     <type>1</type>
                 </confElem>

@@ -65,22 +65,22 @@ ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/flowping: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
 	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/flowping ${OBJECTFILES} ${LDLIBSOPTIONS}
 
-${OBJECTDIR}/cClient.o: cClient.cpp 
+${OBJECTDIR}/cClient.o: nbproject/Makefile-${CND_CONF}.mk cClient.cpp 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
 	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/cClient.o cClient.cpp
 
-${OBJECTDIR}/cServer.o: cServer.cpp 
+${OBJECTDIR}/cServer.o: nbproject/Makefile-${CND_CONF}.mk cServer.cpp 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
 	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/cServer.o cServer.cpp
 
-${OBJECTDIR}/cSetup.o: cSetup.cpp 
+${OBJECTDIR}/cSetup.o: nbproject/Makefile-${CND_CONF}.mk cSetup.cpp 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
 	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/cSetup.o cSetup.cpp
 
-${OBJECTDIR}/flowping.o: flowping.cpp 
+${OBJECTDIR}/flowping.o: nbproject/Makefile-${CND_CONF}.mk flowping.cpp 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
 	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/flowping.o flowping.cpp
