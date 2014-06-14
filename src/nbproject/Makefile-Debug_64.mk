@@ -45,8 +45,8 @@ OBJECTFILES= \
 CFLAGS=-m32 -lpthread
 
 # CC Compiler Flags
-CCFLAGS=-m64 -lpthread -lrt
-CXXFLAGS=-m64 -lpthread -lrt
+CCFLAGS=-m64 -lpthread -lrt -ggdb
+CXXFLAGS=-m64 -lpthread -lrt -ggdb
 
 # Fortran Compiler Flags
 FFLAGS=

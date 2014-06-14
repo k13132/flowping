@@ -136,7 +136,7 @@ int cClient::run_receiver() {
     char msg[1000] = "";
     gettimeofday(&curTv, NULL);
     while (!done) {
-        if (stop) break;
+        //if (stop) break;
         ss.str("");
         nFromLen = sizeof (struct sockaddr);
         nRet = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, (struct sockaddr *) &saServer, (socklen_t *) & nFromLen);
@@ -629,7 +629,7 @@ int cClient::run_sender() {
     ping_pkt->type = CONTROL;
     ping_msg->code = CNT_DONE;
     timeout = 0;
-    sleep(2); //wait for network congestion "partialy" disapear.
+    //sleep(2); //wait for network congestion "partialy" disapear.
     while (!done) {
         nRet = sendto(this->sock, packet, pk_len, 0, (struct sockaddr *) &saServer, sizeof (struct sockaddr));
         if (nRet < 0) {

@@ -186,6 +186,9 @@ private:
     struct ts_t getNextPacketTS(struct ts_t ts, struct ts_t sts, struct ts_t ets, u_int32_t srate, u_int32_t erate, u_int16_t len); //return interval in usecs//
     uint64_t longFromTS(ts_t ts);
     timed_packet_t tmp_tpck;
+
+    //refactor tpoint to match duration of test / defined scenario is repeated
+    void refactorTPoints(void);
 };
 
 #endif	/* SETUP_H */

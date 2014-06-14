@@ -397,7 +397,6 @@ bool cSetup::isAsym(bool val) {
     return val;
 }
 
-
 bool cSetup::sendFilename() {
     return this->F_par;
 }
@@ -518,7 +517,7 @@ u_int16_t cSetup::getPacketSize() {
     //if (this->H_par) {
     //    return this->size - 42;
     //} else {
-        return this->size;
+    return this->size;
     //}
 }
 
@@ -644,7 +643,38 @@ int cSetup::parseSrcFile() {
     } else {
         return 1;
     }
+    if (deadline==0){
+        deadline=((tpoint_def_t)tpoints.back()).ts;
+    }
+    refactorTPoints();
     return 0;
+}
+
+void cSetup::refactorTPoints() {
+    double reftime=0;
+    double last_ts=0;
+    if (tpoints.empty()) return;
+    if (((tpoint_def_t)tpoints.back()).ts>deadline) return;
+    
+    vector<tpoint_def_t> tmp_tpoints;
+    while (!tpoints.empty()){
+        tmp_tpoints.push_back(tpoints.front());
+        tpoints.pop();
+    }
+    unsigned int index=0;
+    tpoint_def_t tp;
+    while (last_ts+reftime < deadline){
+        if ((index > 0) && (index % (tmp_tpoints.size()-1) ==0)){
+            reftime=reftime+tmp_tpoints[index].ts;
+            index=0;
+            last_ts=0;
+        }
+        tp=tmp_tpoints[index];
+        last_ts = tp.ts;
+        tp.ts=tp.ts+reftime;
+        tpoints.push(tp);
+        index++;
+    }
 }
 
 //ts - RT from uping start in usecs.
@@ -732,15 +762,8 @@ struct ts_t cSetup::getNextPacketTS(struct ts_t ts, struct ts_t sts, struct ts_t
     usec = ts.usec - sts.usec;
     usec_delta = sec * (1000000 / interval) + usec / interval;
     delay = (u_int32_t) (1000000.0 / ((srate + ((delta_rate / 1000000.0) * usec_delta)) / (8.0 * len))); //interval [usec];
-    //cout << "\t delay:" << delay << "\t srate:" << srate << "\t delta_rate:" << delta_rate << "\t interval:" << interval << "\t usec_delta:" << usec_delta << "\t sec:" << sec << "\t usec:" << usec << "\t len:" << len << endl;
-    //if (delay > debug_temp) exit(1);
-    //debug_temp=delay;
-    //    cout << ((delta_rate/1000000.0) * usec_delta) << endl;
-    //    cout << (srate + ((delta_rate / 1000000.0) * usec_delta) ) << endl;
-    //cout <<delay <<endl;
     ts.sec = ts.sec + (ts.usec + delay) / 1000000;
     ts.usec = (ts.usec + delay) % 1000000;
-    //usleep(500000); 
     return ts;
 }
 
@@ -837,7 +860,6 @@ bool cSetup::toCSV(bool val) {
     return val;
 }
 
-
 void cSetup::setCPAR(bool val) {
     C_par = val;
 }
@@ -866,6 +888,6 @@ u_int16_t cSetup::getFirstPacketSize() {
     return fpsize;
 }
 
-u_int64_t cSetup::getConnectionID(u_int32_t ip, uint16_t port){
-    return (u_int64_t)ip*(u_int64_t)port;
+u_int64_t cSetup::getConnectionID(u_int32_t ip, uint16_t port) {
+    return (u_int64_t) ip * (u_int64_t) port;
 }
