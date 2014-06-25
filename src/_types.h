@@ -93,9 +93,10 @@ struct event_t{
 
 
 struct ping_pkt_t {         //Min PK SIZE 32B
-    u_int32_t type;
+    u_int8_t type;
     u_int8_t id;
-    u_int8_t padding1;
+    u_int16_t size;         //payload_size
+    u_int16_t padding1;
     u_int16_t check;
     int64_t sec;
     int64_t usec;
@@ -103,9 +104,9 @@ struct ping_pkt_t {         //Min PK SIZE 32B
     char padding[MAX_PKT_SIZE];
 };
 
-struct ping_msg_t {         
-    u_int32_t type;
-    u_int32_t code;
+struct ping_msg_t {         //Min MSG SIZE 16B
+    u_int8_t type;
+    u_int8_t code;
     u_int64_t count;
     u_int16_t size;
     u_int8_t params;    /// 00000001 - H_PAR //Bit encoded

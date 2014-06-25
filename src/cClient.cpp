@@ -482,6 +482,7 @@ int cClient::run_sender() {
         } else {
             payload_size = this->getPacketSize() - HEADER_LENGTH;
         }
+        ping_pkt->size = payload_size;
         pkt_sent++;
         if (setup->npipe()) {
             payload_size = read(pipe_handle, pipe_buffer, payload_size);
