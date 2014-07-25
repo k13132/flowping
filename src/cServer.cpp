@@ -30,6 +30,7 @@
 cServer::cServer(cSetup *setup) {
     this->setup = setup;
     this->stop = false;
+    this->msg_store.resize(10000000);
 }
 
 cServer::~cServer() {
@@ -98,9 +99,16 @@ int cServer::run() {
         ping_pkt = (struct ping_pkt_t*) (packet);
         if (ping_pkt->type == PING) {
             if (setup->isAsym()) ret_size = MIN_PKT_SIZE;
-            if (setup->isAntiAsym()) ret_size = setup->getPayloadSize();
+            if (setup->isAntiAsym()) {
+                if (setup->wholeFrame()) {
+                    ret_size = setup->getPayloadSize() - 42;
+                } else {
+                    ret_size = setup->getPayloadSize();
+                }
+            }
             sendto(this->sock, packet, ret_size, 0, (struct sockaddr *) &saClient, addr_len);
             if (show) {
+                if (setup->wholeFrame()) rec_size += 42;
                 refTv = curTv;
                 gettimeofday(&curTv, NULL);
                 double delta = ((double) (curTv.tv_sec - refTv.tv_sec)*1000.0 + (double) (curTv.tv_usec - refTv.tv_usec) / 1000.0);
@@ -121,7 +129,7 @@ int cServer::run() {
                 if (setup->toCSV()) {
                     sprintf(msg, "%d;%s;%d;xx;", rec_size, client_ip, ping_pkt->seq);
                     ss << msg;
-                    sprintf(msg, "%.3f;",delta);
+                    sprintf(msg, "%.3f;", delta);
                     ss << msg;
                 } else {
                     sprintf(msg, "%d bytes from %s: req=%d ttl=xx ", rec_size, client_ip, ping_pkt->seq);
@@ -131,33 +139,19 @@ int cServer::run() {
                 }
 
                 if (setup->showBitrate()) {
-                    if (setup->wholeFrame()) {
-                        if (setup->toCSV()) {
-                            sprintf(msg, "%.2f;", (1000 / delta) * (rec_size + 42) * 8 / 1000);
-                        } else {
-                            sprintf(msg, " rx_rate=%.2f kbit/s", (1000 / delta) * (rec_size + 42) * 8 / 1000);
-                        }
-                        ss << msg;
-                        if (setup->toCSV()) {
-                            sprintf(msg, "%.2f;", (1000 / delta) * (ret_size + 42) * 8 / 1000);
-                        } else {
-                            sprintf(msg, " tx_rate=%.2f kbit/s", (1000 / delta) * (ret_size + 42) * 8 / 1000);
-                        }
-                        ss << msg;
+
+                    if (setup->toCSV()) {
+                        sprintf(msg, "%.2f;", (1000 / delta) * rec_size * 8 / 1000);
                     } else {
-                        if (setup->toCSV()) {
-                            sprintf(msg, "%.2f;", (1000 / delta) * rec_size * 8 / 1000);
-                        } else {
-                            sprintf(msg, " rx_rate=%.2f kbit/s", (1000 / delta) * rec_size * 8 / 1000);
-                        }
-                        ss << msg;
-                        if (setup->toCSV()) {
-                            sprintf(msg, "%.2f;", (1000 / delta) * ret_size * 8 / 1000);
-                        } else {
-                            sprintf(msg, " tx_rate=%.2f kbit/s", (1000 / delta) * ret_size * 8 / 1000);
-                        }
-                        ss << msg;
+                        sprintf(msg, " rx_rate=%.2f kbit/s", (1000 / delta) * rec_size * 8 / 1000);
                     }
+                    ss << msg;
+                    if (setup->toCSV()) {
+                        sprintf(msg, "%.2f;", (1000 / delta) * ret_size * 8 / 1000);
+                    } else {
+                        sprintf(msg, " tx_rate=%.2f kbit/s", (1000 / delta) * ret_size * 8 / 1000);
+                    }
+                    ss << msg;
                 } else {
                     if (setup->toCSV()) {
                         sprintf(msg, ";;");

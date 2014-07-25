@@ -52,8 +52,8 @@
 #include <errno.h>
 #include <math.h>
 
-#define MAX_PKT_SIZE 1472
-#define MIN_PKT_SIZE 32  //equal to header size
+#define MAX_PKT_SIZE 1476
+#define MIN_PKT_SIZE 64  //equal to header size
 #define HEADER_LENGTH 32
 
 #define CONTROL 1

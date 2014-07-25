@@ -144,6 +144,7 @@ int cClient::run_receiver() {
         //        if (ping_pkt->type == PING){
         //            rcv_queue.push(ping_pkt&);
         //        }
+        if (setup->wholeFrame()) nRet += 42;
         if (ping_pkt->type == CONTROL) {
 #ifdef DEBUG
             if (setup->debug()) printf("-D- Control packet received! code:%d\n", ping_msg->code);
@@ -215,17 +216,9 @@ int cClient::run_receiver() {
                 ss << msg;
                 if (setup->showBitrate()) {
                     if (setup->toCSV()) {
-                        if (setup->wholeFrame()) {
-                            sprintf(msg, "%.3f;%.2f;", delta, (1000 / delta) * (nRet + 42) * 8 / 1000);
-                        } else {
-                            sprintf(msg, "%.3f;%.2f;", delta, (1000 / delta) * nRet * 8 / 1000);
-                        }
+                        sprintf(msg, "%.3f;%.2f;", delta, (1000 / delta) * nRet * 8 / 1000);
                     } else {
-                        if (setup->wholeFrame()) {
-                            sprintf(msg, " delta=%.3f ms rx_rate=%.2f kbit/s ", delta, (1000 / delta) * (nRet + 42) * 8 / 1000);
-                        } else {
-                            sprintf(msg, " delta=%.3f ms rx_rate=%.2f kbit/s ", delta, (1000 / delta) * nRet * 8 / 1000);
-                        }
+                        sprintf(msg, " delta=%.3f ms rx_rate=%.2f kbit/s ", delta, (1000 / delta) * nRet * 8 / 1000);
                     }
                     ss << msg;
                 } else {
@@ -477,6 +470,7 @@ int cClient::run_sender() {
         } else {
             payload_size = this->getPacketSize() - HEADER_LENGTH;
         }
+        if (setup->frameSize()) payload_size -= 42;
         pkt_sent++;
         if (setup->npipe()) {
             payload_size = read(pipe_handle, pipe_buffer, payload_size);
@@ -494,8 +488,15 @@ int cClient::run_sender() {
             if (payload_size > 0) {
                 memcpy(ping_pkt->padding, pipe_buffer, payload_size);
             }
-            if (payload_size < (this->getPacketSize() - HEADER_LENGTH)) {
-                stop = true;
+            if (setup->frameSize()) {
+                if (payload_size < (this->getPacketSize() - (HEADER_LENGTH + 42))) {
+                    stop = true;
+                }
+            } else {
+                if (payload_size < (this->getPacketSize() - HEADER_LENGTH)) {
+                    stop = true;
+                }
+
             }
         }
         gettimeofday(&ts, NULL);
@@ -510,6 +511,9 @@ int cClient::run_sender() {
             perror("sending");
             close(this->sock);
             exit(1);
+        }
+        if (setup->wholeFrame()) {
+            nRet += 42;
         }
         if (setup->useTimedBuffer()) {
             tgTime = (start_ts.tv_usec + start_ts.tv_sec * 1000000)+(tinfo.usec + tinfo.sec * 1000000);
@@ -574,7 +578,7 @@ int cClient::run_sender() {
         }
         if (setup->showSendBitrate()) {
             ss.str("");
-            memset(msg,0,sizeof(msg));
+            memset(msg, 0, sizeof (msg));
             //"C_TimeStamp;RX/TX;C_PacketSize;C_From;C_Sequence;C_RTT;C_Delta;C_RX_Rate;C_To;C_TX_Rate;"
             if (setup->showTimeStamps()) {
                 if (setup->toCSV()) {
@@ -589,30 +593,16 @@ int cClient::run_sender() {
             }
             ss << msg;
 
-            if (setup->wholeFrame()) {
-                if (setup->toCSV()) {
-                    sprintf(msg, "tx;%d;;%d;;", nRet, ping_pkt->seq);
-                    ss << msg;
-                    sprintf(msg, "%.3f;;%s;%.2f;;;\n", (delta / 1000.0), setup->getHostname().c_str(), (1000.0 / delta) * (nRet + 42) * 8);
-                    ss << msg;
-                } else {
-                    sprintf(msg, "%d bytes to %s: req=%d ", nRet, setup->getHostname().c_str(), ping_pkt->seq);
-                    ss << msg;
-                    sprintf(msg, "delta=%.3f ms tx_rate=%.2f kbit/s \n", delta / 1000.0, (1000.0 / delta) * (nRet + 42) * 8);
-                    ss << msg;
-                }
+            if (setup->toCSV()) {
+                sprintf(msg, "tx;%d;;%d;;", nRet, ping_pkt->seq);
+                ss << msg;
+                sprintf(msg, "%.3f;;%s;%.2f;;;\n", (delta / 1000.0), setup->getHostname().c_str(), (1000.0 / delta) * (nRet) * 8);
+                ss << msg;
             } else {
-                if (setup->toCSV()) {
-                    sprintf(msg, "tx;%d;;%d;;", nRet, ping_pkt->seq);
-                    ss << msg;
-                    sprintf(msg, "%.3f;;%s;%.2f;;;\n", (delta / 1000.0), setup->getHostname().c_str(), (1000.0 / delta) * (nRet) * 8);
-                    ss << msg;
-                } else {
-                    sprintf(msg, "%d bytes to %s: req=%d ", nRet, setup->getHostname().c_str(), ping_pkt->seq);
-                    ss << msg;
-                    sprintf(msg, "delta=%.3f ms tx_rate=%.2f kbit/s \n", delta / 1000.0, (1000.0 / delta) * (nRet) * 8);
-                    ss << msg;
-                }
+                sprintf(msg, "%d bytes to %s: req=%d ", nRet, setup->getHostname().c_str(), ping_pkt->seq);
+                ss << msg;
+                sprintf(msg, "delta=%.3f ms tx_rate=%.2f kbit/s \n", delta / 1000.0, (1000.0 / delta) * (nRet) * 8);
+                ss << msg;
             }
             if (setup->useTimedBuffer()) {
                 event.ts.sec = curTv.tv_sec;
