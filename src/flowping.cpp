@@ -120,10 +120,10 @@ int main(int argc, char** argv) {
 
     char str[80];
 #ifdef xENV_32
-    strcpy(str, "x86_32 1.2.4");
+    strcpy(str, "x86_32 1.2.5");
 #endif    
 #ifdef xENV_64
-    strcpy(str, "x86_64 1.2.4");
+    strcpy(str, "x86_64 1.2.5");
 #endif    
 
     strcat(str, " (");

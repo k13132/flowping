@@ -709,10 +709,10 @@ struct ts_t cSetup::getNextPacketTS(struct ts_t ts, struct ts_t sts, struct ts_t
     sec = ts.sec - sts.sec;
     usec = ts.usec - sts.usec;
     usec_delta = (sec * 1000000 + usec) / interval;
-    delay = (u_int32_t) (1000000.0 / ((srate + (delta_rate * usec_delta) / 1000000.0) / (8.0 * len))); //interval [usec];
-    //cout << "\t delay:" << delay << "\t srate:" << srate << "\t delta_rate:" << delta_rate << "\t interval:" << interval << "\t usec_delta:" << usec_delta << "\t sec:" << sec << "\t usec:" << usec << "\t len:" << len << endl;
-    //cout << (delta_rate * usec_delta) / 1000000 << endl;
-    //cout << (srate + (delta_rate * usec_delta) / 1000000.0) << endl;
+    delay = (u_int32_t) (1000000.0 / ((srate + ((delta_rate / 1000000.0)* usec_delta)) / (8.0 * len))); //interval [usec];
+//    cout << "\t delay:" << delay << "\t srate:" << srate << "\t delta_rate:" << delta_rate << "\t interval:" << interval << "\t usec_delta:" << usec_delta << "\t sec:" << sec << "\t usec:" << usec << "\t len:" << len << endl;
+//    cout << ((delta_rate/1000000.0) * usec_delta) << endl;
+//    cout << (srate + ((delta_rate / 1000000.0) * usec_delta) ) << endl;
     ts.sec = ts.sec + (ts.usec + delay) / 1000000;
     ts.usec = (ts.usec + delay) % 1000000;
     //usleep(500000); 
