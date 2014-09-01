@@ -77,11 +77,13 @@ void signalHandler(int sig) {
         if (setup->isServer()) {
             server->terminate();
             cout << "Server shutdown initiated." << endl;
-            sleep(2);
+            usleep(200000);
             pthread_cancel(t_sServer);
         } else {
             client->terminate();
-            sleep(2);
+            while (client->status()){
+                usleep(20000);
+            }
             pthread_cancel(t_cSender);
             pthread_cancel(t_cReceiver);
         }
@@ -119,13 +121,17 @@ int main(int argc, char** argv) {
 #define TT __TIME__    
 
     char str[80];
+
+
+
 #ifdef xENV_32
-    strcpy(str, "x86_32 1.2.5");
+    strcpy(str, "x86_32 1.2.6");
 #endif    
 #ifdef xENV_64
-    strcpy(str, "x86_64 1.2.5");
+    strcpy(str, "x86_64 1.2.6");
 #endif    
 
+//strcpy(str, "ARM_32 1.2.5");
     strcat(str, " (");
     strcat(str, DD);
     strcat(str, " ");

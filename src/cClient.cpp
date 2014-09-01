@@ -33,6 +33,8 @@
 
 cClient::cClient(cSetup *setup) {
     this->setup = setup;
+    this->s_running=false;
+    this->r_running=false;
     if (pthread_barrier_init(&barr, NULL, 2)) //2 == Sender + Receiver
     {
         printf("Could not create a barrier\n");
@@ -72,6 +74,7 @@ int cClient::run_receiver() {
     event_t event;
     struct hostent *hp;
     stringstream ss;
+    this->r_running=true;
     bool show = not setup->silent();
     cout << ".::. Pinging " << setup->getHostname() << " with " << setup->getPayloadSize() << " bytes of data:" << endl;
 
@@ -302,10 +305,12 @@ int cClient::run_receiver() {
         msg_store.clear();
     }
     if (!setup->toCSV()) this->report();
+    this->r_running=false;
     return 1;
 }
 
 int cClient::run_sender() {
+    this->s_running=true;
     event_t event;
     char msg[1000] = {0};
     struct ping_pkt_t *ping_pkt;
@@ -392,7 +397,7 @@ int cClient::run_sender() {
         }
         usleep(200000); //  5pkt/s
         timeout++;
-        if (timeout == 10) {
+        if (timeout == 20) {                    //try contact server fo 4s
             printf("Can't connect to server\n");
             exit(1);
         }
@@ -516,9 +521,10 @@ int cClient::run_sender() {
             nRet += 42;
         }
         if (setup->useTimedBuffer()) {
-            tgTime = (start_ts.tv_usec + start_ts.tv_sec * 1000000)+(tinfo.usec + tinfo.sec * 1000000);
+            tgTime = (uint64_t)((uint64_t)start_ts.tv_usec + ((uint64_t)start_ts.tv_sec) * 1000000)+(tinfo.usec + tinfo.sec * 1000000);
+            //cout << sizeof(start_ts.tv_sec)<<endl;
             gettimeofday(&curTv, NULL);
-            while ((curTv.tv_usec + curTv.tv_sec * 1000000) < tgTime) {
+            while (((uint64_t)curTv.tv_usec + ((uint64_t)curTv.tv_sec) * 1000000) < tgTime) {
                 gettimeofday(&curTv, NULL);
             }
             delta = (((double) (curTv.tv_sec - refTv.tv_sec)*1000000 + (curTv.tv_usec - refTv.tv_usec)));
@@ -532,11 +538,11 @@ int cClient::run_sender() {
             }
             if (setup->actWaiting()) {
                 gettimeofday(&curTv, NULL);
-                curTime = curTv.tv_usec + curTv.tv_sec * 1000000;
+                curTime = (uint64_t)curTv.tv_usec + ((uint64_t)curTv.tv_sec) * 1000000;
                 tgTime = curTime + interval + correction;
                 while (curTime < tgTime) {
                     gettimeofday(&curTv, NULL);
-                    curTime = curTv.tv_usec + curTv.tv_sec * 1000000;
+                    curTime = (uint64_t)curTv.tv_usec + ((uint64_t)curTv.tv_sec) * 1000000;
                 }
                 gettimeofday(&curTv, NULL);
                 //delta = ((double) (curTv.tv_sec - refTv.tv_sec)*1000.0 + (double) (curTv.tv_usec - refTv.tv_usec) / 1000.0);
@@ -627,7 +633,7 @@ int cClient::run_sender() {
         }
         usleep(200000); //  5pkt/s
         timeout++;
-        if (timeout == 25) { //5s
+        if (timeout == 150) { //30s
             printf("Can't get stats from server\n");
             exit(1);
         }
@@ -635,7 +641,8 @@ int cClient::run_sender() {
     close(pipe_handle);
 #ifdef DEBUG
     cout << setup->getInterval() << endl;
-#endif    
+#endif
+    this->s_running=false;
     return 0;
 }
 
@@ -743,4 +750,8 @@ u_int16_t cClient::getPacketSize() {
 
 void cClient::delay(timespec req) {
     int e = clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &req, &req);
+}
+
+bool cClient::status(){
+    return (this->r_running || this->s_running);
 }

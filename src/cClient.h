@@ -33,6 +33,7 @@
 class cClient {
 public:
     cClient(cSetup *setup);
+    bool status(void);
     int run_sender(void);
     int run_receiver(void);
     int run_receiver_output(void);
@@ -41,6 +42,7 @@ public:
     virtual ~cClient();
 
 private:
+    bool r_running,s_running;
     vector <event_t> msg_store;
     vector <event_t> msg_store_snd;
     queue <ping_pkt_t> rcv_queue;

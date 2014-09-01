@@ -30,7 +30,9 @@
 cServer::cServer(cSetup *setup) {
     this->setup = setup;
     this->stop = false;
-    this->msg_store.resize(10000000);
+    if (setup->useTimedBuffer()) {
+        this->msg_store.resize(10000000);
+    }
 }
 
 cServer::~cServer() {
@@ -178,7 +180,12 @@ int cServer::run() {
             if (setup->debug()) cout << "Control packet received! code:" << (int) ping_msg->code << endl;
 #endif
             if (ping_msg->code == CNT_FNAME) {
-                fp = fopen(ping_msg->msg, "w+"); //RW - overwrite file
+//                if (fp != NULL) {
+//                    if (fp != stdout) {
+//                        fclose(fp);
+//                    }
+//                } 
+               fp = fopen(ping_msg->msg, "w+"); //RW - overwrite file
                 cout << ping_msg->msg << endl;
                 ping_msg->code = CNT_FNAME_OK;
                 if (fp == NULL) {
@@ -192,6 +199,11 @@ int cServer::run() {
             }
             if (ping_msg->code == CNT_NOFNAME) {
                 if (setup->getFilename().length() && setup->outToFile()) {
+//                    if (fp!= NULL) {
+//                        if (fp != stdout) {
+//                            fclose(fp);
+//                        }
+//                    }
                     fp = fopen(setup->getFilename().c_str(), "w+"); //RW - overwrite file
                     if (fp == NULL) {
                         perror("Unable to open file, redirecting to STDOUT");
