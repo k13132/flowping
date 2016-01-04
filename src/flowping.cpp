@@ -128,10 +128,10 @@ int main(int argc, char** argv) {
 
 
 #ifdef xENV_32
-    strcpy(str, "x86_32 1.3.2");
+    strcpy(str, "x86_32 1.3.3ax");
 #endif    
 #ifdef xENV_64
-    strcpy(str, "x86_64 1.3.2");
+    strcpy(str, "x86_64 1.3.3ax");
 #endif    
 
 //strcpy(str, "ARM_32 1.2.5");

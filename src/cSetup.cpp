@@ -62,8 +62,8 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->_par = false;
     this->antiAsym = false;
     this->port = 2424;
-    this->interval_i = 1000000; // 1s
-    this->interval_I = 1000000; // 1s
+    this->interval_i = 1000000000; // 1s
+    this->interval_I = 1000000000; // 1s
     this->time_t = 10; // 10s
     this->time_T = 10; // 10s
     this->size = 64; // 64B Payload
@@ -129,14 +129,14 @@ cSetup::cSetup(int argc, char **argv, string version) {
             case 'I':
                 this->vonly = false;
                 this->I_par = true;
-                this->interval_I = atof(optarg)*1000000;
+                this->interval_I = atof(optarg)*1000000000;
                 if (this->interval_I > MAX_INTERVAL) this->interval_I = MAX_INTERVAL;
                 if (this->interval_I < MIN_INTERVAL) this->interval_I = MIN_INTERVAL;
                 break;
             case 'i':
                 this->vonly = false;
                 this->i_par = true;
-                this->interval_i = atof(optarg)*1000000;
+                this->interval_i = atof(optarg)*1000000000;
                 if (this->interval_i > MAX_INTERVAL) this->interval_i = MAX_INTERVAL;
                 if (this->interval_i < MIN_INTERVAL) this->interval_i = MIN_INTERVAL;
                 break;
@@ -264,12 +264,12 @@ cSetup::cSetup(int argc, char **argv, string version) {
     if ((this->i_par) && (not this->I_par)) this->interval_I = this->interval_i;
     if ((this->I_par) && (not this->i_par)) this->interval_i = this->interval_I;
     if (this->b_par && not (this->i_par or this->I_par)) {
-        this->interval_i = (((this->getPacketSize())*8.0)*1000000.0) / (this->rate_b * 1000.0);
-        this->interval_I = (((this->getPacketSize())*8.0)*1000000.0) / (this->rate_B * 1000.0);
+        this->interval_i = (((this->getPacketSize())*8.0)*1000000000.0) / (this->rate_b * 1000.0);
+        this->interval_I = (((this->getPacketSize())*8.0)*1000000000.0) / (this->rate_B * 1000.0);
     }
     if (this->B_par && not (this->i_par or this->I_par)) {
-        this->interval_i = (((this->getPacketSize())*8.0)*1000000.0) / (this->rate_b * 1000.0);
-        this->interval_I = (((this->getPacketSize())*8.0)*1000000.0) / (this->rate_B * 1000.0);
+        this->interval_i = (((this->getPacketSize())*8.0)*1000000000.0) / (this->rate_b * 1000.0);
+        this->interval_I = (((this->getPacketSize())*8.0)*1000000000.0) / (this->rate_B * 1000.0);
     }
     if (this->P_par) this->size = MIN_PKT_SIZE;
     if (u_par) {
@@ -418,12 +418,12 @@ bool cSetup::outToFile() {
     return this->f_par;
 }
 
-u_int32_t cSetup::getTime_t() {
-    return (u_int32_t)this->time_t;
+u_int64_t cSetup::getTime_t() {
+    return (u_int64_t)this->time_t;
 };
 
-u_int32_t cSetup::getTime_T() {
-    return (u_int32_t)this->time_T;
+u_int64_t cSetup::getTime_T() {
+    return (u_int64_t)this->time_T;
 
 };
 
@@ -436,7 +436,7 @@ string cSetup::getHostname() {
     return this->host;
 }
 
-u_int32_t cSetup::getDeadline() {
+u_int64_t cSetup::getDeadline() {
     return this->deadline;
 }
 
@@ -482,16 +482,16 @@ double cSetup::getBchange() {
     if (this->t_par && this->T_par) {
         if (this->R_par) {
             T3 = this->getTime_R();
-            if (T3 == 0) T3 = 0.0001;
+            if (T3 == 0) T3 = 0.000001;
         } else {
             T3 = this->getTime_T();
         }
         if (this->b_par && this->B_par) {
-            bchange = (this->rate_B - this->rate_b)*1000 / (T3 * 1000000);
+            bchange = (this->rate_B - this->rate_b)*1000 / (T3 * 1000000000);
             return bchange;
         }
         if (this->i_par && this->I_par) {
-            bchange = ((this->getPacketSize()*8 * 1000000) / this->interval_I - (this->getPacketSize()*8 * 1000000) / this->interval_i) / (T3 * 1000000);
+            bchange = ((this->getPacketSize()*8 * 1000000000) / this->interval_I - (this->getPacketSize()*8 * 1000000000) / this->interval_i) / (T3 * 1000000000);
             return bchange;
         }
     }
@@ -507,7 +507,7 @@ double cSetup::getSchange() {
         } else {
             T3 = this->getTime_T();
         }
-        schange = 1476.0 / (T3 * 1000000);
+        schange = 1476.0 / (T3 * 1000000000);
         return schange;
     }
     return schange;
@@ -525,7 +525,7 @@ u_int64_t cSetup::getBaseRate() {
     if (this->b_par) {
         return this->rate_b * 1000;
     } else {
-        return (u_int64_t) (this->getPacketSize()*8 * 1000000 / this->interval_i);
+        return (u_int64_t) (this->getPacketSize()*8 * 1000000000 / this->interval_i);
     }
 }
 
@@ -643,35 +643,35 @@ int cSetup::parseSrcFile() {
     } else {
         return 1;
     }
-    if (deadline==0){
-        deadline=((tpoint_def_t)tpoints.back()).ts;
+    if (deadline == 0) {
+        deadline = ((tpoint_def_t) tpoints.back()).ts;
     }
     refactorTPoints();
     return 0;
 }
 
 void cSetup::refactorTPoints() {
-    double reftime=0;
-    double last_ts=0;
+    double reftime = 0;
+    double last_ts = 0;
     if (tpoints.empty()) return;
-    if (((tpoint_def_t)tpoints.back()).ts>deadline) return;
-    
+    if (((tpoint_def_t) tpoints.back()).ts > deadline) return;
+
     vector<tpoint_def_t> tmp_tpoints;
-    while (!tpoints.empty()){
+    while (!tpoints.empty()) {
         tmp_tpoints.push_back(tpoints.front());
         tpoints.pop();
     }
-    unsigned int index=0;
+    unsigned int index = 0;
     tpoint_def_t tp;
-    while (last_ts+reftime < deadline){
-        if ((index > 0) && (index % (tmp_tpoints.size()-1) ==0)){
-            reftime=reftime+tmp_tpoints[index].ts;
-            index=0;
-            last_ts=0;
+    while (last_ts + reftime < deadline) {
+        if ((index > 0) && (index % (tmp_tpoints.size() - 1) == 0)) {
+            reftime = reftime + tmp_tpoints[index].ts;
+            index = 0;
+            last_ts = 0;
         }
-        tp=tmp_tpoints[index];
+        tp = tmp_tpoints[index];
         last_ts = tp.ts;
-        tp.ts=tp.ts+reftime;
+        tp.ts = tp.ts + reftime;
         tpoints.push(tp);
         index++;
     }
@@ -681,7 +681,7 @@ void cSetup::refactorTPoints() {
 
 double cSetup::getRTBitrate(u_int64_t ts) {
     if (!tp_exhausted) {
-        if (ts > (this->ets * 1000000)) {
+        if (ts > (this->ets * 1000000000)) {
             this->bts = this->ets;
             this->brate = this->erate;
             this->bsize = this->esize;
@@ -699,13 +699,27 @@ double cSetup::getRTBitrate(u_int64_t ts) {
                 tpoints.pop();
                 //bitrate change / usec
                 if ((ets - bts) != 0) {
-                    double tmp1 = (double) (erate - brate);
-                    double tmp2 = (double) ((ets - bts)*1000000.0);
-                    //cout << "tmp1: "<<tmp1<<"\t tmp2: "<<tmp2<<endl;
-                    bchange = double(tmp1 / tmp2);
+                    if (td_tmp.bitrate == 0) {
+                        setPayoadSize(0);
+                        return 1000;
+                    } else {
+                        double tmp1 = (double) (erate - brate);
+                        double tmp2 = (double) ((ets - bts)*1000000000.0);
+                        //cout << "tmp1: "<<tmp1<<"\t tmp2: "<<tmp2<<endl;
+                        bchange = double(tmp1 / tmp2);
+                    }
 
                 } else {
-                    bchange = (double) (erate - brate);
+                    bchange = 0;
+                    if ((tpoints.size()) && ((erate == 0) || (brate == 0))) {
+                        td_tmp = (tpoint_def_t) tpoints.front();
+                        if ((td_tmp.bitrate == 0) || (brate == 0)) {
+                            setPayoadSize(0);
+                            return 1000;
+                        }
+                    } else {
+                        brate = erate;
+                    }
                 }
             } else {
                 tp_exhausted = true;
@@ -713,9 +727,7 @@ double cSetup::getRTBitrate(u_int64_t ts) {
             //cout << "bts: " << bts << "\t ets: " << ets << "\t brate: " << brate << "\t erate: " << erate << "\t bchange:" << bchange << endl;
         }
     }
-    //cout << "bitrate: " << (brate * 1000 + bchange * 1000 * (ts-bts*1000000)) << endl;
-    //cout << "X " << brate << "\t" << bchange << "\t" << ts << "\t" << bts << endl;
-    return (brate * 1000 + bchange * 1000 * (ts - bts * 1000000));
+    return (brate * 1000 + bchange * 1000 * (ts - bts * 1000000000));
 }
 
 void cSetup::setPayoadSize(u_int16_t psize) {
@@ -752,18 +764,31 @@ bool cSetup::useTimedBuffer(bool val) {
 
 struct ts_t cSetup::getNextPacketTS(struct ts_t ts, struct ts_t sts, struct ts_t ets, u_int32_t srate, u_int32_t erate, u_int16_t len) {
 
-    long delta_rate, usec_delta;
-    u_int32_t sec, usec;
-    u_int32_t delay;
-    double interval;
-    interval = (double) (ets.sec - sts.sec)+(double) (ets.usec - ets.usec) / 1000000.0;
+    long delta_rate, nsec_delta;
+    u_int64_t sec, nsec;
+    u_int64_t delay;
+    double interval, delta;
+    uint64_t nsec_interval;
+    if ((srate == 0)&&(erate == 0)) return ets;
+
+    interval = doubleFromTS(ets) - doubleFromTS(sts);
+    nsec_interval= longFromTS(ets) - longFromTS(sts);
     delta_rate = (int) (erate - srate);
-    sec = ts.sec - sts.sec;
-    usec = ts.usec - sts.usec;
-    usec_delta = sec * (1000000 / interval) + usec / interval;
-    delay = (u_int32_t) (1000000.0 / ((srate + ((delta_rate / 1000000.0) * usec_delta)) / (8.0 * len))); //interval [usec];
-    ts.sec = ts.sec + (ts.usec + delay) / 1000000;
-    ts.usec = (ts.usec + delay) % 1000000;
+    nsec_delta = longFromTS(ts) - longFromTS(sts);
+    delta = doubleFromTS(ts) - doubleFromTS(sts);
+    if (nsec_delta==0){
+        delay = (u_int64_t) 1000000000 * sqrt((16.0*len*interval)/(delta_rate));
+        //cout <<interval <<"\t"<<delay<<"\t"<< (1000000000.0 * delta_rate / interval) <<endl;
+    }else{
+        delay = (u_int64_t) 8000000000 * (len / (srate + (delta_rate /interval * delta ))); //interval [nsec];
+        //cout << " ~ " <<delta_rate<<"\tnsec_delta="<<nsec_delta<<"\t"<<nsec_interval<<"\tdelay= "<<delay<<"\t"<<srate<<endl;
+    }
+    //cout <<"in TS: "<< ts.sec<<"."<<ts.nsec<<endl;
+    //cout << "x:" <<delta_rate<<"\tdelay="<<delay<<"\tnsec_delta="<<nsec_delta<<"\t"<<nsec_interval<<"\t"<<erate<<"\t"<<delta_rate<<"\t"<<len<<endl;
+    ts.sec = ts.sec + (ts.nsec + delay) / 1000000000;
+    ts.nsec = (ts.nsec + delay) % 1000000000;
+    //cout << "x:" <<delta_rate<<"\tdelay="<<ts.nsec<<"\tnsec_delta="<<nsec_delta<<"\t"<<nsec_interval<<"\t"<<erate<<"\t"<<delta_rate<<"\t"<<len<<endl;
+    //cout <<"out TS: "<< doubleFromTS(ts) <<"\tDelay = "<<delay<< "\tBitrate = "<< len*8000000000.0/delay<<endl;
     return ts;
 }
 
@@ -777,7 +802,7 @@ int cSetup::prepTimedBuffer() {
         td_tmp = (tpoint_def_t) tpoints.front();
         s_tmp_rate = td_tmp.bitrate * 1000;
         s_tmp_ts.sec = (u_int64_t) floor(td_tmp.ts);
-        s_tmp_ts.usec = (u_int64_t) (fmod(td_tmp.ts, 1)*1000000);
+        s_tmp_ts.nsec = (u_int64_t) (fmod(td_tmp.ts, 1)*1000000000);
         tmp_len = td_tmp.len;
         tmp_ts = s_tmp_ts;
         cerr << "     ~ rate: " << td_tmp.bitrate << "\tts: " << td_tmp.ts << "\tsize: " << td_tmp.len << endl;
@@ -792,25 +817,33 @@ int cSetup::prepTimedBuffer() {
         cerr << "     ~ rate: " << td_tmp.bitrate << "\tts: " << td_tmp.ts << "\tsize: " << td_tmp.len << endl;
         //cerr << "     ~ time: " << s_tmp_ts.sec << "." << s_tmp_ts.usec  << endl;
         e_tmp_ts.sec = (u_int64_t) floor(td_tmp.ts);
-        e_tmp_ts.usec = (u_int64_t) (fmod(td_tmp.ts, 1)*1000000);
+        e_tmp_ts.nsec = (u_int64_t) (fmod(td_tmp.ts, 1)*1000000000);
         e_tmp_rate = td_tmp.bitrate * 1000;
-        //cerr << "     ~ time: " << e_tmp_ts.sec << "." << e_tmp_ts.usec  << endl;
-        while (longFromTS(tmp_ts) < longFromTS(e_tmp_ts)) {
-            tmp_ts = this->getNextPacketTS(tmp_ts, s_tmp_ts, e_tmp_ts, s_tmp_rate, e_tmp_rate, tmp_len);
-            tpacket.sec = tmp_ts.sec;
-            tpacket.usec = tmp_ts.usec;
-            tpacket.len = tmp_len;
-            pbuffer.push(tpacket);
+        cerr << "     ~ time: " << e_tmp_ts.sec << "." << e_tmp_ts.nsec  << endl;
+        if (!((e_tmp_ts.sec == s_tmp_ts.sec)&&(s_tmp_ts.nsec == e_tmp_ts.nsec))) {
+            while (longFromTS(tmp_ts) < longFromTS(e_tmp_ts)) {
+                tmp_ts = this->getNextPacketTS(tmp_ts, s_tmp_ts, e_tmp_ts, s_tmp_rate, e_tmp_rate, tmp_len);
+                //cout << s_tmp_ts.sec<<"."<<s_tmp_ts.nsec<< " --> "<< e_tmp_ts.sec<<"."<<e_tmp_ts.nsec<<endl;
+                //cout << tmp_ts.sec<<"."<<tmp_ts.nsec<<endl;
+                //cout << longFromTS(tmp_ts)<<" - "<<longFromTS(e_tmp_ts)<<endl;
+                tpacket.sec = tmp_ts.sec;
+                tpacket.nsec = tmp_ts.nsec;
+                tpacket.len = tmp_len;
+                if ((s_tmp_rate!=0)||(e_tmp_rate!=0)){
+                    pbuffer.push(tpacket);
+                }
+                //usleep(50000);
+            }
         }
         s_tmp_rate = e_tmp_rate;
         s_tmp_ts = e_tmp_ts;
         tmp_len = td_tmp.len;
         tpoints.pop();
     }
-    while (longFromTS(tmp_ts) < (this->deadline * 1000000)) {
+    while (longFromTS(tmp_ts) < (this->deadline * 1000000000)) {
         tmp_ts = this->getNextPacketTS(tmp_ts, s_tmp_ts, e_tmp_ts, s_tmp_rate, e_tmp_rate, tmp_len);
         tpacket.sec = tmp_ts.sec;
-        tpacket.usec = tmp_ts.usec;
+        tpacket.nsec = tmp_ts.nsec;
         tpacket.len = tmp_len;
         pbuffer.push(tpacket);
     }
@@ -823,7 +856,11 @@ int cSetup::prepTimedBuffer() {
 }
 
 uint64_t cSetup::longFromTS(ts_t ts) {
-    return ts.sec * 1000000 + ts.usec;
+    return ts.sec * 1000000000 + ts.nsec;
+}
+
+double cSetup::doubleFromTS(ts_t ts) {
+    return double(ts.sec * 1000000000 + ts.nsec) / 1000000000.0;
 }
 
 timed_packet_t cSetup::getNextPacket() {

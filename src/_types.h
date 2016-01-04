@@ -83,7 +83,7 @@
 
 struct ts_t{
     int64_t sec;
-    int64_t usec;
+    int64_t nsec;
 };
 
 struct event_t{
@@ -99,7 +99,7 @@ struct ping_pkt_t {         //Min PK SIZE 32B
     u_int16_t padding1;
     u_int16_t check;
     int64_t sec;
-    int64_t usec;
+    int64_t nsec;
     u_int64_t seq;
     char padding[MAX_PKT_SIZE];
 };
@@ -123,7 +123,7 @@ struct tpoint_def_t{
 
 struct timed_packet_t{
     int64_t sec;
-    int64_t usec;
+    int64_t nsec;
     int16_t len;
 };
 

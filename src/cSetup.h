@@ -24,8 +24,8 @@
 #ifndef SETUP_H
 #define	SETUP_H
 
-#define MIN_INTERVAL 50        // 0.000001 s  //1us
-#define MAX_INTERVAL 1000000    // 1s
+#define MIN_INTERVAL 1000        // 0.000001 s  //1us
+#define MAX_INTERVAL 1000000000    // 1s
 
 #define SETUP_CHCK_ERR 0
 #define SETUP_CHCK_VER 1
@@ -80,14 +80,14 @@ public:
     bool showSendBitrate(bool);
     bool is_vonly(void);
     string get_version(void);
-    u_int32_t getTime_t();
-    u_int32_t getTime_T();
+    u_int64_t getTime_t();
+    u_int64_t getTime_T();
     double getTime_R();
     u_int16_t getPacketSize();
     u_int16_t getFirstPacketSize();
     void setPayoadSize(u_int16_t);
     string getHostname();
-    u_int32_t getDeadline();
+    u_int64_t getDeadline();
     u_int64_t getCount();
     double getInterval();
     double getInterval_i();
@@ -164,14 +164,14 @@ private:
     u_int16_t size, bsize, esize, fpsize; // 64B Payload
     int rate_b; // 1kbit/s
     int rate_B; // 1kbit/s
-    u_int32_t step; // 1ms
-    u_int32_t deadline; // 0s
+    u_int64_t step; // 
+    u_int64_t deadline; // 0s
     u_int64_t count;
     string filename, F_filename, srcfile, extfilename;
     string host, interface;
     string version;
     FILE *fp;
-    int32_t brate, erate;
+    int64_t brate, erate;
     u_int64_t bts, ets;
     bool first_brate;
     bool tp_exhausted;
@@ -185,6 +185,7 @@ private:
     queue<timed_packet_t> pbuffer;
     struct ts_t getNextPacketTS(struct ts_t ts, struct ts_t sts, struct ts_t ets, u_int32_t srate, u_int32_t erate, u_int16_t len); //return interval in usecs//
     uint64_t longFromTS(ts_t ts);
+    double doubleFromTS(ts_t ts);
     timed_packet_t tmp_tpck;
 
     //refactor tpoint to match duration of test / defined scenario is repeated

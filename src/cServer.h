@@ -31,7 +31,7 @@
 
 
 struct t_conn{
-    timeval  curTv, refTv;
+    timespec  curTv, refTv;
     u_int64_t pkt_cnt;
     vector <string> msg_store;
     bool C_par;

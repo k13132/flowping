@@ -56,9 +56,9 @@ private:
     struct sockaddr_in saServer;
     FILE * fp;
     u_int64_t time, pkt_sent, server_received, pkt_rcvd, last_seq_rcv, ooo_cnt;
-    struct timeval start_ts, my_ts, refTv, rrefTv, refTv2, curTv, tmpTv;
-    struct timespec req, rem;
-    double delta, delta2, delta3;
+    struct timeval my_ts, rrefTv, refTv2,  tmpTv;
+    struct timespec req, rem, refTv, curTv, sentTv, r_curTv, r_refTv, start_ts;
+    double r_delta, delta, delta2, delta3;
     double sent_ts, tSent;
     double interval_i, interval_I;
     pthread_barrier_t barr;
