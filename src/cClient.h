@@ -67,7 +67,7 @@ private:
     double bchange; //interval change - bitrate change
     u_int16_t frame_size;
     u_int64_t base_interval;
-    u_int64_t interval, min_interval, max_interval;
+    u_int64_t interval, min_interval, max_interval,prev_interval;
 
 };
 

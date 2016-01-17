@@ -337,7 +337,10 @@ int cClient::run_sender() {
     bool pipe_started = false;
     char pipe_buffer[MAX_PKT_SIZE];
     memset(pipe_buffer, 0, MAX_PKT_SIZE);
-
+    if (setup->getFilename().length() > 255) {
+        perror("Filename to long, exiting.");
+        exit(1);
+    }
     if (setup->getFilename().length() && setup->outToFile()) {
         fp = fopen(setup->getFilename().c_str(), "w+"); //RW - overwrite file
         if (fp == NULL) {
@@ -421,7 +424,14 @@ int cClient::run_sender() {
     int64_t correction = 0;
     int pipe_cnt = 0;
     clock_gettime(CLOCK_REALTIME, &refTv);
-    u_int64_t speed_int = this->getInterval();
+    
+    u_int64_t speed_int;
+    if (speedup){
+        speed_int = this->getInterval();       
+    }
+    
+    ////?????
+    /*
     cinterval = speed_int * 1000L;
     //cout << "A" << speed_int << endl;
     if (cinterval + refTv.tv_nsec > 999999999) {
@@ -431,7 +441,9 @@ int cClient::run_sender() {
         req.tv_sec = refTv.tv_sec;
         req.tv_nsec = ((cinterval + refTv.tv_nsec));
     }
-    //S_PacketSize;S_From;S_Sequence;S_TTL;S_Delta;S_RX_Rate;S_TX_Rate; 
+    */
+      
+     //S_PacketSize;S_From;S_Sequence;S_TTL;S_Delta;S_RX_Rate;S_TX_Rate; 
     if (show) {
         if (setup->toCSV()) {
             ss.str("");
@@ -454,8 +466,9 @@ int cClient::run_sender() {
     u_int64_t curTime = 0;
     u_int64_t tgTime = 0;
 
-    interval = this->getInterval();
-    delta = interval; //First delta shown represents Interval instead of zero value;            
+    //interval = this->getInterval();
+    //delta = interval; //First delta shown represents Interval instead of zero value;            
+    delta = 0;
 
     for (int i = 1; i <= setup->getCount(); i++) {
         //deadline reached [ -w ];
@@ -465,8 +478,19 @@ int cClient::run_sender() {
         clock_gettime(CLOCK_REALTIME, &sentTv);
         curTv = sentTv;
         ping_pkt->seq = i;
-        if (pkt_sent > 1) {
-            delta = (((double) (sentTv.tv_sec - refTv.tv_sec)*1000000000L + (sentTv.tv_nsec - refTv.tv_nsec)));
+        delta = (((double) (sentTv.tv_sec - refTv.tv_sec)*1000000000L + (sentTv.tv_nsec - refTv.tv_nsec)));
+        prev_interval = interval;
+        if (!setup->useTimedBuffer()) {
+            if (speedup) {
+                interval = speed_int;
+            } else {
+                interval = this->getInterval();
+            }
+            payload_size = this->getPacketSize() - HEADER_LENGTH;
+            if (!pkt_sent) {
+                delta = interval;
+                prev_interval = interval;
+            }
         }
 
         if (setup->useTimedBuffer()) {
@@ -482,14 +506,8 @@ int cClient::run_sender() {
                 stop = true;
                 break;
             }
-        } else {
-            if (speedup) {
-                interval = speed_int;
-            } else {
-                interval = this->getInterval();
-            }
-            payload_size = this->getPacketSize() - HEADER_LENGTH;
         }
+
         ping_pkt->size = payload_size;
         if (setup->npipe()) {
             payload_size = read(pipe_handle, pipe_buffer, payload_size);
@@ -523,17 +541,17 @@ int cClient::run_sender() {
         }
 
         if (setup->frameSize()) {
-            payload_size -= 42;
+            payload_size -= 42; //todo check negative size of payload.
         }
         if (this->getPacketSize()) {
             pkt_sent++;
             if (!setup->useTimedBuffer()) {
-                if (pkt_sent == 1){
-                    delta=interval;
+                if (pkt_sent == 1) {
+                    delta = interval;
                 }
-                cout << "-> Interval: "<<interval << "\tCorrection: "<<correction<<"\tDelta:"<<delta<<endl;
-                correction = (int64_t) (((int64_t)interval + correction) - delta);
-                cout << "<- Interval: "<<interval << "\tCorrection: "<<correction<<"\tDelta:"<<delta<<endl;
+                cout << "-> Interval: " << interval << "\tCorrection: " << correction << "\tDelta:" << delta << endl;
+                correction = (int64_t) (((int64_t) prev_interval + correction) - delta);
+                cout << "<- Interval: " << interval << "\tCorrection: " << correction << "\tDelta:" << delta << endl;
                 if (-correction > interval - 1) {
                     correction = -(interval - 1);
                 }
@@ -601,6 +619,7 @@ int cClient::run_sender() {
                 exit(1);
             }
         } else {
+            cout << "PS==0" << endl;
             i--;
         }
     }
@@ -661,24 +680,30 @@ u_int64_t cClient::getInterval(void) {
             // ! setup->getRTBitrate(time) set PayloadSize for setup->getPacketSize()
             double tmp2 = setup->getRTBitrate(time); // Have to be First
             double tmp1 = (double) setup->getPacketSize()*(double) 8000000000.0; // Have to be Second
+            if (tmp2==0){
+                cout <<"\e[0;31m FINISH \e[1;37m \n";
+                return time+ (setup->getDeadline()+10)*1000000000;
+            }
             if (tmp1 == 0) {
                 interval = 1000000;
             } else {
                 interval = (u_int64_t) (tmp1 / tmp2);
             }
-            //cout << "Stage 1 - inteval:" << interval << "\ttime:" << time << "\ttmp1:" << tmp1 << "\ttmp2:" << tmp2 << endl;
-            cout <<"out TS: "<< time <<"\tDelay = "<<interval<< "\tBitrate = "<<  setup->getPacketSize()*8000000000.0/interval<<endl;
+            cout << "Stage 1 - inteval:" << interval << "\ttime:" << time << "\ttmp1:" << tmp1 << "\ttmp2:" << tmp2 << endl;
+            //if (setup->getPacketSize()){
+            cout << "out TS: " << time << "\tDelay = " << interval << "\tBitrate = " << setup->getPacketSize()*8000000000.0 / interval << endl;
+            //}
 
         } else {
             time = ((cur_ts.tv_sec * 1000000000 + cur_ts.tv_nsec)-(this->start_ts.tv_sec * 1000000000 + this->start_ts.tv_nsec)) % this->t2;
             if (time<this->t1) {
                 interval = this->base_interval;
-                //cerr << "\e[0;31m DEBUG \e[1;37m BASE INTERVAL = " << interval << "\e[0m" << endl;
+                cerr << "\e[0;31m DEBUG \e[1;37m BASE INTERVAL = " << interval << "\e[0m" << endl;
             } else {
                 double tmp1 = (double) setup->getPacketSize()*(double) 8000000000.0;
                 double tmp2 = (double) setup->getBaseRate()+(double) (time - this->t1) * (double) this->bchange;
                 interval = (u_int64_t) (tmp1 / tmp2);
-                //cerr << "\e[0;31m DEBUG \e[1;37m INTERVAL = " << interval << " TMP1 = " << tmp1 << " TMP2 = " << tmp2 << " TIME = " << time << " BRATE  = " << setup->getBaseRate() << " BCHANGE = " << this->bchange << "\e[0m" << endl;
+                cerr << "\e[0;31m DEBUG \e[1;37m INTERVAL = " << interval << " TMP1 = " << tmp1 << " TMP2 = " << tmp2 << " TIME = " << time << " BRATE  = " << setup->getBaseRate() << " BCHANGE = " << this->bchange << "\e[0m" << endl;
             }
             //Check interval range - .
             if (interval<this->min_interval) {

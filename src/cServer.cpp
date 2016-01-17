@@ -46,7 +46,7 @@ int cServer::run() {
     struct sockaddr_in saServer;
     bool show = not setup->silent();
     char msg[400] = "";
-    char filename[100] = "";
+    char filename[256] = "";
     stringstream message;
     stringstream ss;
 

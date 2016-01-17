@@ -59,11 +59,11 @@ LDLIBSOPTIONS=
 
 # Build Targets
 .build-conf: ${BUILD_SUBPROJECTS}
-	"${MAKE}"  -f nbproject/Makefile-${CND_CONF}.mk ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/src
+	"${MAKE}"  -f nbproject/Makefile-${CND_CONF}.mk ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/flowping_x86_64
 
-${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/src: ${OBJECTFILES}
+${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/flowping_x86_64: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
-	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/src ${OBJECTFILES} ${LDLIBSOPTIONS}
+	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/flowping_x86_64 ${OBJECTFILES} ${LDLIBSOPTIONS}
 
 ${OBJECTDIR}/cClient.o: nbproject/Makefile-${CND_CONF}.mk cClient.cpp 
 	${MKDIR} -p ${OBJECTDIR}
@@ -91,7 +91,7 @@ ${OBJECTDIR}/flowping.o: nbproject/Makefile-${CND_CONF}.mk flowping.cpp
 # Clean Targets
 .clean-conf: ${CLEAN_SUBPROJECTS}
 	${RM} -r ${CND_BUILDDIR}/${CND_CONF}
-	${RM} ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/src
+	${RM} ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/flowping_x86_64
 
 # Subprojects
 .clean-subprojects:

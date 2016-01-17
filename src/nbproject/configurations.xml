@@ -95,6 +95,9 @@
         <asmTool>
           <developmentMode>5</developmentMode>
         </asmTool>
+        <linkerTool>
+          <output>${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/flowping_x86_32</output>
+        </linkerTool>
       </compileType>
       <item path="_types.h" ex="false" tool="3" flavor2="0">
       </item>
@@ -138,6 +141,9 @@
         <asmTool>
           <developmentMode>5</developmentMode>
         </asmTool>
+        <linkerTool>
+          <output>${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/flowping_x86_64</output>
+        </linkerTool>
       </compileType>
       <item path="_types.h" ex="false" tool="3" flavor2="0">
       </item>
@@ -166,13 +172,16 @@
       </toolsSet>
       <compileType>
         <cTool>
-          <architecture>1</architecture>
+          <architecture>2</architecture>
           <commandLine>-lpthread</commandLine>
         </cTool>
         <ccTool>
           <architecture>2</architecture>
           <commandLine>-lpthread -lrt -ggdb</commandLine>
         </ccTool>
+        <linkerTool>
+          <output>${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/flowping_x86_64d</output>
+        </linkerTool>
       </compileType>
       <item path="_types.h" ex="false" tool="3" flavor2="0">
       </item>

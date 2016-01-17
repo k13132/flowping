@@ -178,6 +178,7 @@ private:
     bool fpsize_set;
     struct tpoint_def_t td_tmp;
     double bchange;
+    double cumulative_delay;    //cumulative delay for zero bitrate definition
     //vector<tpoint_def_t> r_tpoints;
     queue<tpoint_def_t> tpoints;
     //vector<tpoint_def_t> tpoints_copy;
