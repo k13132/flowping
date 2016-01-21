@@ -26,6 +26,10 @@
 #include "_types.h"
 
 cSetup::cSetup(int argc, char **argv, string version) {
+    this->tp_ready = false;
+    this->td_tmp.len = 0;
+    this->td_tmp.bitrate = 0;
+    this->td_tmp.ts = 0;
     this->version = "Not Defined";
     this->debug_temp = LONG_MAX;
     fp = stdout; //output to terminal
@@ -582,7 +586,7 @@ bool cSetup::npipe() {
     return this->U_par;
 }
 
-bool cSetup::shape() {
+bool cSetup::descFileInUse() {
     return this->u_par;
 }
 
@@ -648,6 +652,7 @@ int cSetup::parseSrcFile() {
         deadline = ((tpoint_def_t) tpoints.back()).ts;
     }
     refactorTPoints();
+    this->tp_ready = true;
     return 0;
 }
 
@@ -678,75 +683,8 @@ void cSetup::refactorTPoints() {
     }
 }
 
-//ts - RT from uping start in nsecs.
-
-double cSetup::getRTBitrate(u_int64_t ts) {
-    u_int64_t xbitrate;
-    cout << "\e[0;31m ---> \e[1;37m TS: "<<ts<<endl;
-    if (!tp_exhausted) {
-        if (ts >= (this->ets * 1000000000)) {
-            this->bts = this->ets;
-            this->brate = this->erate;
-            this->bsize = this->esize;
-            if (tpoints.size()) {
-                td_tmp = (tpoint_def_t) tpoints.front();
-                ets = td_tmp.ts;
-                erate = td_tmp.bitrate;
-                esize = td_tmp.len;
-                if (this->first_brate) {
-                    this->first_brate = false;
-                    this->brate = this->erate;
-                }
-                setPayoadSize(this->bsize);
-                cerr << ets << "\t" << erate << "\t" << td_tmp.len << endl;
-                tpoints.pop();
-                
-                //bitrate change 
-                if ((ets - bts) != 0) {
-                    if (brate==0 && erate == 0) {
-                        //setPayoadSize(0);
-                        cumulative_delay += (ets - bts) * 1000000000;
-                        //cout << "REC 1"<<endl;
-                        return this->getRTBitrate(ets*1000000000);
-                    } else {
-                        double tmp1 = (double) (erate - brate);
-                        double tmp2 = (double) (ets - bts);
-                        bchange = double(tmp1 / tmp2);
-                        u_int64_t xdelay = 0;
-                        if (cumulative_delay) {
-                            cout << "CD1: " << cumulative_delay << endl;
-                            cumulative_delay += 1000000000 * sqrt((16 * this->bsize * (ets - bts) ) / (tmp1*1000));
-                            cout << "CD2: " << cumulative_delay << endl;
-                            xdelay=cumulative_delay;
-                            cumulative_delay = 0;
-                            return (8000000000*this->bsize / xdelay);
-                        }
-                    }
-                } else {
-                    return this->getRTBitrate(ets*1000000000);
-                }
-            } else {
-                tp_exhausted = true;
-                if ((ets - bts) != 0) {
-                    return 0;
-                }
-            }
-            cout << "bts: " << bts << "\t ets: " << ets << "\t brate: " << brate << "\t erate: " << erate << "\t bchange:" << bchange << endl;
-        }
-    }else{
-        cout<<"no more TP"<<endl;
-    }
-    if ((ts-bts*1000000000)==0){
-        cout << "bts: " << bts << "\t ets: " << ets << "\t brate: " << brate << "\t erate: " << erate << "\t bchange: " << bchange << "\t bsize: " << bsize <<endl;
-        cout << "\e[1;34m ---> \e[0;31m " << brate * 1000+ double(8*this->bsize)/(sqrt((16 * (double)(this->bsize * (ets - bts))) / double(((erate-brate)*1000))))<<endl;
-        return brate * 1000 +8*this->bsize/(sqrt((16 * (double)(this->bsize * (ets - bts)) ) / double((erate-brate)*1000)));
-    }
-    cout << "LAST RET: "<<(brate * 1000 + bchange * 1000 * (ts - bts*1000000000)/1000000000)<<"\t brate:"<<brate * 1000<<"\tbchange:"<<bchange*1000<<"\tts:"<<ts<<"\tbts:"<<bts<<endl;
-    xbitrate=(brate * 1000 + bchange * 1000 * (ts - bts*1000000000)/1000000000);
-    if ((esize*8000000000/xbitrate)>(2*(ets*1000000000-ts))){
-        return (esize*8000000000/2*(ets*1000000000-ts));
-    }
-    return xbitrate;
+bool cSetup::tpReady() {
+    return this->tp_ready;
 }
 
 void cSetup::setPayoadSize(u_int16_t psize) {
@@ -784,99 +722,89 @@ bool cSetup::useTimedBuffer(bool val) {
 //in case of -W 
 
 struct ts_t cSetup::getNextPacketTS(struct ts_t ts, struct ts_t sts, struct ts_t ets, u_int32_t srate, u_int32_t erate, u_int16_t len) {
-
-    long delta_rate, nsec_delta;
-    u_int64_t sec, nsec;
-    u_int64_t delay;
-    double interval, delta;
-    uint64_t nsec_interval;
-    if ((srate == 0)&&(erate == 0)) return ets;
-
+    if ((srate == 0)&&(erate == 0)){
+        return ets;
+    }
     interval = doubleFromTS(ets) - doubleFromTS(sts);
-    nsec_interval = longFromTS(ets) - longFromTS(sts);
     delta_rate = (int) (erate - srate);
     nsec_delta = longFromTS(ts) - longFromTS(sts);
     delta = doubleFromTS(ts) - doubleFromTS(sts);
-    if (nsec_delta == 0) {
-        delay = (u_int64_t) 1000000000 * sqrt((16.0 * len * interval) / (delta_rate));
-        //cout <<interval <<"\t"<<delay<<"\t"<< (1000000000.0 * delta_rate / interval) <<endl;
+    if (delta_rate == 0) {
+        delay = 8000000000 * len / erate;
     } else {
-        delay = (u_int64_t) 8000000000 * (len / (srate + (delta_rate / interval * delta))); //interval [nsec];
-        //cout << " ~ " <<delta_rate<<"\tnsec_delta="<<nsec_delta<<"\t"<<nsec_interval<<"\tdelay= "<<delay<<"\t"<<srate<<endl;
+        if (nsec_delta == 0) {
+            delay = (u_int64_t) 1000000000 * sqrt((16.0 * len * interval) / (delta_rate));
+        } else {
+            delay = (u_int64_t) 8000000000 * (len / (srate + (delta_rate / interval * delta))); //interval [nsec];
+        }
     }
-    //cout <<"in TS: "<< ts.sec<<"."<<ts.nsec<<endl;
-    //cout << "x:" <<delta_rate<<"\tdelay="<<delay<<"\tnsec_delta="<<nsec_delta<<"\t"<<nsec_interval<<"\t"<<erate<<"\t"<<delta_rate<<"\t"<<len<<endl;
     ts.sec = ts.sec + (ts.nsec + delay) / 1000000000;
     ts.nsec = (ts.nsec + delay) % 1000000000;
-    //cout << "x:" <<delta_rate<<"\tdelay="<<ts.nsec<<"\tnsec_delta="<<nsec_delta<<"\t"<<nsec_interval<<"\t"<<erate<<"\t"<<delta_rate<<"\t"<<len<<endl;
-    //cout <<"out TS: "<< doubleFromTS(ts) <<"\tDelay = "<<delay<< "\tBitrate = "<< len*8000000000.0/delay<<endl;
     return ts;
+}
+
+bool cSetup::prepNextPacket() {
+    if (!tpoints.empty()) {
+        //run only once at beggining
+        if (td_tmp.len == 0) {
+            td_tmp = (tpoint_def_t) tpoints.front();
+            s_tmp_rate = td_tmp.bitrate * 1000;
+            s_tmp_ts.sec = (u_int64_t) floor(td_tmp.ts);
+            s_tmp_ts.nsec = (u_int64_t) (fmod(td_tmp.ts, 1)*1000000000);
+            tmp_len = td_tmp.len;
+            tmp_ts = s_tmp_ts;
+            //cerr << "1     ~ rate: " << td_tmp.bitrate << "\tts: " << td_tmp.ts << "\tsize: " << td_tmp.len << endl;
+            //cerr << "     ~ time: " << s_tmp_ts.sec << "." << s_tmp_ts.usec  << endl;
+            tpoints.pop();
+        }
+    }
+    //prepare and store packet in buffer
+    if (!tpoints.empty()) {
+        td_tmp = (tpoint_def_t) tpoints.front();
+        e_tmp_ts.sec = (u_int64_t) floor(td_tmp.ts);
+        e_tmp_ts.nsec = (u_int64_t) (fmod(td_tmp.ts, 1)*1000000000);
+        e_tmp_rate = td_tmp.bitrate * 1000;
+        if (!((e_tmp_ts.sec == s_tmp_ts.sec)&&(s_tmp_ts.nsec == e_tmp_ts.nsec))) {
+            if (longFromTS(tmp_ts) < longFromTS(e_tmp_ts)) {
+                tmp_ts = this->getNextPacketTS(tmp_ts, s_tmp_ts, e_tmp_ts, s_tmp_rate, e_tmp_rate, tmp_len);
+                if ((s_tmp_rate != 0) || (e_tmp_rate != 0)) {
+                    if (longFromTS(tmp_ts) < (this->deadline * 1000000000)) {
+                        tpacket.sec = tmp_ts.sec;
+                        tpacket.nsec = tmp_ts.nsec;
+                        tpacket.len = tmp_len;
+                        pbuffer.push(tpacket);
+                    } else {
+                        return false;
+                    }
+                }
+            } else {
+                s_tmp_rate = e_tmp_rate;
+                s_tmp_ts = e_tmp_ts;
+                tmp_len = td_tmp.len;
+                tpoints.pop();
+            }
+        } else {
+            s_tmp_rate = e_tmp_rate;
+            s_tmp_ts = e_tmp_ts;
+            tmp_len = td_tmp.len;
+            tpoints.pop();
+        }
+    }
+    return true;
+}
+
+u_int64_t cSetup::getTimedBufferDelay() {
+    if (pbuffer.size()) {
+        cout << pbuffer.back().sec * 1000000000 + pbuffer.back().nsec<<"\t-\t";
+        cout << (pbuffer.front().sec * 1000000000 + pbuffer.front().nsec)<<endl;
+        return (pbuffer.back().sec * 1000000000 + pbuffer.back().nsec)-(pbuffer.front().sec * 1000000000 + pbuffer.front().nsec);
+    } else {
+        return 0;
+    }
 }
 
 //in case of -W 
 
-int cSetup::prepTimedBuffer() {
-    u_int32_t s_tmp_rate, e_tmp_rate;
-    u_int16_t tmp_len;
-    ts_t tmp_ts, s_tmp_ts, e_tmp_ts;
-    timed_packet_t tpacket;
-    cerr << ".::. Packet generating started." << endl;
-    if (!tpoints.empty()) {
-        td_tmp = (tpoint_def_t) tpoints.front();
-        s_tmp_rate = td_tmp.bitrate * 1000;
-        s_tmp_ts.sec = (u_int64_t) floor(td_tmp.ts);
-        s_tmp_ts.nsec = (u_int64_t) (fmod(td_tmp.ts, 1)*1000000000);
-        tmp_len = td_tmp.len;
-        tmp_ts = s_tmp_ts;
-        cerr << "     ~ rate: " << td_tmp.bitrate << "\tts: " << td_tmp.ts << "\tsize: " << td_tmp.len << endl;
-        //cerr << "     ~ time: " << s_tmp_ts.sec << "." << s_tmp_ts.usec  << endl;
-        tpoints.pop();
-    } else {
-        return 1;
-    }
-
-    while (!tpoints.empty()) {
-        td_tmp = (tpoint_def_t) tpoints.front();
-        cerr << "     ~ rate: " << td_tmp.bitrate << "\tts: " << td_tmp.ts << "\tsize: " << td_tmp.len << endl;
-        //cerr << "     ~ time: " << s_tmp_ts.sec << "." << s_tmp_ts.usec  << endl;
-        e_tmp_ts.sec = (u_int64_t) floor(td_tmp.ts);
-        e_tmp_ts.nsec = (u_int64_t) (fmod(td_tmp.ts, 1)*1000000000);
-        e_tmp_rate = td_tmp.bitrate * 1000;
-        cerr << "     ~ time: " << e_tmp_ts.sec << "." << e_tmp_ts.nsec << endl;
-        if (!((e_tmp_ts.sec == s_tmp_ts.sec)&&(s_tmp_ts.nsec == e_tmp_ts.nsec))) {
-            while (longFromTS(tmp_ts) < longFromTS(e_tmp_ts)) {
-                tmp_ts = this->getNextPacketTS(tmp_ts, s_tmp_ts, e_tmp_ts, s_tmp_rate, e_tmp_rate, tmp_len);
-                //cout << s_tmp_ts.sec<<"."<<s_tmp_ts.nsec<< " --> "<< e_tmp_ts.sec<<"."<<e_tmp_ts.nsec<<endl;
-                //cout << tmp_ts.sec<<"."<<tmp_ts.nsec<<endl;
-                //cout << longFromTS(tmp_ts)<<" - "<<longFromTS(e_tmp_ts)<<endl;
-                tpacket.sec = tmp_ts.sec;
-                tpacket.nsec = tmp_ts.nsec;
-                tpacket.len = tmp_len;
-                if ((s_tmp_rate != 0) || (e_tmp_rate != 0)) {
-                    pbuffer.push(tpacket);
-                }
-                //usleep(50000);
-            }
-        }
-        s_tmp_rate = e_tmp_rate;
-        s_tmp_ts = e_tmp_ts;
-        tmp_len = td_tmp.len;
-        tpoints.pop();
-    }
-    while (longFromTS(tmp_ts) < (this->deadline * 1000000000)) {
-        tmp_ts = this->getNextPacketTS(tmp_ts, s_tmp_ts, e_tmp_ts, s_tmp_rate, e_tmp_rate, tmp_len);
-        tpacket.sec = tmp_ts.sec;
-        tpacket.nsec = tmp_ts.nsec;
-        tpacket.len = tmp_len;
-        pbuffer.push(tpacket);
-    }
-    cerr << "     ~ Total packets in send buffer: " << pbuffer.size() << endl;
-    cerr << "     ~ Used memory by packets in send buffer: " << (pbuffer.size() * sizeof (struct timed_packet_t) / 1000000) << " MB" << endl;
-    //cout << "     ~ Allocated memory for send buffer: " << (tBuffer->getAlocatedMemSize() / 1000000) << " MB" << endl;
-    cerr << ".::. Packet generating finished" << endl << endl;
-    sleep(2);
-    return 0;
-}
 
 uint64_t cSetup::longFromTS(ts_t ts) {
     return ts.sec * 1000000000 + ts.nsec;
@@ -894,6 +822,10 @@ timed_packet_t cSetup::getNextPacket() {
 
 bool cSetup::nextPacket() {
     return pbuffer.empty();
+}
+
+u_int32_t cSetup::getTimedBufferSize() {
+    return pbuffer.size();
 }
 
 void cSetup::setExtFilename(string s) {

@@ -64,7 +64,7 @@ public:
     bool actWaiting(void); // use active waiting (do not use sleep(), usleep() functions) - more accurate timing
     bool raisePriority(void); // usech SHED FIFO and raise Priority.
     bool npipe(void);
-    bool shape(void);
+    bool descFileInUse(void);
     bool toCSV(void);
     bool toCSV(bool);
     void setCPAR(bool);
@@ -108,11 +108,14 @@ public:
     string getExtFilename(void);
     uint8_t extFilenameLen(void);
     int parseSrcFile();
-    int prepTimedBuffer();
+    bool prepNextPacket();  //if false deadline reached
     bool useTimedBuffer(void);
     bool useTimedBuffer(bool);
     timed_packet_t getNextPacket();
     bool nextPacket();
+    bool tpReady();
+    u_int32_t getTimedBufferSize();
+    u_int64_t getTimedBufferDelay();
     virtual ~cSetup();
 
 
@@ -175,6 +178,7 @@ private:
     u_int64_t bts, ets;
     bool first_brate;
     bool tp_exhausted;
+    bool tp_ready;
     bool fpsize_set;
     struct tpoint_def_t td_tmp;
     double bchange;
@@ -189,6 +193,18 @@ private:
     double doubleFromTS(ts_t ts);
     timed_packet_t tmp_tpck;
 
+    //prepNextPacket
+    u_int32_t s_tmp_rate, e_tmp_rate;
+    u_int16_t tmp_len;
+    ts_t tmp_ts, s_tmp_ts, e_tmp_ts;
+    timed_packet_t tpacket;
+
+    //getNextPacket
+    long delta_rate, nsec_delta;
+    u_int64_t delay;
+    double interval, delta;
+
+    
     //refactor tpoint to match duration of test / defined scenario is repeated
     void refactorTPoints(void);
 };

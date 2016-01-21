@@ -36,13 +36,14 @@ public:
     bool status(void);
     int run_sender(void);
     int run_receiver(void);
-    int run_receiver_output(void);
+    int run_packetFactory(void);
     void report(void);
     void terminate(void);
     virtual ~cClient();
 
 private:
     bool r_running,s_running;
+    bool pktBufferReady;
     vector <event_t> msg_store;
     vector <event_t> msg_store_snd;
     queue <ping_pkt_t> rcv_queue;

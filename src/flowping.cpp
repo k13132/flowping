@@ -32,46 +32,31 @@ using namespace std;
 cSetup *setup = NULL;
 cClient *client = NULL;
 cServer *server = NULL;
-pthread_t t_cSender, t_cReceiver, t_cReceiver_output, t_sServer;
+pthread_t t_cSender, t_cReceiver, t_cReceiver_output, t_sServer, t_cPacketFactory;
 
 void * t_helper_sServer(void * arg) {
     server = (cServer *) arg;
     server->run();
 }
 
+//Send packets
 void * t_helper_cSender(void * arg) {
-    //    cpu_set_t mask;
-    //    pthread_t thread;
-    //    thread = pthread_self();
-    //    CPU_ZERO(&mask);
-    //    CPU_SET(2, &mask); //To run on CPU 2
-    //    pthread_setaffinity_np(thread, sizeof (cpu_set_t), &mask);
     client = (cClient *) arg;
     client->run_sender();
 }
 
+void * t_helper_cPacketFactory(void * arg) {
+    client = (cClient *) arg;
+    client->run_packetFactory();
+}
+
+//Receives packets
 void * t_helper_cReceiver(void * arg) {
-    //    cpu_set_t mask;
-    //    pthread_t thread;
-    //    thread = pthread_self();
-    //    CPU_ZERO(&mask);
-    //    CPU_SET(4, &mask); //To run on CPU 4
-    //    pthread_setaffinity_np(thread, sizeof (cpu_set_t), &mask);
     client = (cClient *) arg;
     client->run_receiver();
 }
 
-void * t_helper_cReceiver_output(void * arg) {
-    //    cpu_set_t mask;
-    //    pthread_t thread;
-    //    thread = pthread_self();
-    //    CPU_ZERO(&mask);
-    //    CPU_SET(6, &mask); //To run on CPU 6
-    //    pthread_setaffinity_np(thread, sizeof (cpu_set_t), &mask);
-    client = (cClient *) arg;
-    client->run_receiver_output();
-}
-
+//Handle some basic signals
 void signalHandler(int sig) {
     if ((sig == SIGQUIT) || (sig == SIGTERM) || (sig == SIGINT)) { //SIG 3 //15 //2   QUIT
         if (setup->isServer()) {
@@ -89,6 +74,7 @@ void signalHandler(int sig) {
             }
             pthread_cancel(t_cSender);
             pthread_cancel(t_cReceiver);
+            pthread_cancel(t_cPacketFactory);
         }
     }
     if (sig == SIGUSR1) { //SIG 10              
@@ -128,10 +114,10 @@ int main(int argc, char** argv) {
 
 
 #ifdef xENV_32
-    strcpy(str, "x86_32 1.3.3ax");
+    strcpy(str, "x86_32 1.4.0a");
 #endif    
 #ifdef xENV_64
-    strcpy(str, "x86_64 1.3.3ax");
+    strcpy(str, "x86_64 1.4.0a");
 #endif    
 
 //strcpy(str, "ARM_32 1.2.5");
@@ -182,19 +168,21 @@ int main(int argc, char** argv) {
             }
         }
         client = new cClient(setup);
-        pthread_setconcurrency(3);
-
+        /*
         if (setup->useTimedBuffer()) {
             if (setup->prepTimedBuffer() != 0) {
                 exit(1);
             };
         }
-        if (pthread_create(&t_cReceiver, NULL, t_helper_cReceiver, (void *) client) != 0) {
+        */
+        pthread_setconcurrency(4);
+        if (pthread_create(&t_cPacketFactory, NULL, t_helper_cPacketFactory, (void *) client) != 0) {
             perror("pthread_create");
             exit(1);
         }
+
         //pthread_setaffinity_np(t_cReceiver_output, sizeof (cpu_set_t), &mask);
-        if (pthread_create(&t_cReceiver_output, NULL, t_helper_cReceiver_output, (void *) client) != 0) {
+        if (pthread_create(&t_cReceiver, NULL, t_helper_cReceiver, (void *) client) != 0) {
             perror("pthread_create");
             exit(1);
         }
