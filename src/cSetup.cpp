@@ -26,6 +26,7 @@
 #include "_types.h"
 
 cSetup::cSetup(int argc, char **argv, string version) {
+    pthread_mutex_init(&mutex, NULL);
     this->tp_ready = false;
     this->td_tmp.len = 0;
     this->td_tmp.bitrate = 0;
@@ -722,7 +723,7 @@ bool cSetup::useTimedBuffer(bool val) {
 //in case of -W 
 
 struct ts_t cSetup::getNextPacketTS(struct ts_t ts, struct ts_t sts, struct ts_t ets, u_int32_t srate, u_int32_t erate, u_int16_t len) {
-    if ((srate == 0)&&(erate == 0)){
+    if ((srate == 0)&&(erate == 0)) {
         return ets;
     }
     interval = doubleFromTS(ets) - doubleFromTS(sts);
@@ -772,7 +773,12 @@ bool cSetup::prepNextPacket() {
                         tpacket.sec = tmp_ts.sec;
                         tpacket.nsec = tmp_ts.nsec;
                         tpacket.len = tmp_len;
+                        if (tmp_len<32 || tmp_len>1500){
+                            cerr << "Packet size mismatch!\t"<<tmp_len<<endl;
+                        }
+                        pthread_mutex_lock(&mutex);
                         pbuffer.push(tpacket);
+                        pthread_mutex_unlock(&mutex);
                     } else {
                         return false;
                     }
@@ -794,17 +800,23 @@ bool cSetup::prepNextPacket() {
 }
 
 u_int64_t cSetup::getTimedBufferDelay() {
+    u_int64_t delay;
     if (pbuffer.size()) {
-        cout << pbuffer.back().sec * 1000000000 + pbuffer.back().nsec<<"\t-\t";
-        cout << (pbuffer.front().sec * 1000000000 + pbuffer.front().nsec)<<endl;
-        return (pbuffer.back().sec * 1000000000 + pbuffer.back().nsec)-(pbuffer.front().sec * 1000000000 + pbuffer.front().nsec);
+        //cout << pbuffer.back().sec * 1000000000 + pbuffer.back().nsec<<"\t-\t";
+        //cout << (pbuffer.front().sec * 1000000000 + pbuffer.front().nsec)<<endl;
+        delay = (pbuffer.back().sec * 1000000000L + pbuffer.back().nsec)-(pbuffer.front().sec * 1000000000L + pbuffer.front().nsec);
+        if (delay > 200000000000) {
+            cout << pbuffer.back().sec << "\tx\t" << pbuffer.back().nsec << endl;
+            cout << pbuffer.front().sec << "\tx\t" << +pbuffer.front().nsec << endl;
+            cout << "DELAY: " << delay << endl;
+        }
+        return delay;
     } else {
         return 0;
     }
 }
 
 //in case of -W 
-
 
 uint64_t cSetup::longFromTS(ts_t ts) {
     return ts.sec * 1000000000 + ts.nsec;
@@ -816,7 +828,9 @@ double cSetup::doubleFromTS(ts_t ts) {
 
 timed_packet_t cSetup::getNextPacket() {
     tmp_tpck = pbuffer.front();
+    pthread_mutex_lock(&mutex);
     pbuffer.pop();
+    pthread_mutex_unlock(&mutex);
     return tmp_tpck;
 }
 
@@ -824,7 +838,7 @@ bool cSetup::nextPacket() {
     return pbuffer.empty();
 }
 
-u_int32_t cSetup::getTimedBufferSize() {
+u_int64_t cSetup::getTimedBufferSize() {
     return pbuffer.size();
 }
 

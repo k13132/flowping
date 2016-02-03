@@ -42,6 +42,8 @@ public:
     virtual ~cClient();
 
 private:
+    bool gennerator_running;
+
     bool r_running,s_running;
     bool pktBufferReady;
     vector <event_t> msg_store;

@@ -35,6 +35,7 @@ cClient::cClient(cSetup *setup) {
     this->setup = setup;
     this->s_running = false;
     this->r_running = false;
+    this->gennerator_running = false;
     if (pthread_barrier_init(&barr, NULL, 2)) //2 == Sender + Receiver
     {
         printf("Could not create a barrier\n");
@@ -69,29 +70,25 @@ int cClient::run_packetFactory() {
         usleep(200000);
     }
     if (!setup->useTimedBuffer()) {
+        pkt_created = setup->prepNextPacket();
+        if (pkt_created) {
+            this->pktBufferReady = true;
+        }
         while (!done && !stop) {
-            pkt_created = setup->prepNextPacket();
-            while (pkt_created && ((setup->getTimedBufferDelay() < 5000000000) || (setup->getTimedBufferSize() < 1000))) {
+            while (pkt_created && setup->getTimedBufferSize() < 32000) {
                 pkt_created = setup->prepNextPacket();
-                if (setup->getTimedBufferSize()>50000){
-                    break;
-                }
-                if (stop){
+
+                if (stop) {
                     return 0;
                 }
             }
             if (!pkt_created) {
                 return 0;
             }
-            if (setup->getTimedBufferSize()) {
-                this->pktBufferReady = true;
-            }
-            usleep(setup->getTimedBufferDelay()/4000);
-            cout << "WORK! "<<setup->getTimedBufferDelay()/1000000000.0<<endl;
+            usleep(setup->getTimedBufferDelay() / 10000);
         }
     } else {
         while (setup->prepNextPacket());
-        cout << "Number of packets in buffer:"<< setup->getTimedBufferSize()<<endl;
         if (setup->getTimedBufferSize()) {
             this->pktBufferReady = true;
         }
@@ -491,30 +488,31 @@ int cClient::run_sender() {
         refTv = sentTv;
         clock_gettime(CLOCK_REALTIME, &sentTv);
         curTv = sentTv;
-        ping_pkt->seq = i;
         delta = (((double) (sentTv.tv_sec - refTv.tv_sec)*1000000000L + (sentTv.tv_nsec - refTv.tv_nsec)));
 
-        //todo optimize +*
-        //cout << "---> Buffer state: " << setup->getTimedBufferSize() << endl;
         if (!setup->nextPacket()) {
             tinfo = setup->getNextPacket();
             payload_size = tinfo.len - HEADER_LENGTH;
             tgTime = (uint64_t) ((uint64_t) start_ts.tv_nsec + ((uint64_t) start_ts.tv_sec) * 1000000000)+(tinfo.nsec + tinfo.sec * 1000000000);
-            //if (setup->useTimedBuffer()) {
-
+            if (setup->useTimedBuffer() || setup->actWaiting()) {
                 while (((uint64_t) curTv.tv_nsec + ((uint64_t) curTv.tv_sec) * 1000000000L) < tgTime) {
                     clock_gettime(CLOCK_REALTIME, &curTv);
                 }
-            //}else{
-                //req --> delay
-            //}
+            } else {
+                clock_gettime(CLOCK_REALTIME, &curTv);
+                ts.tv_sec = tgTime / 1000000000L;
+                ts.tv_nsec = tgTime % 1000000000L;
+                delay(ts);
+            }
         } else {
-            cout << "Packet buffer is empty."<<endl;
             stop = true;
             break;
         }
-
+        ping_pkt->sec = curTv.tv_sec;
+        ping_pkt->nsec = curTv.tv_nsec;
         ping_pkt->size = payload_size;
+        ping_pkt->seq = i;
+
         if (setup->npipe()) {
             payload_size = read(pipe_handle, pipe_buffer, payload_size);
             if (!pipe_started) {
@@ -549,60 +547,52 @@ int cClient::run_sender() {
         if (setup->frameSize()) {
             payload_size -= 42; //todo check negative size of payload.
         }
-        if (this->getPacketSize()) {
-            pkt_sent++;
-            clock_gettime(CLOCK_REALTIME, &ts);
-            ping_pkt->sec = ts.tv_sec;
-            ping_pkt->nsec = ts.tv_nsec;
-            if (setup->showSendBitrate()) {
-                //nPipe??????
-                nRet = HEADER_LENGTH + payload_size;
-                if (setup->frameSize()) nRet += 42;
-                ss.str("");
-                memset(msg, 0, sizeof (msg));
-                //"C_TimeStamp;RX/TX;C_PacketSize;C_From;C_Sequence;C_RTT;C_Delta;C_RX_Rate;C_To;C_TX_Rate;"
-                if (setup->showTimeStamps()) {
-                    if (setup->toCSV()) {
-                        sprintf(msg, "%d.%09d;", ts.tv_sec, ts.tv_nsec);
-                    } else {
-                        sprintf(msg, "[%d.%09d] ", ts.tv_sec, ts.tv_nsec);
-                    }
-                } else {
-                    if (setup->toCSV()) {
-                        sprintf(msg, ";");
-                    }
-                }
-                ss << msg;
+        nRet = sendto(this->sock, packet, HEADER_LENGTH + payload_size, 0, (struct sockaddr *) &saServer, sizeof (struct sockaddr));
+        if (nRet < 0) {
+            cerr << "Packet size:" << HEADER_LENGTH + payload_size << endl;
+            perror("sending");
+            close(this->sock);
+            exit(1);
+        }
+        pkt_sent++;
+        if (setup->showSendBitrate()) {
+            //nPipe??????
+            nRet = HEADER_LENGTH + payload_size;
+            if (setup->frameSize()) nRet += 42;
+            ss.str("");
+            memset(msg, 0, sizeof (msg));
+            //"C_TimeStamp;RX/TX;C_PacketSize;C_From;C_Sequence;C_RTT;C_Delta;C_RX_Rate;C_To;C_TX_Rate;"
+            if (setup->showTimeStamps()) {
                 if (setup->toCSV()) {
-                    sprintf(msg, "tx;%d;;%d;;", nRet, ping_pkt->seq);
-                    ss << msg;
-                    sprintf(msg, "%.3f;;%s;%.2f;;;\n", (delta / 1000000.0), setup->getHostname().c_str(), (1000000.0 / delta) * (nRet) * 8);
-                    ss << msg;
+                    sprintf(msg, "%d.%09d;", curTv.tv_sec, curTv.tv_nsec);
                 } else {
-                    sprintf(msg, "%d bytes to %s: req=%d ", nRet, setup->getHostname().c_str(), ping_pkt->seq);
-                    ss << msg;
-                    sprintf(msg, "delta=%.3f ms tx_rate=%.2f kbit/s \n", delta / 1000000.0, (1000000.0 / delta) * (nRet) * 8);
-                    ss << msg;
+                    sprintf(msg, "[%d.%09d] ", curTv.tv_sec, curTv.tv_nsec);
                 }
-                if (setup->useTimedBuffer()) {
-                    event.ts.sec = curTv.tv_sec;
-                    event.ts.nsec = curTv.tv_nsec;
-                    event.msg = ss.str();
-                    msg_store_snd.push_back(event);
-                } else {
-                    fprintf(fp, "%s", ss.str().c_str());
+            } else {
+                if (setup->toCSV()) {
+                    sprintf(msg, ";");
                 }
             }
-            nRet = sendto(this->sock, packet, HEADER_LENGTH + payload_size, 0, (struct sockaddr *) &saServer, sizeof (struct sockaddr));
-            if (nRet < 0) {
-                cerr << "Packet size:" << HEADER_LENGTH + payload_size << endl;
-                perror("sending");
-                close(this->sock);
-                exit(1);
+            ss << msg;
+            if (setup->toCSV()) {
+                sprintf(msg, "tx;%d;;%d;;", nRet, ping_pkt->seq);
+                ss << msg;
+                sprintf(msg, "%.3f;;%s;%.2f;;;\n", (delta / 1000000.0), setup->getHostname().c_str(), (1000000.0 / delta) * (nRet) * 8);
+                ss << msg;
+            } else {
+                sprintf(msg, "%d bytes to %s: req=%d ", nRet, setup->getHostname().c_str(), ping_pkt->seq);
+                ss << msg;
+                sprintf(msg, "delta=%.3f ms tx_rate=%.2f kbit/s \n", delta / 1000000.0, (1000000.0 / delta) * (nRet) * 8);
+                ss << msg;
             }
-        } else {
-            cout << "PS==0" << endl;
-            i--;
+            if (setup->useTimedBuffer()) {
+                event.ts.sec = curTv.tv_sec;
+                event.ts.nsec = curTv.tv_nsec;
+                event.msg = ss.str();
+                msg_store_snd.push_back(event);
+            } else {
+                fprintf(fp, "%s", ss.str().c_str());
+            }
         }
     }
     ping_pkt->type = CONTROL;

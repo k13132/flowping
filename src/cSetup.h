@@ -114,12 +114,13 @@ public:
     timed_packet_t getNextPacket();
     bool nextPacket();
     bool tpReady();
-    u_int32_t getTimedBufferSize();
+    u_int64_t getTimedBufferSize();
     u_int64_t getTimedBufferDelay();
     virtual ~cSetup();
 
 
 private:
+    pthread_mutex_t mutex;
     uint64_t debug_temp;
     bool v_par;
     bool a_par;
@@ -204,9 +205,10 @@ private:
     u_int64_t delay;
     double interval, delta;
 
-    
     //refactor tpoint to match duration of test / defined scenario is repeated
     void refactorTPoints(void);
+
+    
 };
 
 #endif	/* SETUP_H */
