@@ -445,16 +445,10 @@ int cClient::run_sender() {
     ping_pkt->sec = start_ts.tv_sec;
     ping_pkt->nsec = start_ts.tv_nsec;
     u_int16_t payload_size;
-    bool speedup = setup->speedUP();
 
-    int64_t correction = 0;
     int pipe_cnt = 0;
     clock_gettime(CLOCK_REALTIME, &refTv);
 
-    u_int64_t speed_int;
-    if (speedup) {
-        //speed_int = this->getInterval();
-    }
     if (show) {
         if (setup->toCSV()) {
             ss.str("");
@@ -474,7 +468,6 @@ int cClient::run_sender() {
     timespec ts;
     timed_packet_t tinfo;
 
-    u_int64_t curTime = 0;
     u_int64_t tgTime = 0;
 
     delta = 0;
@@ -499,10 +492,10 @@ int cClient::run_sender() {
                     clock_gettime(CLOCK_REALTIME, &curTv);
                 }
             } else {
-                clock_gettime(CLOCK_REALTIME, &curTv);
                 ts.tv_sec = tgTime / 1000000000L;
                 ts.tv_nsec = tgTime % 1000000000L;
                 delay(ts);
+                clock_gettime(CLOCK_REALTIME, &curTv);
             }
         } else {
             stop = true;
@@ -512,7 +505,6 @@ int cClient::run_sender() {
         ping_pkt->nsec = curTv.tv_nsec;
         ping_pkt->size = payload_size;
         ping_pkt->seq = i;
-
         if (setup->npipe()) {
             payload_size = read(pipe_handle, pipe_buffer, payload_size);
             if (!pipe_started) {
@@ -540,13 +532,15 @@ int cClient::run_sender() {
 
             }
         }
+
         if (setup->isAntiAsym()) {
             payload_size = 0;
         }
-
         if (setup->frameSize()) {
             payload_size -= 42; //todo check negative size of payload.
+            
         }
+
         nRet = sendto(this->sock, packet, HEADER_LENGTH + payload_size, 0, (struct sockaddr *) &saServer, sizeof (struct sockaddr));
         if (nRet < 0) {
             cerr << "Packet size:" << HEADER_LENGTH + payload_size << endl;
@@ -556,11 +550,11 @@ int cClient::run_sender() {
         }
         pkt_sent++;
         if (setup->showSendBitrate()) {
-            //nPipe??????
             nRet = HEADER_LENGTH + payload_size;
             if (setup->frameSize()) nRet += 42;
             ss.str("");
             memset(msg, 0, sizeof (msg));
+
             //"C_TimeStamp;RX/TX;C_PacketSize;C_From;C_Sequence;C_RTT;C_Delta;C_RX_Rate;C_To;C_TX_Rate;"
             if (setup->showTimeStamps()) {
                 if (setup->toCSV()) {
@@ -594,6 +588,7 @@ int cClient::run_sender() {
                 fprintf(fp, "%s", ss.str().c_str());
             }
         }
+
     }
     ping_pkt->type = CONTROL;
     ping_msg->code = CNT_DONE;

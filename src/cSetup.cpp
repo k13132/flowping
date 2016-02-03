@@ -278,9 +278,20 @@ cSetup::cSetup(int argc, char **argv, string version) {
         this->interval_I = (((this->getPacketSize())*8.0)*1000000000.0) / (this->rate_B * 1000.0);
     }
     if (this->P_par) this->size = MIN_PKT_SIZE;
+    if (H_par) {
+        //minimu size of FP frame;
+        if (this->size < HEADER_LENGTH + 42) {
+            this->size = HEADER_LENGTH + 42;
+        }
+    }
     if (u_par) {
         if (this->parseSrcFile()) {
-            cout << "Error parsing time_dev file!" << endl;
+            cout << "Error parsing time_def file!" << endl;
+            exit(1);
+        }
+    } else {
+        if (this->parseCmdLine()) {
+            cout << "Error parsing cmdline parameters!" << endl;
             exit(1);
         }
     }
@@ -591,6 +602,54 @@ bool cSetup::descFileInUse() {
     return this->u_par;
 }
 
+int cSetup::parseCmdLine() {
+    //Overit zda to funguje - pripadne zda to takto budeme delat?
+    cout << this->size << "\t" << this->interval_i << "\t" << this->interval_I << endl;
+    tpoint_def_t tmp;
+    if (t_par) {
+        tmp.ts = 0;
+        tmp.bitrate = 8000000.0 * this->size / this->interval_i;
+        tmp.len = this->size;
+        tpoints.push(tmp);
+        tmp.ts = this->time_t;
+        tpoints.push(tmp);
+        //cout << tmp.ts << "\t" << tmp.bitrate << "\t" << tmp.len << endl;
+    } else {
+        tmp.ts = 0;
+        tmp.bitrate = 8000000.0 * this->size / this->interval_i;
+        tmp.len = this->size;
+        tpoints.push(tmp);
+    }
+    if (R_par) {
+        tmp.ts = this->time_t + this->time_R;
+        tmp.bitrate = 8000000.0 * this->size / this->interval_I;
+        tmp.len = this->size;
+        tpoints.push(tmp);
+    }
+    if (T_par) {
+        tmp.ts = this->time_t + this->time_T;
+        tmp.bitrate = 8000000.0 * this->size / this->interval_I;
+        tmp.len = this->size;
+        tpoints.push(tmp);
+    }
+    if (!R_par && !T_par && !t_par) {
+        tmp.ts = 60;
+        cout << tmp.ts << endl;
+        tmp.bitrate = 8000000.0 * this->size / this->interval_i;
+        tmp.len = this->size;
+        tpoints.push(tmp);
+    }
+    //last record expected to be doubled;
+    tpoints.push(tmp);
+
+    if (deadline == 0) {
+        deadline = ((tpoint_def_t) tpoints.back()).ts;
+    }
+    refactorTPoints();
+    this->tp_ready = true;
+    return 0;
+}
+
 int cSetup::parseSrcFile() {
     bool setsize = true;
     string stmp;
@@ -773,8 +832,8 @@ bool cSetup::prepNextPacket() {
                         tpacket.sec = tmp_ts.sec;
                         tpacket.nsec = tmp_ts.nsec;
                         tpacket.len = tmp_len;
-                        if (tmp_len<32 || tmp_len>1500){
-                            cerr << "Packet size mismatch!\t"<<tmp_len<<endl;
+                        if (tmp_len < 32 || tmp_len > 1500) {
+                            cerr << "Packet size mismatch!\t" << tmp_len << endl;
                         }
                         pthread_mutex_lock(&mutex);
                         pbuffer.push(tpacket);

@@ -117,7 +117,7 @@ struct ping_msg_t {         //Min MSG SIZE 16B
 
 struct tpoint_def_t{
     double ts;
-    unsigned int bitrate;
+    double bitrate;
     unsigned int len;
 };
 

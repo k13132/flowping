@@ -108,6 +108,7 @@ public:
     string getExtFilename(void);
     uint8_t extFilenameLen(void);
     int parseSrcFile();
+    int parseCmdLine();
     bool prepNextPacket();  //if false deadline reached
     bool useTimedBuffer(void);
     bool useTimedBuffer(bool);
@@ -184,10 +185,7 @@ private:
     struct tpoint_def_t td_tmp;
     double bchange;
     double cumulative_delay;    //cumulative delay for zero bitrate definition
-    //vector<tpoint_def_t> r_tpoints;
     queue<tpoint_def_t> tpoints;
-    //vector<tpoint_def_t> tpoints_copy;
-    //cTimedBuffer * tBuffer;
     queue<timed_packet_t> pbuffer;
     struct ts_t getNextPacketTS(struct ts_t ts, struct ts_t sts, struct ts_t ets, u_int32_t srate, u_int32_t erate, u_int16_t len); //return interval in usecs//
     uint64_t longFromTS(ts_t ts);
