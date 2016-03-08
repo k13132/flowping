@@ -604,7 +604,7 @@ bool cSetup::descFileInUse() {
 
 int cSetup::parseCmdLine() {
     //Overit zda to funguje - pripadne zda to takto budeme delat?
-    cout << this->size << "\t" << this->interval_i << "\t" << this->interval_I << endl;
+    //cout << this->size << "\t" << this->interval_i << "\t" << this->interval_I << endl;
     tpoint_def_t tmp;
     if (t_par) {
         tmp.ts = 0;
@@ -634,10 +634,11 @@ int cSetup::parseCmdLine() {
     }
     if (!R_par && !T_par && !t_par) {
         tmp.ts = 60;
-        cout << tmp.ts << endl;
+        //cout << tmp.ts << endl;
         tmp.bitrate = 8000000.0 * this->size / this->interval_i;
         tmp.len = this->size;
         tpoints.push(tmp);
+        deadline= 315360000; //~ 10 years
     }
     //last record expected to be doubled;
     tpoints.push(tmp);
@@ -864,11 +865,6 @@ u_int64_t cSetup::getTimedBufferDelay() {
         //cout << pbuffer.back().sec * 1000000000 + pbuffer.back().nsec<<"\t-\t";
         //cout << (pbuffer.front().sec * 1000000000 + pbuffer.front().nsec)<<endl;
         delay = (pbuffer.back().sec * 1000000000L + pbuffer.back().nsec)-(pbuffer.front().sec * 1000000000L + pbuffer.front().nsec);
-        if (delay > 200000000000) {
-            cout << pbuffer.back().sec << "\tx\t" << pbuffer.back().nsec << endl;
-            cout << pbuffer.front().sec << "\tx\t" << +pbuffer.front().nsec << endl;
-            cout << "DELAY: " << delay << endl;
-        }
         return delay;
     } else {
         return 0;

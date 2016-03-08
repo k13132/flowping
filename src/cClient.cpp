@@ -193,7 +193,7 @@ int cClient::run_receiver() {
             double r_delta = ((double) (r_curTv.tv_sec - r_refTv.tv_sec)*1000.0 + (double) (r_curTv.tv_nsec - r_refTv.tv_nsec) / 1000000.0);
             //get rtt in millisecond
             //if (pkt_rcvd == 1) r_delta = (this->getInterval() / 1000000.0); //First delta shown represents Interval instead of zero value;
-            rtt = ((r_curTv.tv_sec - ping_pkt->sec) * 1000 + (r_curTv.tv_nsec - ping_pkt->nsec) / 1000000.0);
+            rtt = ((r_curTv.tv_sec - ping_pkt->sec) * 1000 + (int64_t)(r_curTv.tv_nsec - ping_pkt->nsec) / 1000000.0);
             if (rtt < 0) perror("wrong RTT value !!!\n");
             //cout << curTv.tv_sec << "\t" << ping_pkt->sec << "\t" << curTv.tv_usec << "\t" << ping_pkt->usec << "\t" << rtt << endl;
             //get tSent in millisecond
@@ -238,7 +238,7 @@ int cClient::run_receiver() {
                 }
                 ss << msg;
                 if (setup->toCSV()) {
-                    sprintf(msg, "%.2f;", rtt);
+                    sprintf(msg, "%.3f;", rtt);
                 } else {
                     sprintf(msg, " time=%.2f ms", rtt);
                 }

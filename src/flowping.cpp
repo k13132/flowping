@@ -114,10 +114,10 @@ int main(int argc, char** argv) {
 
 
 #ifdef xENV_32
-    strcpy(str, "x86_32 1.4.0a");
+    strcpy(str, "x86_32 1.4.0d");
 #endif    
 #ifdef xENV_64
-    strcpy(str, "x86_64 1.4.0a");
+    strcpy(str, "x86_64 1.4.0d");
 #endif    
 
 //strcpy(str, "ARM_32 1.2.5");
