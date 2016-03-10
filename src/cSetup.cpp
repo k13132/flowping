@@ -604,7 +604,7 @@ bool cSetup::descFileInUse() {
 
 int cSetup::parseCmdLine() {
     //Overit zda to funguje - pripadne zda to takto budeme delat?
-    cout << this->size << "\t" << this->interval_i << "\t" << this->interval_I << endl;
+    //cout << this->size << "\t" << this->interval_i << "\t" << this->interval_I << endl;
     tpoint_def_t tmp;
     if (t_par) {
         tmp.ts = 0;
@@ -633,11 +633,14 @@ int cSetup::parseCmdLine() {
         tpoints.push(tmp);
     }
     if (!R_par && !T_par && !t_par) {
-        tmp.ts = 60;
-        cout << tmp.ts << endl;
+        tmp.ts = 86400;
+        //cout << tmp.ts << endl;
         tmp.bitrate = 8000000.0 * this->size / this->interval_i;
         tmp.len = this->size;
         tpoints.push(tmp);
+        if (deadline == 0) {
+            deadline = 31536000; //~ 1 year
+        }
     }
     //last record expected to be doubled;
     tpoints.push(tmp);
@@ -658,6 +661,11 @@ int cSetup::parseSrcFile() {
     if (this->getSrcFilename().length()) {
         ifstream infile;
         tpoint_def_t tmp, check;
+        tmp.bitrate = 0;
+        tmp.len = 0;
+        tmp.ts = 0;
+        check.bitrate = 0;
+        check.len = 0;
         check.ts = 0;
         infile.open(this->getSrcFilename().c_str());
         if (!infile.is_open()) {
@@ -721,7 +729,6 @@ void cSetup::refactorTPoints() {
     double last_ts = 0;
     if (tpoints.empty()) return;
     if (((tpoint_def_t) tpoints.back()).ts > deadline) return;
-
     vector<tpoint_def_t> tmp_tpoints;
     while (!tpoints.empty()) {
         tmp_tpoints.push_back(tpoints.front());
@@ -790,12 +797,12 @@ struct ts_t cSetup::getNextPacketTS(struct ts_t ts, struct ts_t sts, struct ts_t
     nsec_delta = longFromTS(ts) - longFromTS(sts);
     delta = doubleFromTS(ts) - doubleFromTS(sts);
     if (delta_rate == 0) {
-        delay = 8000000000 * len / erate;
+        delay = (u_int64_t)8*1000000000 * len / erate;
     } else {
         if (nsec_delta == 0) {
             delay = (u_int64_t) 1000000000 * sqrt((16.0 * len * interval) / (delta_rate));
         } else {
-            delay = (u_int64_t) 8000000000 * (len / (srate + (delta_rate / interval * delta))); //interval [nsec];
+            delay = (u_int64_t) 8*1000000000 * (len / (srate + (delta_rate / interval * delta))); //interval [nsec];
         }
     }
     ts.sec = ts.sec + (ts.nsec + delay) / 1000000000;
@@ -864,11 +871,6 @@ u_int64_t cSetup::getTimedBufferDelay() {
         //cout << pbuffer.back().sec * 1000000000 + pbuffer.back().nsec<<"\t-\t";
         //cout << (pbuffer.front().sec * 1000000000 + pbuffer.front().nsec)<<endl;
         delay = (pbuffer.back().sec * 1000000000L + pbuffer.back().nsec)-(pbuffer.front().sec * 1000000000L + pbuffer.front().nsec);
-        if (delay > 200000000000) {
-            cout << pbuffer.back().sec << "\tx\t" << pbuffer.back().nsec << endl;
-            cout << pbuffer.front().sec << "\tx\t" << +pbuffer.front().nsec << endl;
-            cout << "DELAY: " << delay << endl;
-        }
         return delay;
     } else {
         return 0;

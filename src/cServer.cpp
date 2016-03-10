@@ -137,15 +137,22 @@ int cServer::run() {
                 ss.str("");
                 if (setup->showTimeStamps(connection->D_par)) {
                     if (setup->toCSV(connection->C_par)) {
-                        sprintf(msg, "%d.%09d;", connection->curTv.tv_sec, connection->curTv.tv_nsec);
+                        ss << connection->curTv.tv_sec << ".";
+                        ss.fill('0');
+                        ss.width(9);
+                        ss << connection->curTv.tv_nsec;
+                        ss << ";";
+
                     } else {
-                        sprintf(msg, "[%d.%09d] ", connection->curTv.tv_sec, connection->curTv.tv_nsec);
+                        ss << "[" << connection->curTv.tv_sec << ".";
+                        ss.fill('0');
+                        ss.width(9);
+                        ss << connection->curTv.tv_nsec;
+                        ss << "] ";
                     }
-                    ss << msg;
                 } else {
                     if (setup->toCSV(connection->C_par)) {
-                        sprintf(msg, ";");
-                        ss << msg;
+                        ss << ";";
                     }
                 }
                 if (setup->wholeFrame(connection->H_par)) {
@@ -154,52 +161,60 @@ int cServer::run() {
                 }
 
                 if (setup->toCSV(connection->C_par)) {
-                    sprintf(msg, "%d;%s;%d;xx;", rec_size, client_ip, ping_pkt->seq);
-                    ss << msg;
-                    sprintf(msg, "%.3f;", delta);
-                    ss << msg;
+                    ss << rec_size << ";" << client_ip << ";" << ping_pkt->seq << ";xx;";
+                    ss.setf(ios_base::right, ios_base::adjustfield);
+                    ss.setf(ios_base::fixed, ios_base::floatfield);
+                    ss.precision(3);
+                    ss << delta << ";";
                 } else {
-                    sprintf(msg, "%d bytes from %s: req=%d ttl=xx ", rec_size, client_ip, ping_pkt->seq);
-                    ss << msg;
-                    sprintf(msg, "delta=%.3f ms", delta);
-                    ss << msg;
+                    ss << rec_size << " bytes from " << client_ip << ": req=" << ping_pkt->seq << " ttl=xx ";
+                    ss.setf(ios_base::right, ios_base::adjustfield);
+                    ss.setf(ios_base::fixed, ios_base::floatfield);
+                    ss.precision(3);
+                    ss << "delta=" << delta << " ms";
                 }
                 if (setup->showBitrate(connection->e_par)) {
-
                     if (setup->toCSV(connection->C_par)) {
-                        sprintf(msg, "%.2f;", (1000 / delta) * rec_size * 8 / 1000);
+                        ss.setf(ios_base::right, ios_base::adjustfield);
+                        ss.setf(ios_base::fixed, ios_base::floatfield);
+                        ss.precision(2);
+                        ss << (1000 / delta) * rec_size * 8 / 1000<<";";
                     } else {
-                        sprintf(msg, " rx_rate=%.2f kbit/s", (1000 / delta) * rec_size * 8 / 1000);
+                        ss.setf(ios_base::right, ios_base::adjustfield);
+                        ss.setf(ios_base::fixed, ios_base::floatfield);
+                        ss.precision(2);
+                        ss << " rx_rate="<<(1000 / delta) * rec_size * 8 / 1000 << " kbps";
                     }
-                    ss << msg;
                 } else {
                     if (setup->toCSV(connection->C_par)) {
-                        sprintf(msg, ";");
-                        ss << msg;
+                        ss << ";";
                     }
                 }
                 if (setup->showSendBitrate(connection->E_par)) {
                     if (setup->toCSV(connection->C_par)) {
-                        sprintf(msg, "%.2f;", (1000 / delta) * ret_size * 8 / 1000);
+                        ss.setf(ios_base::right, ios_base::adjustfield);
+                        ss.setf(ios_base::fixed, ios_base::floatfield);
+                        ss.precision(2);
+                        ss << (1000 / delta) * ret_size * 8 / 1000 <<";";
                     } else {
-                        sprintf(msg, " tx_rate=%.2f kbit/s", (1000 / delta) * ret_size * 8 / 1000);
+                        ss.setf(ios_base::right, ios_base::adjustfield);
+                        ss.setf(ios_base::fixed, ios_base::floatfield);
+                        ss.precision(2);
+                        ss<< " tx_rate="<< (1000 / delta) * ret_size * 8 / 1000 <<" kbit/s";
                     }
                     ss << msg;
                 } else {
                     if (setup->toCSV(connection->C_par)) {
-                        sprintf(msg, ";");
-                        ss << msg;
+                        ss << ";";
                     }
                 }
-                sprintf(msg, "\n");
-                ss << msg;
+                ss << endl;
                 if (setup->useTimedBuffer(connection->W_par)) {
                     connection->msg_store.push_back(ss.str());
                 } else {
                     fprintf(connection->fp, "%s", ss.str().c_str());
 
                 }
-
             }
             connection->pkt_cnt++;
         }
@@ -235,7 +250,9 @@ int cServer::run() {
                     //                            fclose(connection->fp);
                     //                        }
                     //                    }
-                    sprintf(filename, "%l_%s", setup->getFilename().c_str(), conn_id);
+                    ss.str("");
+                    ss << setup->getFilename().c_str() << "_" << conn_id;
+                    sprintf(filename, "%s", ss.str().c_str());
                     connection->fp = fopen(filename, "w+"); //RW - overwrite file
                     if (connection->fp == NULL) {
                         perror("Unable to open file, redirecting to STDOUT");
@@ -344,7 +361,7 @@ int cServer::run() {
                         }
                     }
                     string tmp_str;
-                    for (int i = 0; i < connection->msg_store.size(); i++) {
+                    for (unsigned int i = 0; i < connection->msg_store.size(); i++) {
                         tmp_str = connection->msg_store[i];
                         fprintf(connection->fp, "%s", tmp_str.c_str());
                     }
