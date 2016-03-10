@@ -158,7 +158,6 @@ int cClient::run_receiver() {
     // Wait for the first reply
     int nFromLen;
     float rtt;
-    char msg[1000] = "";
     clock_gettime(CLOCK_REALTIME, &r_curTv);
     while (!done) {
         //if (stop) break;
@@ -193,7 +192,7 @@ int cClient::run_receiver() {
             double r_delta = ((double) (r_curTv.tv_sec - r_refTv.tv_sec)*1000.0 + (double) (r_curTv.tv_nsec - r_refTv.tv_nsec) / 1000000.0);
             //get rtt in millisecond
             //if (pkt_rcvd == 1) r_delta = (this->getInterval() / 1000000.0); //First delta shown represents Interval instead of zero value;
-            rtt = ((r_curTv.tv_sec - ping_pkt->sec) * 1000 + (int64_t)(r_curTv.tv_nsec - ping_pkt->nsec) / 1000000.0);
+            rtt = ((r_curTv.tv_sec - ping_pkt->sec) * 1000 + (int64_t) (r_curTv.tv_nsec - ping_pkt->nsec) / 1000000.0);
             if (rtt < 0) perror("wrong RTT value !!!\n");
             //cout << curTv.tv_sec << "\t" << ping_pkt->sec << "\t" << curTv.tv_usec << "\t" << ping_pkt->usec << "\t" << rtt << endl;
             //get tSent in millisecond
@@ -216,58 +215,92 @@ int cClient::run_receiver() {
                 if (setup->wholeFrame()) nRet += 42;
                 if (setup->showTimeStamps()) {
                     if (setup->toCSV()) {
-                        sprintf(msg, "%d.%09d;", r_curTv.tv_sec, r_curTv.tv_nsec);
+                        //sprintf(msg, "%l.%09d;", r_curTv.tv_sec, r_curTv.tv_nsec);
+                        ss << r_curTv.tv_sec << ".";
+                        ss.fill('0');
+                        ss.width(9);
+                        ss << r_curTv.tv_nsec;
+                        ss << ";";
                     } else {
-                        sprintf(msg, "[%d.%09d] ", r_curTv.tv_sec, r_curTv.tv_nsec);
+                        //sprintf(msg, "[%l.%09l] ", (u_int32_t)r_curTv.tv_sec, r_curTv.tv_nsec);
+                        ss << "[" << r_curTv.tv_sec << ".";
+                        ss.fill('0');
+                        ss.width(9);
+                        ss << r_curTv.tv_nsec;
+                        ss << "] ";
                     }
-                    ss << msg;
+                    //ss << msg;
                 } else {
                     if (setup->toCSV()) {
-                        sprintf(msg, ";");
-                        ss << msg;
+                        //sprintf(msg, ";");
+                        //ss << msg;
+                        ss << ";";
                     }
                 }
                 if (setup->toCSV()) {
-                    sprintf(msg, "rx;%d;%s;%d;", nRet, setup->getHostname().c_str(), ping_pkt->seq);
+                    //sprintf(msg, "rx;%d;%s;%d;", nRet, setup->getHostname().c_str(), ping_pkt->seq);
+                    ss << "rx;" << nRet << ";";
+                    ss << setup->getHostname() << ";";
+                    ss << ping_pkt->seq << ";";
                 } else {
                     if (setup->compat()) {
-                        sprintf(msg, "%d bytes from %s: icmp_req=%d ttl=0", nRet, setup->getHostname().c_str(), ping_pkt->seq);
+                        //sprintf(msg, "%d bytes from %s: icmp_req=%d ttl=0", nRet, setup->getHostname().c_str(), ping_pkt->seq);
+                        ss << nRet << " bytes from ";
+                        ss << setup->getHostname() << ": icmp_seq=";
+                        ss << ping_pkt->seq << " ttl=0";
                     } else {
-                        sprintf(msg, "%d bytes from %s: req=%d", nRet, setup->getHostname().c_str(), ping_pkt->seq);
+                        //sprintf(msg, "%d bytes from %s: req=%d", nRet, setup->getHostname().c_str(), ping_pkt->seq);
+                        ss << nRet << " bytes from ";
+                        ss << setup->getHostname() << ": req=";
+                        ss << ping_pkt->seq;
                     }
                 }
-                ss << msg;
+                //ss << msg;
                 if (setup->toCSV()) {
-                    sprintf(msg, "%.3f;", rtt);
+                    //sprintf(msg, "%.3f;", rtt);
+                    ss.setf(ios_base::right, ios_base::adjustfield);
+                    ss.setf(ios_base::fixed, ios_base::floatfield);
+                    ss.precision(3);
+                    ss << rtt << ";";
                 } else {
-                    sprintf(msg, " time=%.2f ms", rtt);
+                    //sprintf(msg, " time=%.2f ms", rtt);
+                    ss.setf(ios_base::right, ios_base::adjustfield);
+                    ss.setf(ios_base::fixed, ios_base::floatfield);
+                    ss.precision(2);
+                    ss << " time=" << rtt << " ms";
                 }
-                ss << msg;
                 if (setup->showBitrate()) {
                     if (setup->toCSV()) {
-                        sprintf(msg, "%.3f;%.2f;", r_delta, (1000 / r_delta) * nRet * 8 / 1000);
+                        ss.precision(3);
+                        ss.setf(ios_base::right, ios_base::adjustfield);
+                        ss.setf(ios_base::fixed, ios_base::floatfield);
+                        ss << r_delta << ";";
+                        ss.precision(2);
+                        ss << (1000 / r_delta) * nRet * 8 / 1000 << ";";
                     } else {
-                        sprintf(msg, " delta=%.3f ms rx_rate=%.2f kbit/s ", r_delta, (1000 / r_delta) * nRet * 8 / 1000);
+                        ss << " delta=";
+                        ss.setf(ios_base::right, ios_base::adjustfield);
+                        ss.setf(ios_base::fixed, ios_base::floatfield);
+                        ss.precision(3);
+                        ss << r_delta << " ms rx_rate=";
+                        ss.precision(2);
+                        ss << (1000 / r_delta) * nRet * 8 / 1000 << " kbps";
                     }
-                    ss << msg;
                 } else {
                     if (setup->toCSV()) {
-                        sprintf(msg, ";;");
-                        ss << msg;
+                        ss << ";;";
                     }
                 }
 
             }
             if (last_seq_rcv > ping_pkt->seq) {
                 if (!setup->toCSV()) {
-                    sprintf(msg, " OUT OF ORDER!\n");
-                    ss << msg;
+                    ss << " OUT OF ORDER!\n";
                 }
                 this->ooo_cnt++;
             } else {
                 if (show) {
-                    sprintf(msg, "\n");
-                    ss << msg;
+                    ss << endl;
                 }
                 if (setup->useTimedBuffer()) {
                     event.ts.sec = r_curTv.tv_sec;
@@ -293,7 +326,9 @@ int cClient::run_receiver() {
     if (setup->useTimedBuffer()) {
         cerr << ".::. Writeing data into file." << endl;
         string tmp_str;
-        int idx, idx_snd = 0;
+        int idx, idx_snd;
+        idx = 0;
+        idx_snd = 0;
         long vmsg_len, vmsg_snd_len;
         vmsg_len = msg_store.size();
         vmsg_snd_len = msg_store_snd.size();
@@ -342,11 +377,15 @@ int cClient::run_sender() {
     struct ping_pkt_t *ping_pkt;
     struct ping_msg_t *ping_msg;
     stringstream ss;
-    unsigned char packet[MAX_PKT_SIZE + 60];
+    unsigned char packet[MAX_PKT_SIZE + 60]={0}; //Random FILL will be better
     int nRet;
-    u_int64_t interval, cinterval;
     int pipe_handle;
+    pipe_handle = 0; //warning elimination
     bool show = not setup->silent();
+
+    delta = 0;
+    clock_gettime(CLOCK_REALTIME, &sentTv); //FIX initial delta
+
     /*
     cpu_set_t mask;
     CPU_ZERO(&mask);
@@ -452,8 +491,7 @@ int cClient::run_sender() {
     if (show) {
         if (setup->toCSV()) {
             ss.str("");
-            sprintf(msg, "C_TimeStamp;C_Direction;C_PacketSize;C_From;C_Sequence;C_RTT;C_Delta;C_RX_Rate;C_To;C_TX_Rate;\n");
-            ss << msg;
+            ss << "C_TimeStamp;C_Direction;C_PacketSize;C_From;C_Sequence;C_RTT;C_Delta;C_RX_Rate;C_To;C_TX_Rate;\n";
             if (setup->useTimedBuffer()) {
                 event.ts.sec = refTv.tv_sec;
                 event.ts.nsec = refTv.tv_nsec;
@@ -469,12 +507,10 @@ int cClient::run_sender() {
     timed_packet_t tinfo;
 
     u_int64_t tgTime = 0;
-
-    delta = 0;
     while (!pktBufferReady) {
         usleep(200000);
     }
-    for (int i = 1; i <= setup->getCount(); i++) {
+    for (unsigned int i = 1; i <= setup->getCount(); i++) {
         //deadline reached [ -w ];
         if (stop) break;
 
@@ -538,7 +574,7 @@ int cClient::run_sender() {
         }
         if (setup->frameSize()) {
             payload_size -= 42; //todo check negative size of payload.
-            
+
         }
 
         nRet = sendto(this->sock, packet, HEADER_LENGTH + payload_size, 0, (struct sockaddr *) &saServer, sizeof (struct sockaddr));
@@ -558,26 +594,41 @@ int cClient::run_sender() {
             //"C_TimeStamp;RX/TX;C_PacketSize;C_From;C_Sequence;C_RTT;C_Delta;C_RX_Rate;C_To;C_TX_Rate;"
             if (setup->showTimeStamps()) {
                 if (setup->toCSV()) {
-                    sprintf(msg, "%d.%09d;", curTv.tv_sec, curTv.tv_nsec);
+                    ss << curTv.tv_sec << ".";
+                    ss.fill('0');
+                    ss.width(9);
+                    ss << curTv.tv_nsec;
+                    ss << ";";
                 } else {
-                    sprintf(msg, "[%d.%09d] ", curTv.tv_sec, curTv.tv_nsec);
+                    ss << "[" << curTv.tv_sec << ".";
+                    ss.fill('0');
+                    ss.width(9);
+                    ss << curTv.tv_nsec;
+                    ss << "] ";
                 }
             } else {
                 if (setup->toCSV()) {
-                    sprintf(msg, ";");
+                    ss << ";";
                 }
             }
-            ss << msg;
             if (setup->toCSV()) {
-                sprintf(msg, "tx;%d;;%d;;", nRet, ping_pkt->seq);
-                ss << msg;
-                sprintf(msg, "%.3f;;%s;%.2f;;;\n", (delta / 1000000.0), setup->getHostname().c_str(), (1000000.0 / delta) * (nRet) * 8);
-                ss << msg;
+                ss << "tx;" << nRet << ";;" << ping_pkt->seq << ";;";
+                ss.precision(3);
+                ss.setf(ios_base::right, ios_base::adjustfield);
+                ss.setf(ios_base::fixed, ios_base::floatfield);
+                ss << (delta / 1000000.0) << ";;" << setup->getHostname().c_str() << ";";
+                ss.precision(2);
+                ss << (1000000.0 / delta) * (nRet) * 8 << ";;;\n";
             } else {
-                sprintf(msg, "%d bytes to %s: req=%d ", nRet, setup->getHostname().c_str(), ping_pkt->seq);
-                ss << msg;
-                sprintf(msg, "delta=%.3f ms tx_rate=%.2f kbit/s \n", delta / 1000000.0, (1000000.0 / delta) * (nRet) * 8);
-                ss << msg;
+                //sprintf(msg, "%d bytes to %s: req=%d ",);
+                ss << nRet << " bytes to " << setup->getHostname().c_str() << ": req=" << ping_pkt->seq;
+                //sprintf(msg, "delta=%.3f ms tx_rate=%.2f kbit/s \n", delta / 1000000.0, (1000000.0 / delta) * (nRet) * 8);
+                ss.setf(ios_base::right, ios_base::adjustfield);
+                ss.setf(ios_base::fixed, ios_base::floatfield);
+                ss.precision(3);
+                ss << " delta=" << delta / 1000000.0;
+                ss.precision(2);
+                ss << " ms tx_rate=" << (1000000.0 / delta) * (nRet) * 8 << " kbps\n";
             }
             if (setup->useTimedBuffer()) {
                 event.ts.sec = curTv.tv_sec;
@@ -620,14 +671,28 @@ void cClient::report() {
     float p = (100.0 * (pkt_sent - pkt_rcvd)) / pkt_sent;
     float uloss = (float) (100.0 * (pkt_sent - server_received)) / pkt_sent;
     float dloss = (float) (100.0 * (server_received - pkt_rcvd)) / server_received;
+    stringstream ss;
+    ss.str("");
+    ss.setf(ios_base::right, ios_base::adjustfield);
+    ss.setf(ios_base::fixed, ios_base::floatfield);
+    ss.precision(2);
 
-    fprintf(fp, "\n---Client report--- %s ping statistics ---\n", setup->getHostname().c_str());
-    fprintf(fp, "%llu packets transmitted, %llu received, %.f%% packet loss, time %.fms\n", pkt_sent, pkt_rcvd, p, tSent);
-    fprintf(fp, "rtt min/avg/max = %.2f/%.2f/%.2f ms, ", rtt_min, rtt_avg, rtt_max);
-    fprintf(fp, "Out of Order = %llu packets\n", ooo_cnt);
+    ss << "\n---Client report--- " << setup->getHostname() << " ping statistics ---\n";
 
-    fprintf(fp, "\n---Server report--- %s ping statistics ---\n", setup->getHostname().c_str());
-    fprintf(fp, "%llu received, %.f%% upstream packet loss, %.f%% downstream packet loss\n", server_received, uloss, dloss);
+    ss << pkt_sent << " packets transmitted, " << pkt_rcvd << " received, ";
+    ss << p << "% packet loss, time ";
+    ss << tSent << "ms\n";
+
+    ss << "rtt min/avg/max = ";
+    ss <<rtt_min <<"/"<< rtt_avg <<"/"<< rtt_max <<" ms ";
+    ss << "Out of Order = "<<ooo_cnt<<" packets\n";
+
+    ss << "\n---Server report--- "<< setup->getHostname() <<" ping statistics ---\n";
+    ss << server_received<<" received, ";
+    ss<< uloss<<"% upstream packet loss, ";
+    ss << dloss<<"% downstream packet loss\n\n";
+    
+    fprintf(fp, "%s", ss.str().c_str());
     fclose(fp);
 }
 
@@ -654,7 +719,8 @@ u_int16_t cClient::getPacketSize() {
 }
 
 void cClient::delay(timespec req) {
-    int e = clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &req, &req);
+    //int e = clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &req, &req);
+    clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &req, &req);
 }
 
 bool cClient::status() {

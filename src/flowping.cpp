@@ -37,23 +37,27 @@ pthread_t t_cSender, t_cReceiver, t_cReceiver_output, t_sServer, t_cPacketFactor
 void * t_helper_sServer(void * arg) {
     server = (cServer *) arg;
     server->run();
+    return NULL;
 }
 
 //Send packets
 void * t_helper_cSender(void * arg) {
     client = (cClient *) arg;
     client->run_sender();
+    return NULL;
 }
 
 void * t_helper_cPacketFactory(void * arg) {
     client = (cClient *) arg;
     client->run_packetFactory();
+    return NULL;
 }
 
 //Receives packets
 void * t_helper_cReceiver(void * arg) {
     client = (cClient *) arg;
     client->run_receiver();
+    return NULL;
 }
 
 //Handle some basic signals
@@ -109,25 +113,22 @@ int main(int argc, char** argv) {
 #define DD __DATE__
 #define TT __TIME__    
 
-    char str[80];
+    stringstream version;
 
 
-
+    version.str("");
 #ifdef xENV_32
-    strcpy(str, "x86_32 1.4.0d");
+    version << "x86_32 1.4.0e";
+    version << " (" << DD << " "<< TT << ")";
 #endif    
 #ifdef xENV_64
-    strcpy(str, "x86_64 1.4.0d");
+    version << "x86_64 1.4.0e";
+    version << " (" << DD << " "<< TT << ")";
 #endif    
 
-//strcpy(str, "ARM_32 1.2.5");
-    strcat(str, " (");
-    strcat(str, DD);
-    strcat(str, " ");
-    strcat(str, TT);
-    strcat(str, ")");
-
-    setup = new cSetup(argc, argv, str);
+    //version << "ARM_32 1.4.0e" << " (" << DD << " "<< TT << ")";
+    
+    setup = new cSetup(argc, argv, version.str().c_str());
 
     //Check cmd line parameters
     if (setup->self_check() == SETUP_CHCK_SHOW) {

@@ -36,7 +36,6 @@
 #include <sstream>
 #include <climits>
 #include <stdlib.h>
-#include <libio.h>
 #include <getopt.h>
 #include <stdio.h>
 #include <unistd.h>
