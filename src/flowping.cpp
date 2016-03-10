@@ -47,6 +47,7 @@ void * t_helper_cSender(void * arg) {
     return NULL;
 }
 
+//Packet generator
 void * t_helper_cPacketFactory(void * arg) {
     client = (cClient *) arg;
     client->run_packetFactory();
@@ -128,7 +129,7 @@ int main(int argc, char** argv) {
 
     //version << "ARM_32 1.4.0e" << " (" << DD << " "<< TT << ")";
     
-    setup = new cSetup(argc, argv, version.str().c_str());
+    setup = new cSetup(argc, argv, version.str());
 
     //Check cmd line parameters
     if (setup->self_check() == SETUP_CHCK_SHOW) {
@@ -169,33 +170,31 @@ int main(int argc, char** argv) {
             }
         }
         client = new cClient(setup);
-        /*
-        if (setup->useTimedBuffer()) {
-            if (setup->prepTimedBuffer() != 0) {
-                exit(1);
-            };
-        }
-        */
         pthread_setconcurrency(4);
         if (pthread_create(&t_cPacketFactory, NULL, t_helper_cPacketFactory, (void *) client) != 0) {
             perror("pthread_create");
             exit(1);
         }
 
-        //pthread_setaffinity_np(t_cReceiver_output, sizeof (cpu_set_t), &mask);
         if (pthread_create(&t_cReceiver, NULL, t_helper_cReceiver, (void *) client) != 0) {
             perror("pthread_create");
             exit(1);
         }
-        //pthread_setaffinity_np(t_cReceiver, sizeof (cpu_set_t), &mask);
         if (pthread_create(&t_cSender, NULL, t_helper_cSender, (void *) client) != 0) {
             perror("pthread_create");
             exit(1);
         }
-        //pthread_setaffinity_np(t_cSender, sizeof (cpu_set_t), &mask);
         pthread_join(t_cSender, NULL);
         pthread_join(t_cReceiver, NULL);
+        //pthread_join(t_cPacketFactory, NULL);
+
+        timespec * tout;
+        tout = new timespec;
+        tout->tv_sec=2;
+        tout->tv_nsec=0;
+        pthread_timedjoin_np(t_cPacketFactory, NULL, tout);
         delete(client);
+	delete(tout);
         if (setup->npipe()) {
             system("rm -f /tmp/flowping");
         }

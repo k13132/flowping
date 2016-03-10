@@ -67,7 +67,7 @@ cClient::~cClient() {
 int cClient::run_packetFactory() {
     bool pkt_created;
     while (!setup->tpReady()) {
-        usleep(200000);
+        usleep(50000);
     }
     if (!setup->useTimedBuffer()) {
         pkt_created = setup->prepNextPacket();

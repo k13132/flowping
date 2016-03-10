@@ -49,8 +49,13 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->q_par = false;
     this->f_par = false;
     this->h_par = false;
+    this->H_par = false;
+    this->u_par = false;
+    this->U_par = false;
     this->F_par = false;
     this->c_par = false;
+    this->e_par = false;
+    this->E_par = false;
     this->C_par = false;
     this->D_par = false;
     this->w_par = false;
@@ -71,6 +76,7 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->interval_I = 1000000000; // 1s
     this->time_t = 10; // 10s
     this->time_T = 10; // 10s
+    this->time_R = 0; // 0s
     this->size = 64; // 64B Payload
     this->rate_b = 1; // 1kbit/s
     this->rate_B = 1; // 1kbit/s
