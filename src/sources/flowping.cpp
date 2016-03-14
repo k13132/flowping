@@ -188,13 +188,13 @@ int main(int argc, char** argv) {
         pthread_join(t_cReceiver, NULL);
         //pthread_join(t_cPacketFactory, NULL);
 
-        timespec * tout;
-        tout = new timespec;
-        tout->tv_sec=2;
-        tout->tv_nsec=0;
-        pthread_timedjoin_np(t_cPacketFactory, NULL, tout);
+        //timespec * tout;
+        //tout = new timespec;
+        //tout->tv_sec=2;
+        //tout->tv_nsec=0;
+        //pthread_timedjoin_np(t_cPacketFactory, NULL, tout);
         delete(client);
-	delete(tout);
+	//delete(tout);
         if (setup->npipe()) {
             system("rm -f /tmp/flowping");
         }
