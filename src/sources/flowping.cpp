@@ -119,11 +119,11 @@ int main(int argc, char** argv) {
 
     version.str("");
 #ifdef xENV_32
-    version << "x86_32 1.4.0e";
+    version << "x86_32 1.4.0f";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 #ifdef xENV_64
-    version << "x86_64 1.4.0e";
+    version << "x86_64 1.4.0f";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 

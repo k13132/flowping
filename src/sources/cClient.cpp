@@ -535,6 +535,7 @@ int cClient::run_sender() {
             }
         } else {
             stop = true;
+            cout << "STOP!\n";
             break;
         }
         ping_pkt->sec = curTv.tv_sec;

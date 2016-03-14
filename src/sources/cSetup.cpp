@@ -652,7 +652,7 @@ int cSetup::parseCmdLine() {
     tpoints.push(tmp);
 
     if (deadline == 0) {
-        deadline = ((tpoint_def_t) tpoints.back()).ts;
+        deadline = tmp.ts;
     }
     refactorTPoints();
     this->tp_ready = true;
@@ -806,7 +806,7 @@ struct ts_t cSetup::getNextPacketTS(struct ts_t ts, struct ts_t sts, struct ts_t
         delay = (u_int64_t)8*1000000000 * len / erate;
     } else {
         if (nsec_delta == 0) {
-            delay = (u_int64_t) 1000000000 * sqrt((16.0 * len * interval) / (delta_rate));
+	    delay = (u_int64_t) 1000000000 * sqrt((16.0 * len * interval) / (abs(delta_rate)));
         } else {
             delay = (u_int64_t) 8*1000000000 * (len / (srate + (delta_rate / interval * delta))); //interval [nsec];
         }
@@ -815,6 +815,7 @@ struct ts_t cSetup::getNextPacketTS(struct ts_t ts, struct ts_t sts, struct ts_t
     ts.nsec = (ts.nsec + delay) % 1000000000;
     return ts;
 }
+
 
 bool cSetup::prepNextPacket() {
     if (!tpoints.empty()) {
@@ -826,8 +827,6 @@ bool cSetup::prepNextPacket() {
             s_tmp_ts.nsec = (u_int64_t) (fmod(td_tmp.ts, 1)*1000000000);
             tmp_len = td_tmp.len;
             tmp_ts = s_tmp_ts;
-            //cerr << "1     ~ rate: " << td_tmp.bitrate << "\tts: " << td_tmp.ts << "\tsize: " << td_tmp.len << endl;
-            //cerr << "     ~ time: " << s_tmp_ts.sec << "." << s_tmp_ts.usec  << endl;
             tpoints.pop();
         }
     }
@@ -874,8 +873,6 @@ bool cSetup::prepNextPacket() {
 u_int64_t cSetup::getTimedBufferDelay() {
     u_int64_t delay;
     if (pbuffer.size()) {
-        //cout << pbuffer.back().sec * 1000000000 + pbuffer.back().nsec<<"\t-\t";
-        //cout << (pbuffer.front().sec * 1000000000 + pbuffer.front().nsec)<<endl;
         delay = (pbuffer.back().sec * 1000000000L + pbuffer.back().nsec)-(pbuffer.front().sec * 1000000000L + pbuffer.front().nsec);
         return delay;
     } else {
