@@ -1,3 +1,7 @@
+1.4.1
+    - licence change to GNU GPLv3
+    - Platform detection code change
+    - minor fixes
 1.4.0
     - complete packet generator core redesign
     - when using description file [-u] -zero bitrate is now possible

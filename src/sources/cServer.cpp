@@ -1,25 +1,28 @@
-/* 
- * File:   server.cpp
- * 
- * Author: Ondrej Vondrous, KTT, CVUT
- * Email: vondrond@fel.cvut.cz
- * Copyright: Department of Telecommunication Engineering, FEE, CTU in Prague 
- * License: Creative Commons 3.0 BY-NC-SA
-
+/*
+ * File:   cServer.cpp
+ *
+ * Copyright (C) 2016: Department of Telecommunication Engineering, FEE, CTU in Prague
+ *
  * This file is part of FlowPing.
  *
- *  FlowPing is free software: you can redistribute it and/or modify
- *  it under the terms of the Creative Commons BY-NC-SA License v 3.0.
+ * FlowPing is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
  *
- *  FlowPing is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY.
+ * FlowPing is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details
  *
- *  You should have received a copy of the Creative Commons 3.0 BY-NC-SA License
- *  along with FlowPing.
- *  If not, see <http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode>. 
- *   
+ * You should have received a copy of the GNU General Public License
+ * along with FlowPing.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Author: Ondrej Vondrous
+ *         Department of Telecommunication Engineering
+ *         FEE, Czech Technical University in Prague
+ *         ondrej.vondrous@fel.cvut.cz
  */
-
 
 
 #include <stdlib.h>
@@ -240,7 +243,7 @@ int cServer::run() {
                     ping_msg->code = CNT_OUTPUT_REDIR;
                 } else {
                     //setup->setExtFilename((string) ping_msg->msg);
-                    if (setup->self_check() == SETUP_CHCK_VER) fprintf(connection->fp, setup->get_version().c_str());
+                    if (setup->self_check() == SETUP_CHCK_VER) fprintf(connection->fp, "%s", setup->get_version().c_str());
                 }
             }
             if (ping_msg->code == CNT_NOFNAME) {
@@ -259,7 +262,7 @@ int cServer::run() {
                         connection->fp = stdout;
                         ping_msg->code = CNT_OUTPUT_REDIR;
                     } else {
-                        if (setup->self_check() == SETUP_CHCK_VER) fprintf(connection->fp, setup->get_version().c_str());
+                        if (setup->self_check() == SETUP_CHCK_VER) fprintf(connection->fp, "%s", setup->get_version().c_str());
                     }
                 } else {
                     connection->fp = setup->getFP();
