@@ -1,24 +1,29 @@
-/* 
+/*
  * File:   cSetup.cpp
- * 
- * Author: Ondrej Vondrous, KTT, CVUT
- * Email: vondrond@fel.cvut.cz
- * Copyright: Department of Telecommunication Engineering, FEE, CTU in Prague 
- * License: Creative Commons 3.0 BY-NC-SA
-
+ *
+ * Copyright (C) 2016: Department of Telecommunication Engineering, FEE, CTU in Prague
+ *
  * This file is part of FlowPing.
  *
- *  FlowPing is free software: you can redistribute it and/or modify
- *  it under the terms of the Creative Commons BY-NC-SA License v 3.0.
+ * FlowPing is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
  *
- *  FlowPing is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY.
+ * FlowPing is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details
  *
- *  You should have received a copy of the Creative Commons 3.0 BY-NC-SA License
- *  along with FlowPing.
- *  If not, see <http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode>. 
- *   
+ * You should have received a copy of the GNU General Public License
+ * along with FlowPing.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Author: Ondrej Vondrous
+ *         Department of Telecommunication Engineering
+ *         FEE, Czech Technical University in Prague
+ *         ondrej.vondrous@fel.cvut.cz
  */
+
 
 
 #include "cSetup.h"
@@ -652,7 +657,7 @@ int cSetup::parseCmdLine() {
     tpoints.push(tmp);
 
     if (deadline == 0) {
-        deadline = ((tpoint_def_t) tpoints.back()).ts;
+        deadline = tmp.ts;
     }
     refactorTPoints();
     this->tp_ready = true;
@@ -806,7 +811,7 @@ struct ts_t cSetup::getNextPacketTS(struct ts_t ts, struct ts_t sts, struct ts_t
         delay = (u_int64_t)8*1000000000 * len / erate;
     } else {
         if (nsec_delta == 0) {
-            delay = (u_int64_t) 1000000000 * sqrt((16.0 * len * interval) / (delta_rate));
+	    delay = (u_int64_t) 1000000000 * sqrt((16.0 * len * interval) / (abs(delta_rate)));
         } else {
             delay = (u_int64_t) 8*1000000000 * (len / (srate + (delta_rate / interval * delta))); //interval [nsec];
         }
@@ -815,6 +820,7 @@ struct ts_t cSetup::getNextPacketTS(struct ts_t ts, struct ts_t sts, struct ts_t
     ts.nsec = (ts.nsec + delay) % 1000000000;
     return ts;
 }
+
 
 bool cSetup::prepNextPacket() {
     if (!tpoints.empty()) {
@@ -826,8 +832,6 @@ bool cSetup::prepNextPacket() {
             s_tmp_ts.nsec = (u_int64_t) (fmod(td_tmp.ts, 1)*1000000000);
             tmp_len = td_tmp.len;
             tmp_ts = s_tmp_ts;
-            //cerr << "1     ~ rate: " << td_tmp.bitrate << "\tts: " << td_tmp.ts << "\tsize: " << td_tmp.len << endl;
-            //cerr << "     ~ time: " << s_tmp_ts.sec << "." << s_tmp_ts.usec  << endl;
             tpoints.pop();
         }
     }
@@ -874,8 +878,6 @@ bool cSetup::prepNextPacket() {
 u_int64_t cSetup::getTimedBufferDelay() {
     u_int64_t delay;
     if (pbuffer.size()) {
-        //cout << pbuffer.back().sec * 1000000000 + pbuffer.back().nsec<<"\t-\t";
-        //cout << (pbuffer.front().sec * 1000000000 + pbuffer.front().nsec)<<endl;
         delay = (pbuffer.back().sec * 1000000000L + pbuffer.back().nsec)-(pbuffer.front().sec * 1000000000L + pbuffer.front().nsec);
         return delay;
     } else {

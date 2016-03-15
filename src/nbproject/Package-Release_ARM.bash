@@ -6,7 +6,7 @@
 
 # Macros
 TOP=`pwd`
-CND_PLATFORM=None-None
+CND_PLATFORM=GNU-None
 CND_CONF=Release_ARM
 CND_DISTDIR=dist
 CND_BUILDDIR=build

@@ -39,13 +39,13 @@ CND_PACKAGE_DIR_Debug_64=dist/Debug_64/GNU-Linux/package
 CND_PACKAGE_NAME_Debug_64=src.tar
 CND_PACKAGE_PATH_Debug_64=dist/Debug_64/GNU-Linux/package/src.tar
 # Release_ARM configuration
-CND_PLATFORM_Release_ARM=None-None
-CND_ARTIFACT_DIR_Release_ARM=dist/Release_ARM/None-None
+CND_PLATFORM_Release_ARM=GNU-None
+CND_ARTIFACT_DIR_Release_ARM=dist/Release_ARM/GNU-None
 CND_ARTIFACT_NAME_Release_ARM=src
-CND_ARTIFACT_PATH_Release_ARM=dist/Release_ARM/None-None/src
-CND_PACKAGE_DIR_Release_ARM=dist/Release_ARM/None-None/package
+CND_ARTIFACT_PATH_Release_ARM=dist/Release_ARM/GNU-None/src
+CND_PACKAGE_DIR_Release_ARM=dist/Release_ARM/GNU-None/package
 CND_PACKAGE_NAME_Release_ARM=src.tar
-CND_PACKAGE_PATH_Release_ARM=dist/Release_ARM/None-None/package/src.tar
+CND_PACKAGE_PATH_Release_ARM=dist/Release_ARM/GNU-None/package/src.tar
 #
 # include compiler specific variables
 #

@@ -21,7 +21,7 @@ FC=gfortran
 AS=as
 
 # Macros
-CND_PLATFORM=None-None
+CND_PLATFORM=GNU-None
 CND_DLIB_EXT=so
 CND_CONF=Release_ARM
 CND_DISTDIR=dist

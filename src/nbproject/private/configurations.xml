@@ -112,8 +112,6 @@
         <gdb_interceptlist>
           <gdbinterceptoptions gdb_all="false" gdb_unhandled="true" gdb_unexpected="true"/>
         </gdb_interceptlist>
-        <gdb_signals>
-        </gdb_signals>
         <gdb_options>
           <DebugOptions>
           </DebugOptions>
@@ -140,7 +138,7 @@
     </conf>
     <conf name="Release_ARM" type="1">
       <toolsSet>
-        <developmentServer>root@192.168.1.172:22</developmentServer>
+        <developmentServer>root@192.168.1.21:22</developmentServer>
         <platform>6</platform>
       </toolsSet>
       <dbx_gdbdebugger version="1">

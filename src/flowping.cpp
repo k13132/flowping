@@ -1,23 +1,27 @@
-/* 
+/*
  * File:   flowping.cpp
- * 
- * Author: Ondrej Vondrous, KTT, CVUT
- * Email: vondrond@fel.cvut.cz
- * Copyright: Department of Telecommunication Engineering, FEE, CTU in Prague 
- * License: Creative Commons 3.0 BY-NC-SA
-
+ *
+ * Copyright (C) 2016: Department of Telecommunication Engineering, FEE, CTU in Prague
+ *
  * This file is part of FlowPing.
  *
- *  FlowPing is free software: you can redistribute it and/or modify
- *  it under the terms of the Creative Commons BY-NC-SA License v 3.0.
+ * FlowPing is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
  *
- *  FlowPing is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY.
+ * FlowPing is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details
  *
- *  You should have received a copy of the Creative Commons 3.0 BY-NC-SA License
- *  along with FlowPing.
- *  If not, see <http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode>. 
- *   
+ * You should have received a copy of the GNU General Public License
+ * along with FlowPing.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Author: Ondrej Vondrous
+ *         Department of Telecommunication Engineering
+ *         FEE, Czech Technical University in Prague
+ *         ondrej.vondrous@fel.cvut.cz
  */
 
 
@@ -118,16 +122,20 @@ int main(int argc, char** argv) {
 
 
     version.str("");
-#ifdef xENV_32
-    version << "x86_32 1.4.0e";
+#ifdef __i386
+    version << "x86_32 1.4.1";
     version << " (" << DD << " "<< TT << ")";
 #endif    
-#ifdef xENV_64
-    version << "x86_64 1.4.0e";
+#ifdef __x86_64__
+    version << "x86_64 1.4.1";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
-    //version << "ARM_32 1.4.0e" << " (" << DD << " "<< TT << ")";
+#ifdef __ARM_ARCH_7A__
+    version << "ARM_32 1.4.1";
+    version << " (" << DD << " "<< TT << ")";
+#endif    
+    
     
     setup = new cSetup(argc, argv, version.str());
 
@@ -188,15 +196,18 @@ int main(int argc, char** argv) {
         pthread_join(t_cReceiver, NULL);
         //pthread_join(t_cPacketFactory, NULL);
 
-        timespec * tout;
-        tout = new timespec;
-        tout->tv_sec=2;
-        tout->tv_nsec=0;
-        pthread_timedjoin_np(t_cPacketFactory, NULL, tout);
+        //timespec * tout;
+        //tout = new timespec;
+        //tout->tv_sec=2;
+        //tout->tv_nsec=0;
+        //pthread_timedjoin_np(t_cPacketFactory, NULL, tout);
         delete(client);
-	delete(tout);
+	//delete(tout);
         if (setup->npipe()) {
-            system("rm -f /tmp/flowping");
+            if (system("rm -f /tmp/flowping")){
+            perror("npipe removal failed");
+            exit(1);
+            }
         }
     }
     delete(setup);
