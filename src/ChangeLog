@@ -1,0 +1,14 @@
+1.4.1
+    - licence change to GNU GPLv3
+    - Platform detection code change
+    - minor fixes
+1.4.0
+    - complete packet generator core redesign
+    - when using description file [-u] -zero bitrate is now possible
+    - send intervals for 32k packets are precomputed and stored in buffer
+    - when buffer state is under 90%, buffer refill is started.
+    - packet buffer consumes is aprox. 830KB heap memory
+    - performance and stability improvements
+    - other bugfixes
+
+1.3.x
