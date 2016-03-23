@@ -31,6 +31,7 @@
 
 #include "_types.h"
 #include "cSetup.h"
+#include "cStats.h"
 #include <map>
 
 
@@ -54,7 +55,7 @@ struct t_conn{
 
 class cServer {
 public:
-    cServer(cSetup *setup);
+    cServer(cSetup *setup, cStats *stats);
     void terminate(void);
     virtual ~cServer();
     int run(void);
@@ -63,6 +64,7 @@ private:
     map <uint64_t,t_conn *> connections;
     t_conn * connection;
     cSetup *setup;
+    cServerStats *stats;
     int sock;
     bool stop;
 };

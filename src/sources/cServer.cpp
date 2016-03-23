@@ -30,8 +30,9 @@
 #include "cServer.h"
 #include "_types.h"
 
-cServer::cServer(cSetup *setup) {
+cServer::cServer(cSetup *setup, cStats *stats) {
     this->setup = setup;
+    this->stats = (cServerStats *)stats;
     this->stop = false;
 
     //ToDo: zjistit, zdqa je to potreba a zda to ma nejaky prinos    

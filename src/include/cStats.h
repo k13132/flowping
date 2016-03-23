@@ -27,15 +27,62 @@
 #ifndef CSTATS_H
 #define CSTATS_H
 
+#include "_types.h"
+#include "cSetup.h"
+
+struct c_stats_t{
+    u_int64_t tx_pkts;
+    u_int64_t rx_pkts;
+    u_int64_t server_rx_pkts;
+    u_int64_t ooo_pkts;
+    u_int32_t bitrare;
+    double rtt_min;
+    double rtt_max;
+    double rtt_avg;
+    std::string dst;
+    u_int64_t duration;
+};
+
+struct s_stats_t{
+    u_int64_t tx_pkts;
+    u_int64_t rx_pkts;
+    u_int32_t bitrare;
+    std::string src;
+};
+
 class cStats {
 public:
     cStats();
     virtual ~cStats();
-    void print(void);
+    virtual void printSummary(void) const;
+    virtual void printRealTime(void) const;
 private:
-    int x;
 
 };
 
+class cServerStats:public cStats{
+public:
+    cServerStats(cSetup *setup);
+    virtual void printSummary(void) const;
+    virtual void printRealTime(void) const;
+private:
+    cSetup *setup;
+    s_stats_t stats;
+};
+
+class cClientStats:public cStats{
+public:
+    cClientStats(cSetup *setup);
+    std::string getReport(void) const;
+    void pktSent(void); //increment tx_pkts;
+    void pktOoo(void); //increment OutOfOrder packet counter;
+    void addRTT(const double rtt);
+    void addServerStats(const u_int64_t server_rx_pkts);
+    virtual void printSummary(void) const;
+    virtual void printRealTime(void) const;
+private:
+    cSetup *setup;
+    c_stats_t stats;
+};
 #endif /* CSTATS_H */
 

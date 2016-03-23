@@ -25,9 +25,9 @@
  */
 
 
+#include "flowping.h"
 #include <cstdlib>
 #include <iostream>
-#include "flowping.h"
 #include <signal.h>
 #include <sched.h>
 
@@ -88,7 +88,9 @@ void signalHandler(int sig) {
         }
     }
     if (sig == SIGUSR1) { //SIG 10              
-        //zatim nedela nic
+        if (stats){
+            stats->printRealTime();
+        }
     }
     if (sig == SIGUSR2) { //SIG 12              
         //zatim nedela nic
@@ -124,16 +126,16 @@ int main(int argc, char** argv) {
 
     version.str("");
 #ifdef __i386
-    version << "x86_32 1.4.1";
+    version << "x86_32 1.4.2-devel";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 #ifdef __x86_64__
-    version << "x86_64 1.4.1";
+    version << "x86_64 1.4.2-devel";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
 #ifdef __ARM_ARCH_7A__
-    version << "ARM_32 1.4.1";
+    version << "ARM_32 1.4.2-devel";
     version << " (" << DD << " "<< TT << ")";
 #endif    
     
@@ -160,7 +162,8 @@ int main(int argc, char** argv) {
         sched_setscheduler(0, SCHED_FIFO, &param);
     }
     if (setup->isServer()) {
-        server = new cServer(setup);
+        stats = new cServerStats(setup);
+        server = new cServer(setup, stats);
         if (pthread_create(&t_sServer, NULL, t_helper_sServer, (void *) server) != 0) {
             perror("pthread_create");
             exit(1);
@@ -178,7 +181,8 @@ int main(int argc, char** argv) {
 
             }
         }
-        client = new cClient(setup);
+        stats = new cClientStats(setup);
+        client = new cClient(setup, stats);
         pthread_setconcurrency(4);
         if (pthread_create(&t_cPacketFactory, NULL, t_helper_cPacketFactory, (void *) client) != 0) {
             perror("pthread_create");
@@ -212,6 +216,7 @@ int main(int argc, char** argv) {
         }
     }
     delete(setup);
+    delete(stats);
     cout << endl << ".::. Good bye!" << endl;
     return EXIT_SUCCESS;
 }

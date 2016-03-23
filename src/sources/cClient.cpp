@@ -36,8 +36,9 @@
 
 #include "cClient.h"
 
-cClient::cClient(cSetup *setup) {
+cClient::cClient(cSetup *setup, cStats *stats) {
     this->setup = setup;
+    this->stats = (cClientStats *) stats;
     this->s_running = false;
     this->r_running = false;
     this->gennerator_running = false;
@@ -183,7 +184,7 @@ int cClient::run_receiver() {
 #endif
             if (ping_msg->code == CNT_DONE_OK) {
                 done = true;
-                server_received = ping_msg->count;
+                stats->addServerStats(ping_msg->count);
             }
             if (ping_msg->code == CNT_FNAME_OK) started = true;
             if (ping_msg->code == CNT_OUTPUT_REDIR) started = true;
@@ -202,20 +203,7 @@ int cClient::run_receiver() {
             //cout << curTv.tv_sec << "\t" << ping_pkt->sec << "\t" << curTv.tv_usec << "\t" << ping_pkt->usec << "\t" << rtt << endl;
             //get tSent in millisecond
             sent_ts = ((ping_pkt->sec - start_ts.tv_sec) * 1000 + (ping_pkt->nsec - start_ts.tv_nsec) / 1000000.0);
-            if (rtt_min == -1) {
-                rtt_min = rtt;
-                rtt_max = rtt;
-                rtt_avg = rtt;
-            } else {
-                if (rtt < rtt_min) {
-                    rtt_min = rtt;
-                }
-                if (rtt > rtt_max) {
-                    rtt_max = rtt;
-                }
-            }
-            rtt_avg = ((this->pkt_rcvd - 1) * rtt_avg + rtt) / this->pkt_rcvd;
-
+            stats->addRTT(rtt); // Also updates  rx_pkts
             if (show) {
                 if (setup->wholeFrame()) nRet += 42;
                 if (setup->showTimeStamps()) {
@@ -302,7 +290,7 @@ int cClient::run_receiver() {
                 if (!setup->toCSV()) {
                     ss << " OUT OF ORDER!\n";
                 }
-                this->ooo_cnt++;
+                stats->pktOoo();
             } else {
                 if (show) {
                     ss << endl;
@@ -556,8 +544,6 @@ int cClient::run_sender() {
                     if (pipe_cnt++ < 3000) continue; //10 minutes timeout.
                 } else {
                     pipe_started = true;
-                    i = 1;
-                    pkt_sent = 1;
                 }
             }
             if (payload_size > 0) {
@@ -590,7 +576,7 @@ int cClient::run_sender() {
             close(this->sock);
             exit(1);
         }
-        pkt_sent++;
+        stats->pktSent();
         if (setup->showSendBitrate()) {
             nRet = HEADER_LENGTH + payload_size;
             if (setup->frameSize()) nRet += 42;
@@ -674,31 +660,7 @@ int cClient::run_sender() {
 }
 
 void cClient::report() {
-    float p = (100.0 * (pkt_sent - pkt_rcvd)) / pkt_sent;
-    float uloss = (float) (100.0 * (pkt_sent - server_received)) / pkt_sent;
-    float dloss = (float) (100.0 * (server_received - pkt_rcvd)) / server_received;
-    stringstream ss;
-    ss.str("");
-    ss.setf(ios_base::right, ios_base::adjustfield);
-    ss.setf(ios_base::fixed, ios_base::floatfield);
-    ss.precision(2);
-
-    ss << "\n---Client report--- " << setup->getHostname() << " ping statistics ---\n";
-
-    ss << pkt_sent << " packets transmitted, " << pkt_rcvd << " received, ";
-    ss << p << "% packet loss, time ";
-    ss << tSent << "ms\n";
-
-    ss << "rtt min/avg/max = ";
-    ss <<rtt_min <<"/"<< rtt_avg <<"/"<< rtt_max <<" ms ";
-    ss << "Out of Order = "<<ooo_cnt<<" packets\n";
-
-    ss << "\n---Server report--- "<< setup->getHostname() <<" ping statistics ---\n";
-    ss << server_received<<" received, ";
-    ss<< uloss<<"% upstream packet loss, ";
-    ss << dloss<<"% downstream packet loss\n\n";
-    
-    fprintf(fp, "%s", ss.str().c_str());
+    fprintf(fp, "%s", stats->getReport().c_str());
     fclose(fp);
 }
 
