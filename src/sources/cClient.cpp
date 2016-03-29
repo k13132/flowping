@@ -203,7 +203,7 @@ int cClient::run_receiver() {
             //cout << curTv.tv_sec << "\t" << ping_pkt->sec << "\t" << curTv.tv_usec << "\t" << ping_pkt->usec << "\t" << rtt << endl;
             //get tSent in millisecond
             sent_ts = ((ping_pkt->sec - start_ts.tv_sec) * 1000 + (ping_pkt->nsec - start_ts.tv_nsec) / 1000000.0);
-            stats->addRTT(rtt); // Also updates  rx_pkts
+            stats->addCRxInfo(r_curTv,ping_pkt->size+HEADER_LENGTH,rtt); // Also updates  rx_pkts
             if (show) {
                 if (setup->wholeFrame()) nRet += 42;
                 if (setup->showTimeStamps()) {
@@ -528,7 +528,6 @@ int cClient::run_sender() {
             }
         } else {
             stop = true;
-            cout << "STOP!\n";
             break;
         }
         ping_pkt->sec = curTv.tv_sec;
@@ -576,7 +575,7 @@ int cClient::run_sender() {
             close(this->sock);
             exit(1);
         }
-        stats->pktSent();
+        stats->pktSent(curTv,nRet);
         if (setup->showSendBitrate()) {
             nRet = HEADER_LENGTH + payload_size;
             if (setup->frameSize()) nRet += 42;

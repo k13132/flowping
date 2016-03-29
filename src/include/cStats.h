@@ -27,6 +27,11 @@
 #ifndef CSTATS_H
 #define CSTATS_H
 
+#define TX 0
+#define RX 1
+
+
+ 
 #include "_types.h"
 #include "cSetup.h"
 
@@ -35,7 +40,8 @@ struct c_stats_t{
     u_int64_t rx_pkts;
     u_int64_t server_rx_pkts;
     u_int64_t ooo_pkts;
-    u_int32_t bitrare;
+    u_int32_t tx_bitrare;
+    u_int32_t rx_bitrare;
     double rtt_min;
     double rtt_max;
     double rtt_avg;
@@ -46,8 +52,14 @@ struct c_stats_t{
 struct s_stats_t{
     u_int64_t tx_pkts;
     u_int64_t rx_pkts;
-    u_int32_t bitrare;
+    u_int32_t tx_bitrare;
+    u_int32_t rx_bitrare;
     std::string src;
+};
+
+struct pinfo_t{
+    timespec ts;
+    u_int16_t len;
 };
 
 class cStats {
@@ -56,8 +68,16 @@ public:
     virtual ~cStats();
     virtual void printSummary(void) const;
     virtual void printRealTime(void) const;
+protected:
+    //enqueue + queue management + stats update; 
+    u_int32_t pk_enque(const uint16_t direction, const timespec ts, const u_int16_t len);
 private:
-
+    queue<pinfo_t> pk_info_rx_queue;
+    queue<pinfo_t> pk_info_tx_queue;
+    u_int64_t tx_qsize; //Bits
+    u_int64_t tx_qtime; //Q time len in ms
+    u_int64_t rx_qsize; //Bits
+    u_int64_t rx_qtime; //Q time len in ms
 };
 
 class cServerStats:public cStats{
@@ -74,9 +94,9 @@ class cClientStats:public cStats{
 public:
     cClientStats(cSetup *setup);
     std::string getReport(void) const;
-    void pktSent(void); //increment tx_pkts;
+    void pktSent(const timespec ts, const uint16_t len); //increment tx_pkts;
     void pktOoo(void); //increment OutOfOrder packet counter;
-    void addRTT(const double rtt);
+    void addCRxInfo(const timespec ts, const u_int16_t len, const double rtt);
     void addServerStats(const u_int64_t server_rx_pkts);
     virtual void printSummary(void) const;
     virtual void printRealTime(void) const;
