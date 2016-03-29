@@ -56,9 +56,10 @@
 #include <pthread.h>
 #include <errno.h>
 #include <math.h>
+#include <map>
 
 #define MAX_PKT_SIZE 1476
-#define MIN_PKT_SIZE 64  //equal to header size
+#define MIN_PKT_SIZE 64  //equal to packet header + FP header size
 #define HEADER_LENGTH 32
 
 #define CONTROL 1
@@ -78,6 +79,13 @@
 #define CNT_DPAR 16  //0001 0000
 #define CNT_ePAR 32  //0010 0000
 #define CNT_EPAR 64  //0100 0000
+#define CNT_RESERVED 128  //1000 0000       //reserved
+
+
+#define TX 0
+#define RX 1
+
+
 
 struct ts_t{
     u_int64_t sec;
@@ -107,7 +115,7 @@ struct ping_msg_t {         //Min MSG SIZE 16B
     u_int8_t code;
     u_int64_t count;
     u_int16_t size;
-    u_int8_t params;    /// 00000001 - H_PAR //Bit encoded
+    u_int8_t params;        // 00000001 - H_PAR //Bit encoded
     u_int8_t id;
     u_int16_t check;
     char msg[MAX_PKT_SIZE];

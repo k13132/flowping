@@ -203,7 +203,7 @@ int cClient::run_receiver() {
             //cout << curTv.tv_sec << "\t" << ping_pkt->sec << "\t" << curTv.tv_usec << "\t" << ping_pkt->usec << "\t" << rtt << endl;
             //get tSent in millisecond
             sent_ts = ((ping_pkt->sec - start_ts.tv_sec) * 1000 + (ping_pkt->nsec - start_ts.tv_nsec) / 1000000.0);
-            stats->addCRxInfo(r_curTv,ping_pkt->size+HEADER_LENGTH,rtt); // Also updates  rx_pkts
+            stats->addCRxInfo(r_curTv, nRet, rtt); // Also updates  rx_pkts
             if (show) {
                 if (setup->wholeFrame()) nRet += 42;
                 if (setup->showTimeStamps()) {
@@ -370,7 +370,7 @@ int cClient::run_sender() {
     struct ping_pkt_t *ping_pkt;
     struct ping_msg_t *ping_msg;
     stringstream ss;
-    unsigned char packet[MAX_PKT_SIZE + 60]={0}; //Random FILL will be better
+    unsigned char packet[MAX_PKT_SIZE + 60] = {0}; //Random FILL will be better
     int nRet;
     int pipe_handle;
     pipe_handle = 0; //warning elimination
@@ -530,9 +530,11 @@ int cClient::run_sender() {
             stop = true;
             break;
         }
+
+
         ping_pkt->sec = curTv.tv_sec;
         ping_pkt->nsec = curTv.tv_nsec;
-        ping_pkt->size = payload_size;
+        ping_pkt->size = payload_size; //info for server side in AntiAsym mode; //Real size should be obtained as ret size of send and receive
         ping_pkt->seq = i;
         if (setup->npipe()) {
             payload_size = read(pipe_handle, pipe_buffer, payload_size);
@@ -561,7 +563,7 @@ int cClient::run_sender() {
         }
 
         if (setup->isAntiAsym()) {
-            payload_size = 0;
+            payload_size = 0; //No reading from pipe
         }
         if (setup->frameSize()) {
             payload_size -= 42; //todo check negative size of payload.
@@ -575,7 +577,7 @@ int cClient::run_sender() {
             close(this->sock);
             exit(1);
         }
-        stats->pktSent(curTv,nRet);
+        stats->pktSent(curTv, nRet);
         if (setup->showSendBitrate()) {
             nRet = HEADER_LENGTH + payload_size;
             if (setup->frameSize()) nRet += 42;

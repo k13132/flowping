@@ -61,10 +61,10 @@ public:
     int run(void);
 private:
     uint64_t conn_id;
-    map <uint64_t,t_conn *> connections;
+    map <u_int64_t, t_conn *> connections;
     t_conn * connection;
-    cSetup *setup;
     cServerStats *stats;
+    cSetup *setup;
     int sock;
     bool stop;
 };

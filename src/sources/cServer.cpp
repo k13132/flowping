@@ -135,6 +135,11 @@ int cServer::run() {
                 //cout << ret_size << endl;
             }
             sendto(this->sock, packet, ret_size, 0, (struct sockaddr *) &saClient, addr_len);
+            
+            //Update stats
+            //cout << ping_pkt->size<<endl;
+            stats->pktReceived(conn_id, connection->curTv,rec_size); 
+            stats->pktSent(conn_id, connection->curTv,ret_size); 
             if (show) {
 
                 double delta = ((double) (connection->curTv.tv_sec - connection->refTv.tv_sec)*1000.0 + (double) (connection->curTv.tv_nsec - connection->refTv.tv_nsec) / 1000000.0);
@@ -229,6 +234,7 @@ int cServer::run() {
 #ifdef DEBUG
             if (setup->debug()) cout << "Control packet received! code:" << (int) ping_msg->code << endl;
 #endif
+            stats->setClientIP(conn_id,string(client_ip));
             if (ping_msg->code == CNT_FNAME) {
                 if (connection->fp != NULL) {
                     if (connection->fp != stdout) {
@@ -355,6 +361,8 @@ int cServer::run() {
             sendto(this->sock, packet, ret_size, 0, (struct sockaddr *) &saClient, addr_len);
             connection->refTv = connection->curTv;
             clock_gettime(CLOCK_REALTIME, &connection->curTv);
+            
+            //Clean UP
             if (ping_msg->code == CNT_DONE_OK) {
                 if (setup->useTimedBuffer(connection->W_par)) {
                     if (setup->extFilenameLen()) {
@@ -379,6 +387,9 @@ int cServer::run() {
                 connection->fp = stdout;
                 delete connection;
                 connections.erase(conn_id);
+                if (stats->connStatRemove(conn_id)){
+                    std::cerr << "cServerStats::connStatRemove FAILED - conn_id ["<<conn_id<<"]"<<endl;
+                }
             }
         }
     }

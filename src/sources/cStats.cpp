@@ -40,44 +40,70 @@ void cStats::printRealTime(void) const {
 }
 
 void cStats::printSummary(void) const {
-
 }
 
-u_int32_t cStats::pk_enque(const u_int16_t direction, const timespec ts, const u_int16_t len) {
+u_int32_t cStats::pk_enque(const u_int64_t conn_id, const u_int16_t direction, const timespec ts, const u_int16_t len) {
     pinfo_t pk_info;
     pk_info.ts = ts;
     pk_info.len = len;
+    queue<pinfo_t> * pk_queue;
+    qstats_t * pk_stats;
+
+    if (qstats.count(conn_id) == 0) {
+        pk_stats = new qstats_t;
+        pk_stats->rx_qsize=0;
+        pk_stats->tx_qsize=0;
+        pk_stats->rx_qtime=0;
+        pk_stats->tx_qtime=0;
+        qstats[conn_id] = pk_stats;
+    } else {
+        pk_stats = (qstats_t *) qstats[conn_id];
+    }
+
     if (direction == TX) {
-        if (pk_info_tx_queue.size()) {
-            this->tx_qtime = NS_TDIFF(pk_info.ts, pk_info_tx_queue.front().ts);
+        if (pk_info_tx_queues.count(conn_id) == 0) {
+            pk_queue = new queue<pinfo_t>;
+            pk_info_tx_queues[conn_id] = pk_queue;
         } else {
-            this->tx_qtime = 1;
+            pk_queue = (queue<pinfo_t> *) pk_info_tx_queues[conn_id];
         }
-        this->tx_qsize += pk_info.len;
-        pk_info_tx_queue.push(pk_info);
-        while (this->tx_qtime > 10000000000 && pk_info_tx_queue.size() > 2) {
-            pk_info = pk_info_tx_queue.front();
-            pk_info_tx_queue.pop();
-            this->tx_qtime = NS_TDIFF(pk_info_tx_queue.back().ts, pk_info.ts);
-            this->tx_qsize -= pk_info.len;
+        if (pk_queue->size()) {
+            pk_stats->tx_qtime = NS_TDIFF(pk_info.ts, pk_queue->front().ts);
+        } else {
+            pk_stats->tx_qtime = 1;
         }
-        return (this->tx_qsize * 8000000000) / this->tx_qtime;
+        pk_stats->tx_qsize += pk_info.len;
+        pk_queue->push(pk_info);
+        while (pk_stats->tx_qtime > 10000000000 && pk_queue->size() > 2) {
+            pk_info = pk_queue->front();
+            pk_queue->pop();
+            pk_stats->tx_qtime = NS_TDIFF(pk_queue->back().ts, pk_info.ts);
+            pk_stats->tx_qsize -= pk_info.len;
+        }
+        return (pk_stats->tx_qsize * 8000000000) / pk_stats->tx_qtime;
     }
     if (direction == RX) {
-        if (pk_info_rx_queue.size()) {
-            this->rx_qtime = NS_TDIFF(pk_info.ts, pk_info_rx_queue.front().ts);
+        if (pk_info_rx_queues.count(conn_id) == 0) {
+            pk_queue = new queue<pinfo_t>;
+            pk_info_rx_queues[conn_id] = pk_queue;
         } else {
-            this->rx_qtime = 1;
+            pk_queue = (queue<pinfo_t> *) pk_info_rx_queues[conn_id];
         }
-        this->rx_qsize += pk_info.len;
-        pk_info_rx_queue.push(pk_info);
-        while (this->rx_qtime > 10000000000 && pk_info_rx_queue.size() > 2) {
-            pk_info = pk_info_rx_queue.front();
-            pk_info_rx_queue.pop();
-            this->rx_qtime = NS_TDIFF(pk_info_rx_queue.back().ts, pk_info.ts);
-            this->rx_qsize -= pk_info.len;
+        if (pk_queue->size()) {
+            pk_stats->rx_qtime = NS_TDIFF(pk_info.ts, pk_queue->front().ts);
+        } else {
+            pk_stats->rx_qtime = 1;
         }
-        return (this->rx_qsize * 8000000000) / this->rx_qtime;
+        pk_stats->rx_qsize += pk_info.len;
+        pk_queue->push(pk_info);
+        while (pk_stats->rx_qtime > 10000000000 && pk_queue->size() > 2) {
+            pk_info = pk_queue->front();
+            pk_queue->pop();
+            pk_stats->rx_qtime = NS_TDIFF(pk_queue->back().ts, pk_info.ts);
+            pk_stats->rx_qsize -= pk_info.len;
+        }
+        //cout << pk_stats->rx_qtime << "\t" << pk_stats->rx_qsize << endl;
+        return (pk_stats->rx_qsize * 8000000000) / pk_stats->rx_qtime;
     }
     return 0;
 }
@@ -99,7 +125,9 @@ cClientStats::cClientStats(cSetup *setup) {
 void cClientStats::printRealTime(void) const {
     std::stringstream ss;
     timespec curTv;
+
     clock_gettime(CLOCK_REALTIME, &curTv);
+    ss.str("");
     ss << "cClientStats:\n";
 
     ss << "ts: " << curTv.tv_sec << ".";
@@ -116,7 +144,7 @@ void cClientStats::printRealTime(void) const {
     ss << "min_rtt: " << stats.rtt_min << std::endl;
     ss << "avg_rtt: " << stats.rtt_avg << std::endl;
     ss << "max_rtt: " << stats.rtt_max << std::endl;
-    //ss.precision(0);
+    ss.precision(0);
     ss << "tx_packets: " << stats.tx_pkts << std::endl;
     ss << "rx_packets: " << stats.rx_pkts << std::endl;
     ss << "tx_bitrate: " << stats.tx_bitrare << std::endl;
@@ -176,12 +204,12 @@ void cClientStats::addCRxInfo(const timespec ts, const u_int16_t len, const doub
         }
     }
     stats.rtt_avg = ((stats.rx_pkts - 1) * stats.rtt_avg + rtt) / stats.rx_pkts;
-    stats.rx_bitrare = this->pk_enque(RX, ts, len);
+    stats.rx_bitrare = this->pk_enque(1, RX, ts, len);
 }
 
 void cClientStats::pktSent(const timespec ts, const uint16_t len) {
     stats.tx_pkts++;
-    stats.tx_bitrare = this->pk_enque(TX, ts, len);
+    stats.tx_bitrare = this->pk_enque(1, TX, ts, len);
 }
 
 void cClientStats::pktOoo() {
@@ -189,18 +217,91 @@ void cClientStats::pktOoo() {
 }
 
 cServerStats::cServerStats(cSetup *setup) {
-    stats.tx_bitrare = 0;
-    stats.rx_bitrare = 0;
-    stats.src = "";
-    stats.tx_pkts = 0;
-    stats.rx_pkts = 0;
-    setup = setup;
+    this->setup = setup;
+}
+
+void cServerStats::pktSent(const u_int64_t conn_id, const timespec ts, const uint16_t len) {
+    if (s_stats.count(conn_id) == 0) {
+        stats = new s_stats_t;
+        stats->tx_bitrare = 0;
+        stats->rx_bitrare = 0;
+        stats->src = "";
+        stats->tx_pkts = 0;
+        stats->rx_pkts = 0;
+        s_stats[conn_id] = stats;
+    }
+    stats = s_stats[conn_id];
+    stats->tx_pkts++;
+    stats->tx_bitrare = this->pk_enque(conn_id, TX, ts, len);
+}
+
+void cServerStats::pktReceived(const u_int64_t conn_id, const timespec ts, const uint16_t len) {
+    if (s_stats.count(conn_id) == 0) {
+        stats = new s_stats_t;
+        stats->tx_bitrare = 0;
+        stats->rx_bitrare = 0;
+        stats->src = "";
+        stats->tx_pkts = 0;
+        stats->rx_pkts = 0;
+        s_stats[conn_id] = stats;
+    }
+    stats = s_stats[conn_id];
+    stats->rx_pkts++;
+    stats->rx_bitrare = this->pk_enque(conn_id, RX, ts, len);
 }
 
 void cServerStats::printRealTime(void) const {
-    std::cout << "cServerStats\n";
+    std::stringstream ss;
+    timespec curTv;
+
+    clock_gettime(CLOCK_REALTIME, &curTv);
+    ss.str("");
+    ss << "cServerStats:\n";
+
+    ss << "ts: " << curTv.tv_sec << ".";
+    ss.fill('0');
+    ss.width(9);
+    ss << curTv.tv_nsec;
+    ss << "\n";
+    ss.precision(0);
+
+    for (std::map<u_int64_t, s_stats_t *>::const_iterator it = s_stats.begin(); it != s_stats.end(); ++it) {
+        ss << "\nClient >>>: " << it->second->src << std::endl;
+        ss << "tx_packets: " << it->second->tx_pkts << std::endl;
+        ss << "rx_packets: " << it->second->rx_pkts << std::endl;
+        ss << "tx_bitrate: " << it->second->tx_bitrare << std::endl;
+        ss << "rx_bitrate: " << it->second->rx_bitrare << std::endl;
+    }
+    std::cout << ss.str() << endl;
 }
 
 void cServerStats::printSummary(void) const {
 
+}
+
+u_int16_t cServerStats::connStatRemove(const u_int64_t conn_id) {
+    if (s_stats.count(conn_id) > 0) {
+        if (s_stats[conn_id]) {
+            delete s_stats[conn_id];
+        }
+        s_stats.erase(conn_id);
+        return 0;
+    }
+    return 1;
+}
+
+void cServerStats::setClientIP(const u_int64_t conn_id, const string src) {
+    if (s_stats.count(conn_id) == 0) {
+        stats = new s_stats_t;
+        stats->tx_bitrare = 0;
+        stats->rx_bitrare = 0;
+        stats->src = src;
+        stats->tx_pkts = 0;
+        stats->rx_pkts = 0;
+        s_stats[conn_id] = stats;
+    } else {
+        if (s_stats[conn_id]) {
+            s_stats[conn_id]->src = src;
+        }
+    }
 }

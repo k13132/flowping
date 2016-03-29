@@ -139,6 +139,10 @@ int main(int argc, char** argv) {
     version << " (" << DD << " "<< TT << ")";
 #endif    
     
+    //AntiAsym mode FIX
+    //Advanced Realtime Statistics
+    //todo asym modes packet sizes - difers from server 64B vs 32B min size
+    
     
     setup = new cSetup(argc, argv, version.str());
 
