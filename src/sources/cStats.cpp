@@ -37,18 +37,18 @@ cStats::cStats() {
 cStats::~cStats() {
 }
 
-void cStats::printRealTime(void){
+void cStats::printRealTime(void) {
 }
 
-void cStats::printSummary(void){
+void cStats::printSummary(void) {
 }
 
-void cStats::pk_enque(const u_int64_t conn_id, const u_int16_t direction, const timespec ts, const u_int16_t len, const u_int64_t seq) {
+void cStats::pk_enque(const u_int64_t conn_id, const u_int16_t direction, const timespec ts, const u_int16_t len, const u_int64_t seq, const float rtt) {
     pinfo_t pk_info;
     pk_info.ts = ts;
     pk_info.len = len;
     pk_info.seq = seq;
-    pk_info.rtt = 0;
+    pk_info.rtt = rtt;
     queue<pinfo_t> * pk_queue;
     qstats_t * pk_stats;
 
@@ -98,20 +98,19 @@ void cStats::pk_enque(const u_int64_t conn_id, const u_int16_t direction, const 
             pk_stats->rx_qtime = 1;
         }
         pk_stats->rx_qsize += pk_info.len;
-        pk_stats->rx_q_cumulative_rtt -= pk_info.rtt;
+        pk_stats->rx_q_cumulative_rtt += (u_int64_t) (pk_info.rtt * 1000.0);
         pk_queue->push(pk_info);
         while (pk_stats->rx_qtime > 10000000000 && pk_queue->size() > 2) {
             pk_info = pk_queue->front();
             pk_queue->pop();
             pk_stats->rx_qtime = NS_TDIFF(pk_queue->back().ts, pk_info.ts);
             pk_stats->rx_qsize -= pk_info.len;
-            pk_stats->rx_q_cumulative_rtt -= pk_info.rtt;
+            pk_stats->rx_q_cumulative_rtt -= (u_int64_t) (pk_info.rtt * 1000.0);
         }
-        //cout << pk_stats->rx_qtime << "\t" << pk_stats->rx_qsize << endl;
     }
 }
 
-void cStats::updateRTStats(const u_int64_t conn_id, const uint16_t direction, u_int64_t* bitrate, float* curRrt, float* curLoss){
+void cStats::prepareStats(const u_int64_t conn_id, const uint16_t direction, u_int64_t* bitrate, float* curRrt, float* curLoss) {
     queue<pinfo_t> * pk_queue;
     qstats_t * pk_stats;
     pk_stats = NULL;
@@ -122,19 +121,18 @@ void cStats::updateRTStats(const u_int64_t conn_id, const uint16_t direction, u_
     } else {
         pk_stats = (qstats_t *) qstats[conn_id];
     }
-    if (pk_info_tx_queues.count(conn_id) == 0) {
-        cerr << "cStats::ERRROR (2) - no stats for connId: " << conn_id << endl;
-    } else {
-        pk_queue = (queue<pinfo_t> *) pk_info_tx_queues[conn_id];
-    }
     if (direction == TX) {
         *bitrate = (pk_stats->tx_qsize * 8000000000) / pk_stats->tx_qtime;
-        *curLoss = 100.0 * (((pk_queue->back().seq - pk_queue->front().seq) - pk_queue->size()) / pk_queue->size());
     }
     if (direction == RX) {
+        if (pk_info_rx_queues.count(conn_id) == 0) {
+            cerr << "cStats::ERRROR (2) - no stats for connId: " << conn_id << endl;
+        } else {
+            pk_queue = (queue<pinfo_t> *) pk_info_rx_queues[conn_id];
+        }
         *bitrate = (pk_stats->rx_qsize * 8000000000) / pk_stats->rx_qtime;
-        *curRrt = (pk_stats->rx_q_cumulative_rtt) / pk_queue->size();
-        *curLoss = 100.0 * (((pk_queue->back().seq - pk_queue->front().seq) - pk_queue->size()) / pk_queue->size());
+        *curRrt = (float) ((double) (pk_stats->rx_q_cumulative_rtt) / ((float) pk_queue->size()*1000));
+        *curLoss = 100.0 * ((float)(1 +(pk_queue->back().seq - pk_queue->front().seq)  - pk_queue->size()) / (float)pk_queue->size());
     }
 }
 
@@ -157,17 +155,20 @@ cClientStats::cClientStats(cSetup *setup) {
     stats.test_start = NS_TIME(curTv);
     stats.cur_loss = 0;
     stats.cur_rtt = 0;
+    stats.cumulative_rtt = 0;
     this->setup = setup;
 }
 
-void cClientStats::printRealTime(void){
+void cClientStats::printRealTime(void) {
     std::stringstream ss;
     timespec curTv;
     u_int64_t duration;
-    this->updateRTStats(1, RX, &stats.rx_bitrare, &stats.cur_rtt, &stats.cur_loss);
-    this->updateRTStats(1, TX, &stats.tx_bitrare, NULL, &stats.cur_loss);
+    this->prepareStats(1, RX, &stats.rx_bitrare, &stats.cur_rtt, &stats.cur_loss);
+    this->prepareStats(1, TX, &stats.tx_bitrare, NULL, NULL);
+    this->stats.rtt_avg = (float) ((double) this->stats.cumulative_rtt / (float) (this->stats.rx_pkts * 1000));
+
     clock_gettime(CLOCK_REALTIME, &curTv);
-    duration = (NS_TIME(curTv)-(stats.test_start))/1000000;
+    duration = (NS_TIME(curTv)-(stats.test_start)) / 1000000;
     if (setup->toCSV()) {
         //timestamp;hostname;test_duration;tx_pkts;rx_pkts;pk_loss;ooo_pkts;bytes_sent;bytes_received;avg_bitrate_tx, avg_bitrate_rx;avg_rtt;avg_pk_losscurrent_bitrate_tx;current_bitrate_rx;current_rtt;current_pk_loss
         ss.str("");
@@ -181,7 +182,7 @@ void cClientStats::printRealTime(void){
         ss.width(9);
         ss << curTv.tv_nsec;
         ss << "\n";
-        ss << "\n--- LIVE TIME STATS ---" <<std::endl;
+        ss << "\n--- LIVE TIME STATS ---" << std::endl;
         ss << "test duration [ms]: " << duration << std::endl;
         ss.precision(3);
         ss.fill('0');
@@ -196,18 +197,19 @@ void cClientStats::printRealTime(void){
         ss << "rx_packets: " << stats.rx_pkts << std::endl;
         ss << "tx_bytes: " << stats.tx_bytes << std::endl;
         ss << "rx_bytes: " << stats.rx_bytes << std::endl;
-        ss << "tx_bitrate: " << stats.tx_bytes*8000/duration << std::endl;
-        ss << "rx_bitrate: " << stats.rx_bytes*8000/duration << std::endl;
-        ss << "\n--- LIVE STATS (last 10 sec) ---" <<std::endl;
+        ss << "tx_bitrate: " << stats.tx_bytes * 8000 / duration << std::endl;
+        ss << "rx_bitrate: " << stats.rx_bytes * 8000 / duration << std::endl;
+        ss << "\n--- LIVE STATS (last 10 sec) ---" << std::endl;
         ss << "tx_bitrate: " << stats.tx_bitrare << std::endl;
         ss << "rx_bitrate: " << stats.rx_bitrare << std::endl;
+        ss.precision(3);
         ss << "RTT: " << stats.cur_rtt << std::endl;
-        ss << "LOSS: " << stats.cur_rtt << std::endl;
+        ss << "LOSS: " << stats.cur_loss << std::endl;
     }
     std::cout << ss.str() << endl;
 }
 
-void cClientStats::printSummary(void){
+void cClientStats::printSummary(void) {
 
 }
 
@@ -215,9 +217,16 @@ void cClientStats::addServerStats(const u_int64_t server_rx_pkts) {
     stats.server_rx_pkts = server_rx_pkts;
 }
 
-std::string cClientStats::getReport() const {
+std::string cClientStats::getReport() {
     timespec curTv;
     clock_gettime(CLOCK_REALTIME, &curTv);
+
+    this->prepareStats(1, RX, &stats.rx_bitrare, &stats.cur_rtt, &stats.cur_loss);
+    this->prepareStats(1, TX, &stats.tx_bitrare, NULL, &stats.cur_loss);
+
+
+    this->stats.rtt_avg = (float) ((double) this->stats.cumulative_rtt / (float) (this->stats.rx_pkts * 1000));
+
     std::stringstream ss;
     float p = (100.0 * (stats.tx_pkts - stats.rx_pkts)) / stats.tx_pkts;
     float uloss = (float) (100.0 * (stats.tx_pkts - stats.server_rx_pkts)) / stats.tx_pkts;
@@ -246,13 +255,13 @@ std::string cClientStats::getReport() const {
     return ss.str();
 }
 
-void cClientStats::addCRxInfo(const timespec ts, const u_int16_t len, const u_int64_t seq, const double rtt) {
+void cClientStats::addCRxInfo(const timespec ts, const u_int16_t len, const u_int64_t seq, const float rtt) {
     stats.rx_pkts++;
     stats.rx_bytes += len;
+    stats.cumulative_rtt += (rtt * 1000);
     if (stats.rtt_min == -1) {
         stats.rtt_min = rtt;
         stats.rtt_max = rtt;
-        stats.rtt_avg = rtt;
     } else {
         if (rtt < stats.rtt_min) {
             stats.rtt_min = rtt;
@@ -262,14 +271,13 @@ void cClientStats::addCRxInfo(const timespec ts, const u_int16_t len, const u_in
         }
     }
     //ToDo Rewrite to simplified form //cumulative rtt/rc_pkts
-    stats.rtt_avg = ((stats.rx_pkts - 1) * stats.rtt_avg + rtt) / stats.rx_pkts;
-    this->pk_enque(1, RX, ts, len, seq);
+    this->pk_enque(1, RX, ts, len, seq, rtt);
 }
 
 void cClientStats::pktSent(const timespec ts, const uint16_t len, const u_int64_t seq) {
     stats.tx_pkts++;
     stats.tx_bytes += len;
-    this->pk_enque(1, TX, ts, len, seq);
+    this->pk_enque(1, TX, ts, len, seq, 0);
 }
 
 void cClientStats::pktOoo() {
@@ -292,7 +300,7 @@ void cServerStats::pktSent(const u_int64_t conn_id, const timespec ts, const uin
     }
     stats = s_stats[conn_id];
     stats->tx_pkts++;
-    this->pk_enque(conn_id, TX, ts, len, seq);
+    this->pk_enque(conn_id, TX, ts, len, seq, 0);
 }
 
 void cServerStats::pktReceived(const u_int64_t conn_id, const timespec ts, const uint16_t len, const u_int64_t seq) {
@@ -307,10 +315,10 @@ void cServerStats::pktReceived(const u_int64_t conn_id, const timespec ts, const
     }
     stats = s_stats[conn_id];
     stats->rx_pkts++;
-    this->pk_enque(conn_id, RX, ts, len, seq);
+    this->pk_enque(conn_id, RX, ts, len, seq, 0);
 }
 
-void cServerStats::printRealTime(void){
+void cServerStats::printRealTime(void) {
     std::stringstream ss;
     timespec curTv;
 
@@ -335,7 +343,7 @@ void cServerStats::printRealTime(void){
     std::cout << ss.str() << endl;
 }
 
-void cServerStats::printSummary(void){
+void cServerStats::printSummary(void) {
 
 }
 

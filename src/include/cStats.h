@@ -41,6 +41,7 @@ struct c_stats_t{
     u_int64_t rx_bitrare;
     u_int64_t tx_bytes;
     u_int64_t rx_bytes;
+    u_int64_t cumulative_rtt;
     float rx_loss;
     float rtt_min;
     float rtt_max;
@@ -80,7 +81,7 @@ struct qstats_t{
     u_int64_t tx_qtime; //Q time len in ms
     u_int64_t rx_qsize; //Bits
     u_int64_t rx_qtime; //Q time len in ms
-    u_int64_t rx_q_cumulative_rtt; //ms
+    u_int64_t rx_q_cumulative_rtt; //usec
 };
 
 class cStats {
@@ -91,8 +92,8 @@ public:
     virtual void printRealTime(void);
 protected:
     //enqueue + queue management + stats update; 
-    void pk_enque(const u_int64_t conn_id, const uint16_t direction, const timespec ts, const u_int16_t len, const u_int64_t seq);
-    void updateRTStats(const u_int64_t conn_id, const uint16_t direction, u_int64_t *bitrate, float *curRrt, float *curLoss);
+    void pk_enque(const u_int64_t conn_id, const uint16_t direction, const timespec ts, const u_int16_t len, const u_int64_t seq, const float rtt);
+    void prepareStats(const u_int64_t conn_id, const uint16_t direction, u_int64_t *bitrate, float *curRrt, float *curLoss);
  
 private:
     map<u_int64_t, queue<pinfo_t> *> pk_info_rx_queues;
@@ -118,10 +119,10 @@ private:
 class cClientStats:public cStats{
 public:
     cClientStats(cSetup *setup);
-    std::string getReport(void) const;
+    std::string getReport(void);
     void pktSent(const timespec ts, const uint16_t len, const u_int64_t seq); //increment tx_pkts  & calculate bitrate;
     void pktOoo(void); //increment OutOfOrder packet counter;
-    void addCRxInfo(const timespec ts, const u_int16_t len, const u_int64_t seq, const double rtt); //increment rx_pkts & calculate bitrate;
+    void addCRxInfo(const timespec ts, const u_int16_t len, const u_int64_t seq, const float rtt); //increment rx_pkts & calculate bitrate;
     void addServerStats(const u_int64_t server_rx_pkts);
     virtual void printSummary(void);
     virtual void printRealTime(void);

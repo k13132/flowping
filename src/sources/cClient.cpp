@@ -205,7 +205,7 @@ int cClient::run_receiver() {
             sent_ts = ((ping_pkt->sec - start_ts.tv_sec) * 1000 + (ping_pkt->nsec - start_ts.tv_nsec) / 1000000.0);
 
             if (setup->wholeFrame()) nRet += 42;
-            stats->addCRxInfo(r_curTv, nRet, rtt, ping_pkt->seq); // Also updates  rx_pkts
+            stats->addCRxInfo(r_curTv, nRet, ping_pkt->seq, rtt); // Also updates  rx_pkts
             if (show) {
                 if (setup->showTimeStamps()) {
                     if (setup->toCSV()) {
