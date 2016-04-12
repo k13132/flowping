@@ -30,31 +30,49 @@
 #include "_types.h"
 #include "cSetup.h"
 
+//timestamp;hostname;test_duration;bytes_sent;bytes_received;avg_bitrate_tx, avg_bitrate_rx;avg_rtt;avg_pk_loss;current_bitrate_tx;current_bitrate_rx;current_rtt;current_pk_loss
+
+
+
 struct c_stats_t{
     u_int64_t tx_pkts;
     u_int64_t rx_pkts;
-    u_int32_t tx_bitrare;
-    u_int32_t rx_bitrare;
+    u_int64_t tx_bitrare;
+    u_int64_t rx_bitrare;
+    u_int64_t tx_bytes;
+    u_int64_t rx_bytes;
+    float rx_loss;
+    float rtt_min;
+    float rtt_max;
+    float rtt_avg;
+    float cur_rtt;
+    float cur_loss;
+    std::string dst;
+    u_int64_t duration;     //ms
+    u_int64_t test_start; //ns
     u_int64_t server_rx_pkts;
     u_int64_t ooo_pkts;
-    double rtt_min;
-    double rtt_max;
-    double rtt_avg;
-    std::string dst;
-    u_int64_t duration;
 };
 
 struct s_stats_t{
     u_int64_t tx_pkts;
     u_int64_t rx_pkts;
-    u_int32_t tx_bitrare;
-    u_int32_t rx_bitrare;
+    u_int64_t tx_bitrare;
+    u_int64_t rx_bitrare;
+    float rx_loss;
+    u_int64_t ooo_pkts;
+    u_int64_t tx_bytes;
+    u_int64_t rx_bytes;
     std::string src;
+    u_int64_t duration;     //ns
+    u_int64_t test_start; //ns
 };
 
 struct pinfo_t{
     timespec ts;
     u_int16_t len;
+    u_int64_t seq;
+    float rtt;
 };
 
 struct qstats_t{
@@ -62,17 +80,19 @@ struct qstats_t{
     u_int64_t tx_qtime; //Q time len in ms
     u_int64_t rx_qsize; //Bits
     u_int64_t rx_qtime; //Q time len in ms
+    u_int64_t rx_q_cumulative_rtt; //ms
 };
 
 class cStats {
 public:
     cStats();
     virtual ~cStats();
-    virtual void printSummary(void) const;
-    virtual void printRealTime(void) const;
+    virtual void printSummary(void);
+    virtual void printRealTime(void);
 protected:
     //enqueue + queue management + stats update; 
-    u_int32_t pk_enque(const u_int64_t conn_id, const uint16_t direction, const timespec ts, const u_int16_t len);
+    void pk_enque(const u_int64_t conn_id, const uint16_t direction, const timespec ts, const u_int16_t len, const u_int64_t seq);
+    void updateRTStats(const u_int64_t conn_id, const uint16_t direction, u_int64_t *bitrate, float *curRrt, float *curLoss);
  
 private:
     map<u_int64_t, queue<pinfo_t> *> pk_info_rx_queues;
@@ -83,12 +103,12 @@ private:
 class cServerStats:public cStats{
 public:
     cServerStats(cSetup *setup);
-    virtual void printSummary(void) const;
-    virtual void printRealTime(void) const;
-    void pktSent(const u_int64_t conn_id, const timespec ts, const uint16_t len); //increment tx_pkts & calculate bitrate;
-    void pktReceived(const u_int64_t conn_id, const timespec ts, const u_int16_t len);//increment rx_pkts & calculate bitrate;
+    virtual void printSummary(void);
+    virtual void printRealTime(void);
+    void pktSent(const u_int64_t conn_id, const timespec ts, const uint16_t len, const u_int64_t seq); //increment tx_pkts & calculate bitrate;
+    void pktReceived(const u_int64_t conn_id, const timespec ts, const u_int16_t len, const u_int64_t seq);//increment rx_pkts & calculate bitrate;
     u_int16_t connStatRemove(const u_int64_t conn_id);
-    void setClientIP(const u_int64_t conn_id, const string src);
+    void connInit(const u_int64_t conn_id, const string src);
 private:
     cSetup *setup;
     map<u_int64_t, s_stats_t *> s_stats;
@@ -99,12 +119,12 @@ class cClientStats:public cStats{
 public:
     cClientStats(cSetup *setup);
     std::string getReport(void) const;
-    void pktSent(const timespec ts, const uint16_t len); //increment tx_pkts  & calculate bitrate;
+    void pktSent(const timespec ts, const uint16_t len, const u_int64_t seq); //increment tx_pkts  & calculate bitrate;
     void pktOoo(void); //increment OutOfOrder packet counter;
-    void addCRxInfo(const timespec ts, const u_int16_t len, const double rtt); //increment rx_pkts & calculate bitrate;
+    void addCRxInfo(const timespec ts, const u_int16_t len, const u_int64_t seq, const double rtt); //increment rx_pkts & calculate bitrate;
     void addServerStats(const u_int64_t server_rx_pkts);
-    virtual void printSummary(void) const;
-    virtual void printRealTime(void) const;
+    virtual void printSummary(void);
+    virtual void printRealTime(void);
 private:
     cSetup *setup;
     c_stats_t stats;

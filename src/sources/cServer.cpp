@@ -138,8 +138,8 @@ int cServer::run() {
             
             //Update stats
             //cout << ping_pkt->size<<endl;
-            stats->pktReceived(conn_id, connection->curTv,rec_size); 
-            stats->pktSent(conn_id, connection->curTv,ret_size); 
+            stats->pktReceived(conn_id, connection->curTv,rec_size, ping_pkt->seq); 
+            stats->pktSent(conn_id, connection->curTv,ret_size, ping_pkt->seq); 
             if (show) {
 
                 double delta = ((double) (connection->curTv.tv_sec - connection->refTv.tv_sec)*1000.0 + (double) (connection->curTv.tv_nsec - connection->refTv.tv_nsec) / 1000000.0);
@@ -234,7 +234,7 @@ int cServer::run() {
 #ifdef DEBUG
             if (setup->debug()) cout << "Control packet received! code:" << (int) ping_msg->code << endl;
 #endif
-            stats->setClientIP(conn_id,string(client_ip));
+            stats->connInit(conn_id,string(client_ip));
             if (ping_msg->code == CNT_FNAME) {
                 if (connection->fp != NULL) {
                     if (connection->fp != stdout) {

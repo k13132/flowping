@@ -24,7 +24,7 @@ CROSS_PREFIX=
 CXXFLAGS_ARCH=
 
 # Common compiler choices
-CXXFLAGS += -pipe -O2 -Wall -D_REENTRANT -fPIC -W
+CXXFLAGS += -pipe -O2 -Wall -D_REENTRANT -fPIC -W 
 
 # Linker choices
 #LXXFLAGS= -march=armv5te -pthread
@@ -68,7 +68,7 @@ endif
 
 
 ifeq ($(debug),true)
-    	CXXFLAGS += -g
+    	CXXFLAGS += -g -D_DEBUG
 	LXXFLAGS += -g 
 endif
 
