@@ -244,7 +244,7 @@ void cClientStats::printRealTime(void) {
         ss.width(9);
         ss << curTv.tv_nsec << " [s]\n";
         ss << "\n>>> LIFE TIME STATS" << std::endl;
-        ss << "test duration [s]: " << duration << std::endl;
+        ss << "test_duration [s]: " << duration << std::endl;
         ss.precision(3);
         ss.fill('0');
         ss.width(6);
@@ -264,8 +264,8 @@ void cClientStats::printRealTime(void) {
         ss << "tx_bitrate: " << stats.tx_bitrare << " [bps]" << std::endl;
         ss << "rx_bitrate: " << stats.rx_bitrare << " [bps]" << std::endl;
         ss.precision(3);
-        ss << "RTT: " << stats.cur_rtt << " [ms]" << std::endl;
-        ss << "LOSS: " << stats.cur_loss << " [%]" << std::endl;
+        ss << "rtt: " << stats.cur_rtt << " [ms]" << std::endl;
+        ss << "loss: " << stats.cur_loss << " [%]" << std::endl;
         ss << "=====================================\n";
         std::cout << ss.str() << endl;
     }
