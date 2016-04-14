@@ -179,7 +179,7 @@ void cClientStats::printRealTime(void) {
         ss.width(9);
         ss << curTv.tv_nsec << ",";
         ss << "\"host\":\""<< setup->getHostname() << "\",";
-        ss << "\"life_time_stats\":[{";
+        ss << "\"life_time_stats\":{";
         ss << "\"duration\":"<<duration << ",";
         ss.precision(3);
         ss.fill('0');
@@ -195,13 +195,13 @@ void cClientStats::printRealTime(void) {
         ss << "\"tx_bytes\":" << stats.tx_bytes << ",";
         ss << "\"rx_bytes\":" << stats.rx_bytes << ",";
         ss << "\"tx_bitrate\":" << stats.tx_bytes * 8000 / duration << ",";
-        ss << "\"rx_bitrate\":" << stats.rx_bytes * 8000 / duration << "}],";
-        ss << "\"live_stats\":[{";
+        ss << "\"rx_bitrate\":" << stats.rx_bytes * 8000 / duration << "},";
+        ss << "\"live_stats\":{";
         ss << "\"tx_bitrate\":" <<  stats.tx_bitrare << ",";
         ss << "\"rx_bitrate\":" <<  stats.rx_bitrare << ",";
         ss.precision(3);
         ss << "\"rtt\":" <<  stats.cur_rtt << ",";
-        ss << "\"loss\":" << stats.cur_loss << "}]}";
+        ss << "\"loss\":" << stats.cur_loss << "}}";
         std::cout << ss.str() << endl;
     }
     if (setup->toCSV()) {
