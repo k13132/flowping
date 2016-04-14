@@ -132,7 +132,7 @@ void cStats::prepareStats(const u_int64_t conn_id, const uint16_t direction, u_i
         }
         *bitrate = (pk_stats->rx_qsize * 8000000000) / pk_stats->rx_qtime;
         *curRrt = (float) ((double) (pk_stats->rx_q_cumulative_rtt) / ((float) pk_queue->size()*1000));
-        *curLoss = 100.0 * ((float)(1 +(pk_queue->back().seq - pk_queue->front().seq)  - pk_queue->size()) / (float)pk_queue->size());
+        *curLoss = 100.0 * ((float) (1 + (pk_queue->back().seq - pk_queue->front().seq) - pk_queue->size()) / (float) pk_queue->size());
     }
 }
 
@@ -169,20 +169,82 @@ void cClientStats::printRealTime(void) {
 
     clock_gettime(CLOCK_REALTIME, &curTv);
     duration = (NS_TIME(curTv)-(stats.test_start)) / 1000000;
+     //timestamp;hostname;test_duration;tx_pkts;rx_pkts;pk_loss;ooo_pkts;bytes_sent;bytes_received;avg_bitrate_tx, avg_bitrate_rx;avg_rtt;avg_pk_losscurrent_bitrate_tx;current_bitrate_rx;current_rtt;current_pk_loss
+    
+    
+    if (setup->toJSON()) {
+        ss.str("");
+        ss << "{\"ts\":"<< curTv.tv_sec << ".";
+        ss.fill('0');
+        ss.width(9);
+        ss << curTv.tv_nsec << ",";
+        ss << "\"host\":\""<< setup->getHostname() << "\",";
+        ss << "\"life_time_stats\":[{";
+        ss << "\"duration\":"<<duration << ",";
+        ss.precision(3);
+        ss.fill('0');
+        ss.width(6);
+        ss.setf(ios_base::right, ios_base::adjustfield);
+        ss.setf(ios_base::fixed, ios_base::floatfield);
+        ss << "\"rtt_min\":"<< stats.rtt_min << ",";
+        ss << "\"rtt_avg\":"<<stats.rtt_avg << ",";
+        ss << "\"rtt_max\":"<<stats.rtt_max << ",";
+        ss.precision(0);
+        ss << "\"tx_pkts\":" <<stats.tx_pkts << ",";
+        ss << "\"rx_pkts\":" << stats.rx_pkts << ",";
+        ss << "\"tx_bytes\":" << stats.tx_bytes << ",";
+        ss << "\"rx_bytes\":" << stats.rx_bytes << ",";
+        ss << "\"tx_bitrate\":" << stats.tx_bytes * 8000 / duration << ",";
+        ss << "\"rx_bitrate\":" << stats.rx_bytes * 8000 / duration << "}],";
+        ss << "\"live_stats\":[{";
+        ss << "\"tx_bitrate\":" <<  stats.tx_bitrare << ",";
+        ss << "\"rx_bitrate\":" <<  stats.rx_bitrare << ",";
+        ss.precision(3);
+        ss << "\"rtt\":" <<  stats.cur_rtt << ",";
+        ss << "\"loss\":" << stats.cur_loss << "}]}";
+        std::cout << ss.str() << endl;
+    }
     if (setup->toCSV()) {
-        //timestamp;hostname;test_duration;tx_pkts;rx_pkts;pk_loss;ooo_pkts;bytes_sent;bytes_received;avg_bitrate_tx, avg_bitrate_rx;avg_rtt;avg_pk_losscurrent_bitrate_tx;current_bitrate_rx;current_rtt;current_pk_loss
+
         ss.str("");
-        //setup->getHostname()
-    } else {
+        ss << curTv.tv_sec << ";";
+        ss.fill('0');
+        ss.width(9);
+        ss << curTv.tv_nsec << ";";
+        ss << setup->getHostname() << ";";
+        ss << duration << ";";
+        ss.precision(3);
+        ss.fill('0');
+        ss.width(6);
+        ss.setf(ios_base::right, ios_base::adjustfield);
+        ss.setf(ios_base::fixed, ios_base::floatfield);
+        ss << stats.rtt_min << ";";
+        ss << stats.rtt_avg << ";";
+        ss << stats.rtt_max << ";";
+        ss.precision(0);
+        ss << stats.tx_pkts << ";";
+        ss << stats.rx_pkts << ";";
+        ss << stats.tx_bytes << ";";
+        ss << stats.rx_bytes << ";";
+        ss << stats.tx_bytes * 8000 / duration << ";";
+        ss << stats.rx_bytes * 8000 / duration << ";";
+        ss << stats.tx_bitrare << ";";
+        ss << stats.rx_bitrare << ";";
+        ss.precision(3);
+        ss << stats.cur_rtt << ";";
+        ss << stats.cur_loss << ";";
+        std::cout << ss.str() << endl;
+    }
+    if (!setup->toCSV() && !setup->toJSON()) {
         ss.str("");
-        ss << "cClientStats:\n";
+        ss << "cClientStats: " << setup->getHostname() << "\n";
 
         ss << "ts: " << curTv.tv_sec << ".";
         ss.fill('0');
         ss.width(9);
         ss << curTv.tv_nsec;
         ss << "\n";
-        ss << "\n--- LIVE TIME STATS ---" << std::endl;
+        ss << "\n--- LIFE TIME STATS ---" << std::endl;
         ss << "test duration [ms]: " << duration << std::endl;
         ss.precision(3);
         ss.fill('0');
@@ -205,8 +267,8 @@ void cClientStats::printRealTime(void) {
         ss.precision(3);
         ss << "RTT: " << stats.cur_rtt << std::endl;
         ss << "LOSS: " << stats.cur_loss << std::endl;
+        std::cout << ss.str() << endl;
     }
-    std::cout << ss.str() << endl;
 }
 
 void cClientStats::printSummary(void) {

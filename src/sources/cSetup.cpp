@@ -104,7 +104,7 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->cumulative_delay = 0;
 
     this->version = version;
-    while ((c = getopt(argc, argv, "CXUWeEaAQSqDPH?w:d:p:c:h:s:i:nF:f:u:vI:t:T:b:B:r:R:")) != EOF) {
+    while ((c = getopt(argc, argv, "JCXUWeEaAQSqDPH?w:d:p:c:h:s:i:nF:f:u:vI:t:T:b:B:r:R:")) != EOF) {
         switch (c) {
             case 'v':
                 this->v_par = true;
@@ -119,6 +119,10 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 break;
             case 'C':
                 this->C_par = true;
+                this->vonly = false;
+                break;
+            case 'J':
+                this->J_par = true;
                 this->vonly = false;
                 break;
             case 'q':
@@ -932,6 +936,14 @@ bool cSetup::toCSV(void) {
 }
 
 bool cSetup::toCSV(bool val) {
+    return val;
+}
+
+bool cSetup::toJSON(void) {
+    return J_par;
+}
+
+bool cSetup::toJSON(bool val) {
     return val;
 }
 
