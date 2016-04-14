@@ -381,7 +381,8 @@ void cSetup::usage() {
     cout << "|         [-b kbit/s]                BitRate (Lower limit)                                      |" << endl;
     cout << "|         [-B kbit/s]                BitRate (Upper limit)                                      |" << endl;
     cout << "|         [-c count]    [unlimited]  Send specified number of packets                           |" << endl;
-    cout << "|         [-C ]                      Output to CSV [;;;;]                                       |" << endl;
+    cout << "|         [-C ]                      CSV output format [;;;;]                                   |" << endl;
+    cout << "|         [-J ]                      JSON output format                                         |" << endl;
     cout << "|         [-d]                       Set source interface                                       |" << endl;
     cout << "|         [-F filename]              Send FileName to server (overide server settings)          |" << endl;
     cout << "|         [-h hostname] [localhost]  Server hostname or IP address                              |" << endl;
