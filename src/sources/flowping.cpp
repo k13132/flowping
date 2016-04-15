@@ -126,22 +126,23 @@ int main(int argc, char** argv) {
 
     version.str("");
 #ifdef __i386
-    version << "x86_32 1.4.2-devel";
+    version << "x86_32 1.5.0-devel";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 #ifdef __x86_64__
-    version << "x86_64 1.4.2-devel";
+    version << "x86_64 1.5.0-devel";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
 #ifdef __ARM_ARCH_7A__
-    version << "ARM_32 1.4.2-devel";
+    version << "ARM_32 1.5.0-devel";
     version << " (" << DD << " "<< TT << ")";
 #endif    
     
     //AntiAsym mode FIX
-    //Advanced Realtime Statistics
+    //Advanced Realtime Statistics / Stats module
     //todo asym modes packet sizes - difers from server 64B vs 32B min size
+    //Output to JSON
     
     
     setup = new cSetup(argc, argv, version.str());

@@ -32,9 +32,7 @@
 
 //timestamp;hostname;test_duration;bytes_sent;bytes_received;avg_bitrate_tx, avg_bitrate_rx;avg_rtt;avg_pk_loss;current_bitrate_tx;current_bitrate_rx;current_rtt;current_pk_loss
 
-
-
-struct c_stats_t{
+struct c_stats_t {
     u_int64_t tx_pkts;
     u_int64_t rx_pkts;
     u_int64_t tx_bitrare;
@@ -49,39 +47,43 @@ struct c_stats_t{
     float cur_rtt;
     float cur_loss;
     std::string dst;
-    u_int64_t duration;     //ms
+    u_int64_t duration; //ms
     u_int64_t test_start; //ns
     u_int64_t server_rx_pkts;
     u_int64_t ooo_pkts;
+    u_int64_t max_seq;
 };
 
-struct s_stats_t{
+struct s_stats_t {
     u_int64_t tx_pkts;
     u_int64_t rx_pkts;
     u_int64_t tx_bitrare;
     u_int64_t rx_bitrare;
     float rx_loss;
+    float cur_loss;
     u_int64_t ooo_pkts;
     u_int64_t tx_bytes;
     u_int64_t rx_bytes;
     std::string src;
-    u_int64_t duration;     //ns
+    u_int64_t duration; //ns
     u_int64_t test_start; //ns
+    u_int64_t max_seq;
 };
 
-struct pinfo_t{
+struct pinfo_t {
     timespec ts;
     u_int16_t len;
     u_int64_t seq;
     float rtt;
 };
 
-struct qstats_t{
+struct qstats_t {
     u_int64_t tx_qsize; //Bits
     u_int64_t tx_qtime; //Q time len in ms
     u_int64_t rx_qsize; //Bits
     u_int64_t rx_qtime; //Q time len in ms
     u_int64_t rx_q_cumulative_rtt; //usec
+    u_int64_t max_seq;
 };
 
 class cStats {
@@ -94,29 +96,29 @@ protected:
     //enqueue + queue management + stats update; 
     void pk_enque(const u_int64_t conn_id, const uint16_t direction, const timespec ts, const u_int16_t len, const u_int64_t seq, const float rtt);
     void prepareStats(const u_int64_t conn_id, const uint16_t direction, u_int64_t *bitrate, float *curRrt, float *curLoss);
- 
+
 private:
     map<u_int64_t, queue<pinfo_t> *> pk_info_rx_queues;
     map<u_int64_t, queue<pinfo_t> *> pk_info_tx_queues;
     map<u_int64_t, qstats_t *> qstats;
 };
 
-class cServerStats:public cStats{
+class cServerStats : public cStats {
 public:
     cServerStats(cSetup *setup);
     virtual void printSummary(void);
     virtual void printRealTime(void);
     void pktSent(const u_int64_t conn_id, const timespec ts, const uint16_t len, const u_int64_t seq); //increment tx_pkts & calculate bitrate;
-    void pktReceived(const u_int64_t conn_id, const timespec ts, const u_int16_t len, const u_int64_t seq);//increment rx_pkts & calculate bitrate;
+    void pktReceived(const u_int64_t conn_id, const timespec ts, const u_int16_t len, const u_int64_t seq); //increment rx_pkts & calculate bitrate;
     u_int16_t connStatRemove(const u_int64_t conn_id);
     void connInit(const u_int64_t conn_id, const string src);
 private:
     cSetup *setup;
     map<u_int64_t, s_stats_t *> s_stats;
-    s_stats_t  *stats;
+    s_stats_t *stats;
 };
 
-class cClientStats:public cStats{
+class cClientStats : public cStats {
 public:
     cClientStats(cSetup *setup);
     std::string getReport(void);
