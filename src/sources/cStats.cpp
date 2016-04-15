@@ -54,6 +54,7 @@ void cStats::pk_enque(const u_int64_t conn_id, const u_int16_t direction, const 
     qstats_t * pk_stats;
 
     if (qstats.count(conn_id) == 0) {
+        cout << "Creating stats for conn_id: "<<conn_id<<endl;
         pk_stats = new qstats_t;
         pk_stats->rx_qsize = 0;
         pk_stats->tx_qsize = 0;
@@ -386,12 +387,9 @@ void cServerStats::printRealTime(void) {
     clock_gettime(CLOCK_REALTIME, &curTv);
 
     for (std::map<u_int64_t, s_stats_t *>::const_iterator it = s_stats.begin(); it != s_stats.end(); ++it) {
-        this->prepareStats(1, RX, &it->second->rx_bitrare, NULL, &it->second->cur_loss);
-        this->prepareStats(1, TX, &it->second->tx_bitrare, NULL, NULL);
+        this->prepareStats(it->first, RX, &it->second->rx_bitrare, NULL, &it->second->cur_loss);
+        this->prepareStats(it->first, TX, &it->second->tx_bitrare, NULL, NULL);
         duration = (double) (NS_TIME(curTv)-(it->second->test_start)) / 1000000000.0;
-
-        std::cout << ss.str() << endl;
-
         if (setup->toJSON()) {
             ss.str("");
             ss << "{\"ts\":" << curTv.tv_sec << ".";
