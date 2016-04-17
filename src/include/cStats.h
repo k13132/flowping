@@ -32,42 +32,37 @@
 
 //timestamp;hostname;test_duration;bytes_sent;bytes_received;avg_bitrate_tx, avg_bitrate_rx;avg_rtt;avg_pk_loss;current_bitrate_tx;current_bitrate_rx;current_rtt;current_pk_loss
 
-struct c_stats_t {
-    u_int64_t tx_pkts;
+
+struct stats_t{
     u_int64_t rx_pkts;
+    u_int32_t rx_pps;
     u_int64_t tx_bitrare;
     u_int64_t rx_bitrare;
     u_int64_t tx_bytes;
     u_int64_t rx_bytes;
-    u_int64_t cumulative_rtt;
     float rx_loss;
-    float rtt_min;
-    float rtt_max;
-    float rtt_avg;
-    float cur_rtt;
     float cur_loss;
-    std::string dst;
     u_int64_t duration; //ms
     u_int64_t test_start; //ns
-    u_int64_t server_rx_pkts;
     u_int64_t ooo_pkts;
     u_int64_t max_seq;
 };
 
-struct s_stats_t {
+struct c_stats_t : stats_t {
     u_int64_t tx_pkts;
-    u_int64_t rx_pkts;
-    u_int64_t tx_bitrare;
-    u_int64_t rx_bitrare;
-    float rx_loss;
-    float cur_loss;
-    u_int64_t ooo_pkts;
-    u_int64_t tx_bytes;
-    u_int64_t rx_bytes;
+    u_int32_t tx_pps;
+    u_int64_t cumulative_rtt;
+    float rtt_min;
+    float rtt_max;
+    float rtt_avg;
+    float cur_rtt;
+    std::string dst;
+    u_int64_t server_rx_pkts;
+};
+
+struct s_stats_t : stats_t {
     std::string src;
-    u_int64_t duration; //ns
-    u_int64_t test_start; //ns
-    u_int64_t max_seq;
+    u_int32_t port;
 };
 
 struct pinfo_t {
@@ -95,7 +90,8 @@ public:
 protected:
     //enqueue + queue management + stats update; 
     void pk_enque(const u_int64_t conn_id, const uint16_t direction, const timespec ts, const u_int16_t len, const u_int64_t seq, const float rtt);
-    void prepareStats(const u_int64_t conn_id, const uint16_t direction, u_int64_t *bitrate, float *curRrt, float *curLoss);
+    void prepareStats(const u_int64_t conn_id, const uint16_t direction, stats_t * stats);
+    cSetup *setup;
 
 private:
     map<u_int64_t, queue<pinfo_t> *> pk_info_rx_queues;
@@ -108,12 +104,11 @@ public:
     cServerStats(cSetup *setup);
     virtual void printSummary(void);
     virtual void printRealTime(void);
-    void pktSent(const u_int64_t conn_id, const timespec ts, const uint16_t len, const u_int64_t seq); //increment tx_pkts & calculate bitrate;
-    void pktReceived(const u_int64_t conn_id, const timespec ts, const u_int16_t len, const u_int64_t seq); //increment rx_pkts & calculate bitrate;
+    void pktSent(const u_int64_t conn_id, const timespec ts, const uint16_t len, const u_int64_t seq, const std::string src, const u_int32_t port); //increment tx_pkts & calculate bitrate;
+    void pktReceived(const u_int64_t conn_id, const timespec ts, const u_int16_t len, const u_int64_t seq, const std::string src, const u_int32_t port); //increment rx_pkts & calculate bitrate;
     u_int16_t connStatRemove(const u_int64_t conn_id);
-    void connInit(const u_int64_t conn_id, const string src);
+    void connInit(const u_int64_t conn_id, const string src, const u_int32_t port);
 private:
-    cSetup *setup;
     map<u_int64_t, s_stats_t *> s_stats;
     s_stats_t *stats;
 };
@@ -129,8 +124,7 @@ public:
     virtual void printSummary(void);
     virtual void printRealTime(void);
 private:
-    cSetup *setup;
-    c_stats_t stats;
+    c_stats_t *stats;
 };
 #endif /* CSTATS_H */
 

@@ -32,7 +32,7 @@
 
 cServer::cServer(cSetup *setup, cStats *stats) {
     this->setup = setup;
-    this->stats = (cServerStats *)stats;
+    this->stats = (cServerStats *) stats;
     this->stop = false;
 
     //ToDo: zjistit, zdqa je to potreba a zda to ma nejaky prinos    
@@ -135,11 +135,12 @@ int cServer::run() {
                 //cout << ret_size << endl;
             }
             sendto(this->sock, packet, ret_size, 0, (struct sockaddr *) &saClient, addr_len);
-            
+
             //Update stats
             //cout << ping_pkt->size<<endl;
-            stats->pktReceived(conn_id, connection->curTv,rec_size, ping_pkt->seq); 
-            stats->pktSent(conn_id, connection->curTv,ret_size, ping_pkt->seq); 
+            inet_ntop(AF_INET, &ip, client_ip, INET_ADDRSTRLEN);
+            stats->pktReceived(conn_id, connection->curTv, rec_size, ping_pkt->seq, string(client_ip), saClient.sin_port);
+            stats->pktSent(conn_id, connection->curTv, ret_size, ping_pkt->seq, string(client_ip), saClient.sin_port);
             if (show) {
 
                 double delta = ((double) (connection->curTv.tv_sec - connection->refTv.tv_sec)*1000.0 + (double) (connection->curTv.tv_nsec - connection->refTv.tv_nsec) / 1000000.0);
@@ -187,12 +188,12 @@ int cServer::run() {
                         ss.setf(ios_base::right, ios_base::adjustfield);
                         ss.setf(ios_base::fixed, ios_base::floatfield);
                         ss.precision(2);
-                        ss << (1000 / delta) * rec_size * 8 / 1000<<";";
+                        ss << (1000 / delta) * rec_size * 8 / 1000 << ";";
                     } else {
                         ss.setf(ios_base::right, ios_base::adjustfield);
                         ss.setf(ios_base::fixed, ios_base::floatfield);
                         ss.precision(2);
-                        ss << " rx_rate="<<(1000 / delta) * rec_size * 8 / 1000 << " kbps";
+                        ss << " rx_rate=" << (1000 / delta) * rec_size * 8 / 1000 << " kbps";
                     }
                 } else {
                     if (setup->toCSV(connection->C_par)) {
@@ -204,12 +205,12 @@ int cServer::run() {
                         ss.setf(ios_base::right, ios_base::adjustfield);
                         ss.setf(ios_base::fixed, ios_base::floatfield);
                         ss.precision(2);
-                        ss << (1000 / delta) * ret_size * 8 / 1000 <<";";
+                        ss << (1000 / delta) * ret_size * 8 / 1000 << ";";
                     } else {
                         ss.setf(ios_base::right, ios_base::adjustfield);
                         ss.setf(ios_base::fixed, ios_base::floatfield);
                         ss.precision(2);
-                        ss<< " tx_rate="<< (1000 / delta) * ret_size * 8 / 1000 <<" kbit/s";
+                        ss << " tx_rate=" << (1000 / delta) * ret_size * 8 / 1000 << " kbit/s";
                     }
                     ss << msg;
                 } else {
@@ -234,7 +235,7 @@ int cServer::run() {
 #ifdef DEBUG
             if (setup->debug()) cout << "Control packet received! code:" << (int) ping_msg->code << endl;
 #endif
-            stats->connInit(conn_id,string(client_ip));
+            stats->connInit(conn_id, string(client_ip),saClient.sin_port);
             if (ping_msg->code == CNT_FNAME) {
                 if (connection->fp != NULL) {
                     if (connection->fp != stdout) {
@@ -361,7 +362,7 @@ int cServer::run() {
             sendto(this->sock, packet, ret_size, 0, (struct sockaddr *) &saClient, addr_len);
             connection->refTv = connection->curTv;
             clock_gettime(CLOCK_REALTIME, &connection->curTv);
-            
+
             //Clean UP
             if (ping_msg->code == CNT_DONE_OK) {
                 if (setup->useTimedBuffer(connection->W_par)) {
@@ -387,8 +388,8 @@ int cServer::run() {
                 connection->fp = stdout;
                 delete connection;
                 connections.erase(conn_id);
-                if (stats->connStatRemove(conn_id)){
-                    std::cerr << "cServerStats::connStatRemove FAILED - conn_id ["<<conn_id<<"]"<<endl;
+                if (stats->connStatRemove(conn_id)) {
+                    std::cerr << "cServerStats::connStatRemove FAILED - conn_id [" << conn_id << "]" << endl;
                 }
             }
         }
