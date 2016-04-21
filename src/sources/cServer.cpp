@@ -116,6 +116,7 @@ int cServer::run() {
             connection->E_par = false;
             connection->F_par = false;
             connection->H_par = false;
+            connection->J_par = false;
             connection->W_par = false;
             connection->X_par = setup->isAsym();
             connection->AX_par = false;
@@ -145,6 +146,9 @@ int cServer::run() {
 
                 double delta = ((double) (connection->curTv.tv_sec - connection->refTv.tv_sec)*1000.0 + (double) (connection->curTv.tv_nsec - connection->refTv.tv_nsec) / 1000000.0);
                 ss.str("");
+                if (setup->toJSON(connection->J_par)) {
+                    ss << "{";
+                }
                 if (setup->showTimeStamps(connection->D_par)) {
                     if (setup->toCSV(connection->C_par)) {
                         ss << connection->curTv.tv_sec << ".";
@@ -152,8 +156,15 @@ int cServer::run() {
                         ss.width(9);
                         ss << connection->curTv.tv_nsec;
                         ss << ";";
-
-                    } else {
+                    }
+                    if (setup->toJSON(connection->J_par)) {
+                        ss << "\"ts\":" << connection->curTv.tv_sec << ".";
+                        ss.fill('0');
+                        ss.width(9);
+                        ss << connection->curTv.tv_nsec;
+                        ss << ",";
+                    }
+                    if (!setup->toCSV(connection->C_par)&&!setup->toJSON(connection->J_par)) {
                         ss << "[" << connection->curTv.tv_sec << ".";
                         ss.fill('0');
                         ss.width(9);
@@ -176,7 +187,16 @@ int cServer::run() {
                     ss.setf(ios_base::fixed, ios_base::floatfield);
                     ss.precision(3);
                     ss << delta << ";";
-                } else {
+                }
+                if (setup->toJSON(connection->J_par)) {
+                    ss << "\"size\":" << rec_size << ",\"remote\":\"" << client_ip << "\",\"seq\":" << ping_pkt->seq << ",";
+                    ss.setf(ios_base::right, ios_base::adjustfield);
+                    ss.setf(ios_base::fixed, ios_base::floatfield);
+                    ss.precision(3);
+                    ss << "\"delta\":" << delta;
+                }
+                if (!setup->toCSV(connection->C_par)&&!setup->toJSON(connection->J_par)) {
+
                     ss << rec_size << " bytes from " << client_ip << ": req=" << ping_pkt->seq << " ttl=xx ";
                     ss.setf(ios_base::right, ios_base::adjustfield);
                     ss.setf(ios_base::fixed, ios_base::floatfield);
@@ -189,7 +209,14 @@ int cServer::run() {
                         ss.setf(ios_base::fixed, ios_base::floatfield);
                         ss.precision(2);
                         ss << (1000 / delta) * rec_size * 8 / 1000 << ";";
-                    } else {
+                    }
+                    if (setup->toJSON(connection->J_par)) {
+                        ss.setf(ios_base::right, ios_base::adjustfield);
+                        ss.setf(ios_base::fixed, ios_base::floatfield);
+                        ss.precision(2);
+                        ss << ",\"rx_bitrate\":" << (1000 / delta) * rec_size * 8 / 1000;
+                    }
+                    if (!setup->toCSV(connection->C_par)&&!setup->toJSON(connection->J_par)) {
                         ss.setf(ios_base::right, ios_base::adjustfield);
                         ss.setf(ios_base::fixed, ios_base::floatfield);
                         ss.precision(2);
@@ -206,7 +233,14 @@ int cServer::run() {
                         ss.setf(ios_base::fixed, ios_base::floatfield);
                         ss.precision(2);
                         ss << (1000 / delta) * ret_size * 8 / 1000 << ";";
-                    } else {
+                    }
+                    if (setup->toJSON(connection->J_par)) {
+                        ss.setf(ios_base::right, ios_base::adjustfield);
+                        ss.setf(ios_base::fixed, ios_base::floatfield);
+                        ss.precision(2);
+                        ss << ",\"tx_bitrate\":" << (1000 / delta) * ret_size * 8 / 1000;
+                    }
+                    if (!setup->toCSV(connection->C_par)&&!setup->toJSON(connection->J_par)) {
                         ss.setf(ios_base::right, ios_base::adjustfield);
                         ss.setf(ios_base::fixed, ios_base::floatfield);
                         ss.precision(2);
@@ -217,6 +251,9 @@ int cServer::run() {
                     if (setup->toCSV(connection->C_par)) {
                         ss << ";";
                     }
+                }
+                if (setup->toJSON(connection->J_par)) {
+                    ss << "}";
                 }
                 ss << endl;
                 if (setup->useTimedBuffer(connection->W_par)) {
@@ -235,7 +272,7 @@ int cServer::run() {
 #ifdef DEBUG
             if (setup->debug()) cout << "Control packet received! code:" << (int) ping_msg->code << endl;
 #endif
-            stats->connInit(conn_id, string(client_ip),saClient.sin_port);
+            stats->connInit(conn_id, string(client_ip), saClient.sin_port);
             if (ping_msg->code == CNT_FNAME) {
                 if (connection->fp != NULL) {
                     if (connection->fp != stdout) {
@@ -342,6 +379,13 @@ int cServer::run() {
                 } else {
                     setup->setCPAR(false);
                 }
+                if (ping_msg->params & CNT_JPAR) {
+                    setup->setJPAR(true);
+                    connection->J_par = true;
+                    message << "J";
+                } else {
+                    setup->setCPAR(false);
+                }
                 message << "]";
                 cout << message.str() << endl;
                 if (show) {
@@ -383,8 +427,7 @@ int cServer::run() {
                 if (connection->fp != stdout) {
                     fclose(connection->fp);
                 }
-                cerr << "     ~ " << connection->pkt_cnt << " packets processed." << endl;
-                cerr << ".::. Test from " << client_ip << " finished." << endl;
+                cout << ".::. Test from " << client_ip << " finished.  ~  " << connection->pkt_cnt << " packets processed." << endl;
                 connection->fp = stdout;
                 delete connection;
                 connections.erase(conn_id);

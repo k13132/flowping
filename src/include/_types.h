@@ -79,7 +79,7 @@
 #define CNT_DPAR 16  //0001 0000
 #define CNT_ePAR 32  //0010 0000
 #define CNT_EPAR 64  //0100 0000
-#define CNT_RESERVED 128  //1000 0000       //reserved
+#define CNT_JPAR 128  //1000 0000       
 
 
 #define TX 0

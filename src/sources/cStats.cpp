@@ -54,7 +54,6 @@ void cStats::pk_enque(const u_int64_t conn_id, const u_int16_t direction, const 
     qstats_t * pk_stats;
 
     if (qstats.count(conn_id) == 0) {
-        cout << "Creating stats for conn_id: " << conn_id << endl;
         pk_stats = new qstats_t;
         pk_stats->rx_qsize = 0;
         pk_stats->tx_qsize = 0;
@@ -119,7 +118,6 @@ void cStats::prepareStats(const u_int64_t conn_id, const uint16_t direction, sta
     qstats_t * pk_stats;
     pk_stats = NULL;
     pk_queue = NULL;
-    cout << stats <<endl;
     if (qstats.count(conn_id) == 0) {
         cerr << "cStats::ERRROR (1) - no stats for connId: " << conn_id << endl;
     } else {
@@ -209,14 +207,14 @@ void cClientStats::printRealTime(void) {
         ss << "\"tx_pkts\":" << stats->tx_pkts << ",";
         ss << "\"rx_pkts\":" << stats->rx_pkts << ",";
         ss << "\"tx_bytes\":" << stats->tx_bytes << ",";
-        ss << "\"rx_bytes\":" << stats->rx_bytes << ",";
-        ss << "\"tx_bitrate\":" << stats->tx_bytes * 8 / duration << ",";
-        ss << "\"rx_bitrate\":" << stats->rx_bytes * 8 / duration << "},";
+        ss << "\"rx_bytes\":" << stats->rx_bytes  << ",";
+        ss << "\"tx_bitrate\":" << stats->tx_bytes * 8 / (duration*1000) << ",";
+        ss << "\"rx_bitrate\":" << stats->rx_bytes * 8 / (duration*1000) << ",";
         ss << "\"tx_pkt_rate\":" << stats->tx_pkts / duration << ",";
         ss << "\"rx_pkt_rate\":" << stats->rx_pkts / duration << "},";
         ss << "\"live_stats\":{";
-        ss << "\"tx_bitrate\":" << stats->tx_bitrare << ",";
-        ss << "\"rx_bitrate\":" << stats->rx_bitrare << ",";
+        ss << "\"tx_bitrate\":" << stats->tx_bitrare/1000 << ",";
+        ss << "\"rx_bitrate\":" << stats->rx_bitrare/1000 << ",";
         ss << "\"tx_pkt_rate\":" << stats->tx_pps << ",";
         ss << "\"rx_pkt_rate\":" << stats->rx_pps << ",";
         ss.precision(3);
@@ -244,14 +242,14 @@ void cClientStats::printRealTime(void) {
         ss.precision(0);
         ss << stats->tx_pkts << ";";
         ss << stats->rx_pkts << ";";
-        ss << stats->tx_bytes << ";";
-        ss << stats->rx_bytes << ";";
-        ss << stats->tx_bytes * 8 / duration << ";";
-        ss << stats->rx_bytes * 8 / duration << ";";
+        ss << stats->tx_bytes  << ";";
+        ss << stats->rx_bytes  << ";";
+        ss << stats->tx_bytes * 8 / (duration * 1000) << ";";
+        ss << stats->rx_bytes * 8 / (duration * 1000) << ";";
         ss << stats->tx_pkts  / duration << ";";
         ss << stats->rx_pkts  / duration << ";";
-        ss << stats->tx_bitrare << ";";
-        ss << stats->rx_bitrare << ";";
+        ss << stats->tx_bitrare / 1000 << ";";
+        ss << stats->rx_bitrare / 10000 << ";";
         ss.precision(3);
         ss << stats->cur_rtt << ";";
         ss << stats->cur_loss << ";";
@@ -282,13 +280,13 @@ void cClientStats::printRealTime(void) {
         ss << "rx_packets: " << stats->rx_pkts << std::endl;
         ss << "tx_bytes: " << stats->tx_bytes << " [B]" << std::endl;
         ss << "rx_bytes: " << stats->rx_bytes << " [B]" << std::endl;
-        ss << "tx_bitrate: " << stats->tx_bytes * 8 / duration << " [bps]" << std::endl;
-        ss << "rx_bitrate: " << stats->rx_bytes * 8 / duration << " [bps]" << std::endl;
+        ss << "tx_bitrate: " << stats->tx_bytes * 8 / (duration * 1000)<< " [kbps]" << std::endl;
+        ss << "rx_bitrate: " << stats->rx_bytes * 8 / (duration * 1000)<< " [kbps]" << std::endl;
         ss << "tx_pkt_rate: " << stats->tx_pkts / duration << " [pps]" << std::endl;
         ss << "rx_pkt_rate: " << stats->rx_pkts / duration << " [pps]" << std::endl;
         ss << "\n>>> LIVE STATS (last 10 sec)" << std::endl;
-        ss << "tx_bitrate: " << stats->tx_bitrare << " [bps]" << std::endl;
-        ss << "rx_bitrate: " << stats->rx_bitrare << " [bps]" << std::endl;
+        ss << "tx_bitrate: " << stats->tx_bitrare / 1000 << " [kbps]" << std::endl;
+        ss << "rx_bitrate: " << stats->rx_bitrare / 1000 << " [kbps]" << std::endl;
         ss.precision(3);
         ss << "rtt: " << stats->cur_rtt << " [ms]" << std::endl;
         ss << "loss: " << stats->cur_loss << " [%]" << std::endl;
@@ -391,8 +389,7 @@ void cServerStats::pktSent(const u_int64_t conn_id, const timespec ts, const uin
 
 void cServerStats::pktReceived(const u_int64_t conn_id, const timespec ts, const uint16_t len, const u_int64_t seq, const std::string src, const u_int32_t port) {
     if (s_stats.count(conn_id) == 0) {
-        //cerr << "ServerStats {stats} should be initialized at the time of instance construction" << endl;
-        //exit(1);
+        // in case of server restart and client test still running.
         connInit(conn_id, src, port);
     }
     stats = s_stats[conn_id];

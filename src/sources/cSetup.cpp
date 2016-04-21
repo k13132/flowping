@@ -317,11 +317,14 @@ cSetup::~cSetup() {
 }
 
 u_int8_t cSetup::self_check(void) {
+    if (C_par && J_par){
+            return SETUP_CHCK_ERR;
+    }
     if (_par) { //show usage
         return SETUP_CHCK_SHOW;
     }
     if (isServer()) {
-        if (a_par || Q_par || b_par || B_par || c_par || C_par || F_par || E_par || h_par || H_par || i_par || I_par || s_par || t_par || T_par || R_par || P_par || W_par || U_par || w_par) {
+        if (a_par || Q_par || b_par || B_par || c_par || F_par || E_par || h_par || H_par || i_par || I_par || s_par || t_par || T_par || R_par || P_par || W_par || U_par || w_par) {
             return SETUP_CHCK_ERR;
         }
     } else {
@@ -950,6 +953,10 @@ bool cSetup::toJSON(bool val) {
 
 void cSetup::setCPAR(bool val) {
     C_par = val;
+}
+
+void cSetup::setJPAR(bool val) {
+    J_par = val;
 }
 
 void cSetup::setXPAR(bool val) {

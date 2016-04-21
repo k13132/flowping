@@ -71,13 +71,14 @@ void signalHandler(int sig) {
     if ((sig == SIGQUIT) || (sig == SIGTERM) || (sig == SIGINT)) { //SIG 3 //15 //2   QUIT
         if (setup->isServer()) {
             server->terminate();
-            cout << "Server shutdown initiated." << endl;
+            cerr << "Server shutdown initiated." << endl;
             usleep(200000);
             pthread_cancel(t_sServer);
         } else {
             u_int16_t cnt;
             cnt=0;
             client->terminate();
+            cerr << "Client shutdown initiated." << endl;
             while ((client->status()&&(cnt<100))){
                 usleep(50000);
                 cnt++;
@@ -157,7 +158,7 @@ int main(int argc, char** argv) {
         if (setup->is_vonly()) return EXIT_SUCCESS;
     }
     if (setup->self_check() == SETUP_CHCK_ERR) {
-        cout << "Invalid option!" << setup->self_check() << endl<< endl;
+        cerr << "Invalid option!" << setup->self_check() << endl<< endl;
         setup->usage();
         return EXIT_FAILURE;
     }

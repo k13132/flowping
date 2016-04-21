@@ -74,6 +74,7 @@ public:
     bool toJSON(void);
     bool toJSON(bool);
     void setCPAR(bool);
+    void setJPAR(bool);
     void setXPAR(bool);
     void restoreXPAR(void);
     string getFilename(void);

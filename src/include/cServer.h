@@ -40,6 +40,7 @@ struct t_conn{
     u_int64_t pkt_cnt;
     vector <string> msg_store;
     bool C_par;
+    bool J_par;
     bool D_par;
     bool e_par;
     bool E_par;
