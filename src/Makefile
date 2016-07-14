@@ -24,7 +24,7 @@ CROSS_PREFIX=
 CXXFLAGS_ARCH=
 
 # Common compiler choices
-CXXFLAGS += -pipe -O2 -Wall -D_REENTRANT -fPIC -w
+CXXFLAGS += -pipe -O2 -Wall -D_REENTRANT -fPIC -W 
 
 # Linker choices
 #LXXFLAGS= -march=armv5te -pthread
@@ -50,7 +50,7 @@ LIBS_PATH=
 
 
 # Object files
-OBJS = cClient.o cServer.o cSetup.o flowping.o
+OBJS = cClient.o cServer.o cSetup.o cStats.o flowping.o
 
 all: $(TARGET)
 	
@@ -66,6 +66,21 @@ else
     endif
 endif		
 
+
+ifeq ($(debug),true)
+    	CXXFLAGS += -g -D_DEBUG
+	LXXFLAGS += -g 
+endif
+
+ifeq ($(platform),x86_64)
+    	CXXFLAGS += -m64
+	LXXFLAGS += -m64 
+endif
+
+ifeq ($(platform),x86_32)
+    	CXXFLAGS += -m32
+	LXXFLAGS += -m32 
+endif
 	
 cClient.o: $(SRC_DIR)/cClient.cpp
 	$(CROSS_PREFIX)$(CXX) -c $(CXXFLAGS) $(CFLAGS_ARCH) $(INCLUDE_PATHS) -o cClient.o $(SRC_DIR)/cClient.cpp
@@ -75,6 +90,9 @@ cServer.o: $(SRC_DIR)/cServer.cpp
 
 cSetup.o: $(SRC_DIR)/cSetup.cpp
 	$(CROSS_PREFIX)$(CXX) -c $(CXXFLAGS) $(CFLAGS_ARCH) $(INCLUDE_PATHS) -o cSetup.o $(SRC_DIR)/cSetup.cpp 
+
+cStats.o: $(SRC_DIR)/cStats.cpp
+	$(CROSS_PREFIX)$(CXX) -c $(CXXFLAGS) $(CFLAGS_ARCH) $(INCLUDE_PATHS) -o cStats.o $(SRC_DIR)/cStats.cpp 
 
 flowping.o: $(SRC_DIR)/flowping.cpp
 	$(CROSS_PREFIX)$(CXX) -c $(CXXFLAGS) $(CFLAGS_ARCH) $(INCLUDE_PATHS) -o flowping.o $(SRC_DIR)/flowping.cpp 

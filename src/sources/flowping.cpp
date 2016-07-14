@@ -25,9 +25,9 @@
  */
 
 
+#include "flowping.h"
 #include <cstdlib>
 #include <iostream>
-#include "flowping.h"
 #include <signal.h>
 #include <sched.h>
 
@@ -36,6 +36,7 @@ using namespace std;
 cSetup *setup = NULL;
 cClient *client = NULL;
 cServer *server = NULL;
+cStats *stats = NULL;
 pthread_t t_cSender, t_cReceiver, t_cReceiver_output, t_sServer, t_cPacketFactory;
 
 void * t_helper_sServer(void * arg) {
@@ -70,13 +71,14 @@ void signalHandler(int sig) {
     if ((sig == SIGQUIT) || (sig == SIGTERM) || (sig == SIGINT)) { //SIG 3 //15 //2   QUIT
         if (setup->isServer()) {
             server->terminate();
-            cout << "Server shutdown initiated." << endl;
+            cerr << "Server shutdown initiated." << endl;
             usleep(200000);
             pthread_cancel(t_sServer);
         } else {
             u_int16_t cnt;
             cnt=0;
             client->terminate();
+            cerr << "Client shutdown initiated." << endl;
             while ((client->status()&&(cnt<100))){
                 usleep(50000);
                 cnt++;
@@ -87,7 +89,9 @@ void signalHandler(int sig) {
         }
     }
     if (sig == SIGUSR1) { //SIG 10              
-        //zatim nedela nic
+        if (stats){
+            stats->printRealTime();
+        }
     }
     if (sig == SIGUSR2) { //SIG 12              
         //zatim nedela nic
@@ -123,18 +127,23 @@ int main(int argc, char** argv) {
 
     version.str("");
 #ifdef __i386
-    version << "x86_32 1.4.1";
+    version << "x86_32 1.5.0";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 #ifdef __x86_64__
-    version << "x86_64 1.4.1";
+    version << "x86_64 1.5.0";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
 #ifdef __ARM_ARCH_7A__
-    version << "ARM_32 1.4.1";
+    version << "ARM_32 1.5.0";
     version << " (" << DD << " "<< TT << ")";
 #endif    
+    
+    //AntiAsym mode FIX
+    //Advanced Realtime Statistics / Stats module
+    //todo asym modes packet sizes - difers from server 64B vs 32B min size
+    //Output to JSON
     
     
     setup = new cSetup(argc, argv, version.str());
@@ -149,7 +158,7 @@ int main(int argc, char** argv) {
         if (setup->is_vonly()) return EXIT_SUCCESS;
     }
     if (setup->self_check() == SETUP_CHCK_ERR) {
-        cout << "Invalid option!" << setup->self_check() << endl<< endl;
+        cerr << "Invalid option!" << setup->self_check() << endl<< endl;
         setup->usage();
         return EXIT_FAILURE;
     }
@@ -159,7 +168,8 @@ int main(int argc, char** argv) {
         sched_setscheduler(0, SCHED_FIFO, &param);
     }
     if (setup->isServer()) {
-        server = new cServer(setup);
+        stats = new cServerStats(setup);
+        server = new cServer(setup, stats);
         if (pthread_create(&t_sServer, NULL, t_helper_sServer, (void *) server) != 0) {
             perror("pthread_create");
             exit(1);
@@ -177,7 +187,8 @@ int main(int argc, char** argv) {
 
             }
         }
-        client = new cClient(setup);
+        stats = new cClientStats(setup);
+        client = new cClient(setup, stats);
         pthread_setconcurrency(4);
         if (pthread_create(&t_cPacketFactory, NULL, t_helper_cPacketFactory, (void *) client) != 0) {
             perror("pthread_create");
@@ -211,6 +222,7 @@ int main(int argc, char** argv) {
         }
     }
     delete(setup);
+    delete(stats);
     cout << endl << ".::. Good bye!" << endl;
     return EXIT_SUCCESS;
 }

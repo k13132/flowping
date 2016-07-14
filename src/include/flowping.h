@@ -31,6 +31,7 @@
 #include "cClient.h"
 #include "cServer.h"
 #include "cSetup.h"
+#include "cStats.h"
 
 
 

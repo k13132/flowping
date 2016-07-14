@@ -31,6 +31,7 @@
 
 #include "_types.h"
 #include "cSetup.h"
+#include "cStats.h"
 #include <map>
 
 
@@ -39,6 +40,7 @@ struct t_conn{
     u_int64_t pkt_cnt;
     vector <string> msg_store;
     bool C_par;
+    bool J_par;
     bool D_par;
     bool e_par;
     bool E_par;
@@ -54,14 +56,15 @@ struct t_conn{
 
 class cServer {
 public:
-    cServer(cSetup *setup);
+    cServer(cSetup *setup, cStats *stats);
     void terminate(void);
     virtual ~cServer();
     int run(void);
 private:
     uint64_t conn_id;
-    map <uint64_t,t_conn *> connections;
+    map <u_int64_t, t_conn *> connections;
     t_conn * connection;
+    cServerStats *stats;
     cSetup *setup;
     int sock;
     bool stop;

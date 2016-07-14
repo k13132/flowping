@@ -104,7 +104,7 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->cumulative_delay = 0;
 
     this->version = version;
-    while ((c = getopt(argc, argv, "CXUWeEaAQSqDPH?w:d:p:c:h:s:i:nF:f:u:vI:t:T:b:B:r:R:")) != EOF) {
+    while ((c = getopt(argc, argv, "JCXUWeEaAQSqDPH?w:d:p:c:h:s:i:nF:f:u:vI:t:T:b:B:r:R:")) != EOF) {
         switch (c) {
             case 'v':
                 this->v_par = true;
@@ -119,6 +119,10 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 break;
             case 'C':
                 this->C_par = true;
+                this->vonly = false;
+                break;
+            case 'J':
+                this->J_par = true;
                 this->vonly = false;
                 break;
             case 'q':
@@ -313,11 +317,14 @@ cSetup::~cSetup() {
 }
 
 u_int8_t cSetup::self_check(void) {
+    if (C_par && J_par){
+            return SETUP_CHCK_ERR;
+    }
     if (_par) { //show usage
         return SETUP_CHCK_SHOW;
     }
     if (isServer()) {
-        if (a_par || Q_par || b_par || B_par || c_par || C_par || F_par || E_par || h_par || H_par || i_par || I_par || s_par || t_par || T_par || R_par || P_par || W_par || U_par || w_par) {
+        if (a_par || Q_par || b_par || B_par || c_par || F_par || E_par || h_par || H_par || i_par || I_par || s_par || t_par || T_par || R_par || P_par || W_par || U_par || w_par) {
             return SETUP_CHCK_ERR;
         }
     } else {
@@ -377,7 +384,8 @@ void cSetup::usage() {
     cout << "|         [-b kbit/s]                BitRate (Lower limit)                                      |" << endl;
     cout << "|         [-B kbit/s]                BitRate (Upper limit)                                      |" << endl;
     cout << "|         [-c count]    [unlimited]  Send specified number of packets                           |" << endl;
-    cout << "|         [-C ]                      Output to CSV [;;;;]                                       |" << endl;
+    cout << "|         [-C ]                      CSV output format [;;;;]                                   |" << endl;
+    cout << "|         [-J ]                      JSON output format                                         |" << endl;
     cout << "|         [-d]                       Set source interface                                       |" << endl;
     cout << "|         [-F filename]              Send FileName to server (overide server settings)          |" << endl;
     cout << "|         [-h hostname] [localhost]  Server hostname or IP address                              |" << endl;
@@ -935,8 +943,20 @@ bool cSetup::toCSV(bool val) {
     return val;
 }
 
+bool cSetup::toJSON(void) {
+    return J_par;
+}
+
+bool cSetup::toJSON(bool val) {
+    return val;
+}
+
 void cSetup::setCPAR(bool val) {
     C_par = val;
+}
+
+void cSetup::setJPAR(bool val) {
+    J_par = val;
 }
 
 void cSetup::setXPAR(bool val) {

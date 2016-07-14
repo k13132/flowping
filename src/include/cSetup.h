@@ -71,7 +71,10 @@ public:
     bool descFileInUse(void);
     bool toCSV(void);
     bool toCSV(bool);
+    bool toJSON(void);
+    bool toJSON(bool);
     void setCPAR(bool);
+    void setJPAR(bool);
     void setXPAR(bool);
     void restoreXPAR(void);
     string getFilename(void);
@@ -134,6 +137,7 @@ private:
     bool d_par;
     bool I_par;
     bool i_par;
+    bool J_par;
     bool t_par;
     bool T_par;
     bool b_par;

@@ -30,13 +30,14 @@
 #define	CLIENT_H
 
 #include "cSetup.h"
+#include "cStats.h"
 #include "_types.h"
 #include "flowping.h"
 #include "queue"
 
 class cClient {
 public:
-    cClient(cSetup *setup);
+    cClient(cSetup *setup, cStats *stats);
     bool status(void);
     int run_sender(void);
     int run_receiver(void);
@@ -47,14 +48,17 @@ public:
 
 private:
     bool gennerator_running;
-
     bool r_running,s_running;
     bool pktBufferReady;
+
     vector <event_t> msg_store;
     vector <event_t> msg_store_snd;
     queue <ping_pkt_t> rcv_queue;
     void delay(struct timespec);
+
     cSetup *setup;
+    cClientStats *stats;
+    
     u_int64_t getInterval(void);
     u_int16_t getPacketSize(void);
     pthread_t t_sender, t_receiver;
