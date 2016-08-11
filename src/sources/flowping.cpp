@@ -127,16 +127,16 @@ int main(int argc, char** argv) {
 
     version.str("");
 #ifdef __i386
-    version << "x86_32 1.5.0-devel";
+    version << "x86_32 1.5.1-devel";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 #ifdef __x86_64__
-    version << "x86_64 1.5.0-devel";
+    version << "x86_64 1.5.1-devel";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
 #ifdef __ARM_ARCH_7A__
-    version << "ARM_32 1.5.0-devel";
+    version << "ARM_32 1.5.1-devel";
     version << " (" << DD << " "<< TT << ")";
 #endif    
     
@@ -223,7 +223,7 @@ int main(int argc, char** argv) {
     }
     delete(setup);
     delete(stats);
-    cout << endl << ".::. Good bye!" << endl;
+    cerr << endl << ".::. Good bye!" << endl;
     return EXIT_SUCCESS;
 }
 

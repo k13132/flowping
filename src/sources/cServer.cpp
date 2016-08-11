@@ -270,7 +270,7 @@ int cServer::run() {
             inet_ntop(AF_INET, &ip, client_ip, INET_ADDRSTRLEN);
             ping_msg = (struct ping_msg_t*) (packet);
 #ifdef DEBUG
-            if (setup->debug()) cout << "Control packet received! code:" << (int) ping_msg->code << endl;
+            if (setup->debug()) cerr << "Control packet received! code:" << (int) ping_msg->code << endl;
 #endif
             stats->connInit(conn_id, string(client_ip), saClient.sin_port);
             if (ping_msg->code == CNT_FNAME) {
@@ -280,7 +280,7 @@ int cServer::run() {
                     }
                 }
                 connection->fp = fopen(ping_msg->msg, "w+"); //RW - overwrite file
-                cout << ping_msg->msg << endl;
+                cerr << ping_msg->msg << endl;
                 ping_msg->code = CNT_FNAME_OK;
                 if (connection->fp == NULL) {
                     perror("Unable to open file, redirecting to STDOUT");
@@ -387,7 +387,7 @@ int cServer::run() {
                     setup->setCPAR(false);
                 }
                 message << "]";
-                cout << message.str() << endl;
+                cerr << message.str() << endl;
                 if (show) {
                     ss.str("");
                     if (setup->toCSV()) {
@@ -427,7 +427,7 @@ int cServer::run() {
                 if (connection->fp != stdout) {
                     fclose(connection->fp);
                 }
-                cout << ".::. Test from " << client_ip << " finished.  ~  " << connection->pkt_cnt << " packets processed." << endl;
+                cerr << ".::. Test from " << client_ip << " finished.  ~  " << connection->pkt_cnt << " packets processed." << endl;
                 connection->fp = stdout;
                 delete connection;
                 connections.erase(conn_id);

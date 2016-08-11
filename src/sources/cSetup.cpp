@@ -301,12 +301,12 @@ cSetup::cSetup(int argc, char **argv, string version) {
     }
     if (u_par) {
         if (this->parseSrcFile()) {
-            cout << "Error parsing time_def file!" << endl;
+            cerr << "Error parsing time_def file!" << endl;
             exit(1);
         }
     } else {
         if (this->parseCmdLine()) {
-            cout << "Error parsing cmdline parameters!" << endl;
+            cerr << "Error parsing cmdline parameters!" << endl;
             exit(1);
         }
     }
@@ -653,7 +653,7 @@ int cSetup::parseCmdLine() {
     }
     if (!R_par && !T_par && !t_par) {
         tmp.ts = 86400;
-        //cout << tmp.ts << endl;
+        //ODcout << tmp.ts << endl;
         tmp.bitrate = 8000000.0 * this->size / this->interval_i;
         tmp.len = this->size;
         tpoints.push(tmp);
