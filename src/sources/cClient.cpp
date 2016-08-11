@@ -109,7 +109,7 @@ int cClient::run_receiver() {
     this->r_running = true;
     bool show = not setup->silent();
     if (show && !setup->toCSV() && !setup->toJSON()) {
-        cout << ".::. Pinging " << setup->getHostname() << " with " << setup->getPacketSize() << " bytes of data:" << endl;
+        cerr << ".::. Pinging " << setup->getHostname() << " with " << setup->getPacketSize() << " bytes of data:" << endl;
     }
 
     // Find the server
@@ -137,7 +137,7 @@ int cClient::run_receiver() {
     if (setup->useInterface()) {
         setsockopt(this->sock, SOL_SOCKET, SO_BINDTODEVICE, setup->getInterface().c_str(), strlen(setup->getInterface().c_str()));
         if (show && !setup->toCSV() && !setup->toJSON()) {
-            cout << "Using interface:" << setup->getInterface().c_str() << endl;
+            cerr << "Using interface:" << setup->getInterface().c_str() << endl;
         }
     }
 
@@ -350,7 +350,7 @@ int cClient::run_receiver() {
     this->tSent = (double) ((r_curTv.tv_sec - this->start_ts.tv_sec)*1000.0 + (r_curTv.tv_nsec - this->start_ts.tv_nsec) / 1000000.0);
     if (setup->useTimedBuffer()) {
         if (show) {
-            cout << ".::. Writeing data into file." << endl;
+            cerr << ".::. Writeing data into file." << endl;
         }
         string tmp_str;
         int idx, idx_snd;
@@ -361,8 +361,8 @@ int cClient::run_receiver() {
         vmsg_snd_len = msg_store_snd.size();
         event_t ev, ev_snd;
         if (show) {
-            cout << "     ~ Messages to be writen - mgs_store:" << vmsg_len << endl;
-            cout << "     ~ Messages to be writen - mgs_store_snd:" << vmsg_snd_len << endl;
+            cerr << "     ~ Messages to be writen - mgs_store:" << vmsg_len << endl;
+            cerr << "     ~ Messages to be writen - mgs_store_snd:" << vmsg_snd_len << endl;
         }
         while ((idx < vmsg_len) || (idx_snd < vmsg_snd_len)) {
             if ((idx < vmsg_len) && (idx_snd < vmsg_snd_len)) {
@@ -391,8 +391,8 @@ int cClient::run_receiver() {
             }
         }
         if (show) {
-            cout << "     ~ Messages writen - msg_store:" << idx << endl;
-            cout << "     ~ Messages writen - msg_store_snd:" << idx_snd << endl;
+            cerr << "     ~ Messages writen - msg_store:" << idx << endl;
+            cerr << "     ~ Messages writen - msg_store_snd:" << idx_snd << endl;
         }
         msg_store.clear();
     }
@@ -496,7 +496,7 @@ int cClient::run_sender() {
     }
     while (!started) {
 #ifdef DEBUG        
-        cout << "Sending CONTROL Packet - code:" << ping_msg->code << endl;
+        cerr << "Sending CONTROL Packet - code:" << ping_msg->code << endl;
 #endif        
         nRet = sendto(this->sock, packet, pk_len, 0, (struct sockaddr *) &saServer, sizeof (struct sockaddr));
         if (nRet < 0) {
@@ -714,7 +714,7 @@ int cClient::run_sender() {
     }
     close(pipe_handle);
 #ifdef DEBUG
-    cout << setup->getInterval() << endl;
+    cerr << setup->getInterval() << endl;
 #endif
     this->s_running = false;
     return 0;
