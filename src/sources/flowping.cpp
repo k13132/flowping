@@ -91,8 +91,6 @@ void signalHandler(int sig) {
     if (sig == SIGUSR1) { //SIG 10              
         if (stats){
             stats->printRealTime();
-        }else{
-            cerr << "Error: Stats module is not enabled. Recompile FlowPing with Stats module.\n";
         }
     }
     if (sig == SIGUSR2) { //SIG 12              
@@ -129,16 +127,16 @@ int main(int argc, char** argv) {
 
     version.str("");
 #ifdef __i386
-    version << "x86_32 1.5.1-devel";
+    version << "x86_32 1.5.0a";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 #ifdef __x86_64__
-    version << "x86_64 1.5.1-devel";
+    version << "x86_64 1.5.0a";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
 #ifdef __ARM_ARCH_7A__
-    version << "ARM_32 1.5.1-devel";
+    version << "ARM_32 1.5.0a";
     version << " (" << DD << " "<< TT << ")";
 #endif    
     
@@ -170,9 +168,7 @@ int main(int argc, char** argv) {
         sched_setscheduler(0, SCHED_FIFO, &param);
     }
     if (setup->isServer()) {
-#ifndef _NOSTATS        
         stats = new cServerStats(setup);
-#endif
         server = new cServer(setup, stats);
         if (pthread_create(&t_sServer, NULL, t_helper_sServer, (void *) server) != 0) {
             perror("pthread_create");
