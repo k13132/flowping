@@ -66,12 +66,24 @@ else
     endif
 endif		
 
-
+#Debug
 ifeq ($(debug),true)
-    	CXXFLAGS += -g -D_DEBUG
-	LXXFLAGS += -g 
+        CXXFLAGS += -g -D_DEBUG
+        LXXFLAGS += -g
 endif
 
+#Profiling
+ifeq ($(profile),true)
+        CXXFLAGS += -pg
+        LXXFLAGS += -pg
+endif
+
+#Turn Off Stats Module
+ifeq ($(stats),false)
+        CXXFLAGS += -D_NOSTATS
+endif
+
+#Enforce platform
 ifeq ($(platform),x86_64)
     	CXXFLAGS += -m64
 	LXXFLAGS += -m64 

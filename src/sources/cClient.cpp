@@ -38,7 +38,9 @@
 
 cClient::cClient(cSetup *setup, cStats *stats) {
     this->setup = setup;
-    this->stats = (cClientStats *) stats;
+    if (stats) {
+        this->stats = (cClientStats *) stats;
+    }
     this->s_running = false;
     this->r_running = false;
     this->gennerator_running = false;
@@ -98,6 +100,9 @@ int cClient::run_packetFactory() {
         if (setup->getTimedBufferSize()) {
             this->pktBufferReady = true;
         }
+        msg_store.reserve(setup->getTimedBufferSize() + 10);
+        msg_store_snd.reserve(setup->getTimedBufferSize() + 10);
+        cerr << "Allocating message storage for: " << setup->getTimedBufferSize() + 10 << " itemns" << endl;
     }
     return 0;
 }
@@ -188,7 +193,9 @@ int cClient::run_receiver() {
 #endif
             if (ping_msg->code == CNT_DONE_OK) {
                 done = true;
+#ifndef _NOSTATS
                 stats->addServerStats(ping_msg->count);
+#endif
             }
             if (ping_msg->code == CNT_FNAME_OK) started = true;
             if (ping_msg->code == CNT_OUTPUT_REDIR) started = true;
@@ -207,7 +214,9 @@ int cClient::run_receiver() {
             sent_ts = ((ping_pkt->sec - start_ts.tv_sec) * 1000 + (ping_pkt->nsec - start_ts.tv_nsec) / 1000000.0);
 
             if (setup->wholeFrame()) nRet += 42;
+#ifndef _NOSTATS
             stats->addCRxInfo(r_curTv, nRet, ping_pkt->seq, rtt); // Also updates  rx_pkts
+#endif            
             if (show) {
                 if (setup->toJSON()) {
                     ss << "{";
@@ -322,7 +331,9 @@ int cClient::run_receiver() {
                 if (!setup->toCSV() && !setup->toJSON()) {
                     ss << " OUT OF ORDER!\n";
                 }
+#ifndef _NOSTATS
                 stats->pktOoo();
+#endif                
             } else {
                 if (show) {
                     ss << endl;
@@ -618,7 +629,9 @@ int cClient::run_sender() {
             exit(1);
         }
         if (setup->frameSize()) nRet += 42;
+#ifndef _NOSTATS
         stats->pktSent(curTv, nRet, ping_pkt->seq);
+#endif        
         if (setup->showSendBitrate()) {
             nRet = HEADER_LENGTH + payload_size;
             ss.str("");
@@ -721,7 +734,9 @@ int cClient::run_sender() {
 }
 
 void cClient::report() {
+#ifndef _NOSTATS
     fprintf(fp, "%s", stats->getReport().c_str());
+#endif   
     fclose(fp);
 }
 

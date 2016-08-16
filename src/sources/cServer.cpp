@@ -32,7 +32,9 @@
 
 cServer::cServer(cSetup *setup, cStats *stats) {
     this->setup = setup;
-    this->stats = (cServerStats *) stats;
+    if (stats){
+        this->stats = (cServerStats *) stats;
+    }
     this->stop = false;
 
     //ToDo: zjistit, zdqa je to potreba a zda to ma nejaky prinos    
@@ -140,8 +142,10 @@ int cServer::run() {
             //Update stats
             //cout << ping_pkt->size<<endl;
             inet_ntop(AF_INET, &ip, client_ip, INET_ADDRSTRLEN);
+#ifndef _NOSTATS
             stats->pktReceived(conn_id, connection->curTv, rec_size, ping_pkt->seq, string(client_ip), saClient.sin_port);
             stats->pktSent(conn_id, connection->curTv, ret_size, ping_pkt->seq, string(client_ip), saClient.sin_port);
+#endif            
             if (show) {
 
                 double delta = ((double) (connection->curTv.tv_sec - connection->refTv.tv_sec)*1000.0 + (double) (connection->curTv.tv_nsec - connection->refTv.tv_nsec) / 1000000.0);
@@ -272,7 +276,9 @@ int cServer::run() {
 #ifdef DEBUG
             if (setup->debug()) cerr << "Control packet received! code:" << (int) ping_msg->code << endl;
 #endif
+#ifndef _NOSTATS
             stats->connInit(conn_id, string(client_ip), saClient.sin_port);
+#endif
             if (ping_msg->code == CNT_FNAME) {
                 if (connection->fp != NULL) {
                     if (connection->fp != stdout) {
@@ -431,9 +437,11 @@ int cServer::run() {
                 connection->fp = stdout;
                 delete connection;
                 connections.erase(conn_id);
+#ifndef _NOSTATS
                 if (stats->connStatRemove(conn_id)) {
                     std::cerr << "cServerStats::connStatRemove FAILED - conn_id [" << conn_id << "]" << endl;
                 }
+#endif
             }
         }
     }
