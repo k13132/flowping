@@ -203,7 +203,7 @@ S_TX_Rate - Sending bitrate, cumputed from delta and packet size of only two pac
 <h3>Change Log</h3>
 
 <p>
-Version 1.5.0-devel adds new features.<BR>
+Version 1.5.0 adds new features.<BR>
 &nbsp;&nbsp;&nbsp;&nbsp; New features:<BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- new stats module<BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- modified build structure with single makefile<BR>
@@ -223,6 +223,12 @@ Version 1.4.0e adds new features.<BR>
 &nbsp;&nbsp;&nbsp;&nbsp;New features:<BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- traffic generator is completely redesigned<BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- zero bitrate support in complex profiles (via test description file)<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- send intervals for 32k packets are precomputed and stored in buffer<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- when buffer fill fall under 90%, buffer refill in separate thread is started.<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- packet buffer consumes aprox. 830KB of heap memory<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;BugFix:<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- performance and stability improvements<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- minor bug fixes<BR>
 </p>
 
 <p>
