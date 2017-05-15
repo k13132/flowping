@@ -1,7 +1,7 @@
 /*
  * File:   flowping.h
  *
- * Copyright (C) 2016: Department of Telecommunication Engineering, FEE, CTU in Prague
+ * Copyright (C) 2017: Department of Telecommunication Engineering, FEE, CTU in Prague
  *
  * This file is part of FlowPing.
  *
@@ -32,11 +32,6 @@
 #include "cServer.h"
 #include "cSetup.h"
 #include "cStats.h"
-
-
-
-//#define DEBUG
-
 
 #endif	/* FLOWPING_H */
 
