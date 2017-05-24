@@ -129,16 +129,16 @@ int main(int argc, char** argv) {
 
     version.str("");
 #ifdef __i386
-    version << "x86_32 1.5.1-devel";
+    version << "x86_32 1.5.1";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 #ifdef __x86_64__
-    version << "x86_64 1.5.1-devel";
+    version << "x86_64 1.5.1";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
 #ifdef __ARM_ARCH_7A__
-    version << "ARM_32 1.5.1-devel";
+    version << "ARM_32 1.5.1";
     version << " (" << DD << " "<< TT << ")";
 #endif    
     
@@ -191,7 +191,9 @@ int main(int argc, char** argv) {
 
             }
         }
+#ifndef _NOSTATS        
         stats = new cClientStats(setup);
+#endif
         client = new cClient(setup, stats);
         pthread_setconcurrency(4);
         if (pthread_create(&t_cPacketFactory, NULL, t_helper_cPacketFactory, (void *) client) != 0) {
@@ -227,7 +229,7 @@ int main(int argc, char** argv) {
     }
     delete(setup);
     delete(stats);
-    cerr << endl << ".::. Good bye!" << endl;
+    //cerr << endl << ".::. Good bye!" << endl;
     return EXIT_SUCCESS;
 }
 

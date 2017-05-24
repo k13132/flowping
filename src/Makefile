@@ -69,7 +69,7 @@ endif
 #Debug
 ifeq ($(debug),true)
         CXXFLAGS += -g -D_DEBUG
-        LXXFLAGS += -g
+        LXXFLAGS += -g -D_DEBUG
 endif
 
 #Profiling
@@ -81,6 +81,7 @@ endif
 #Turn Off Stats Module
 ifeq ($(stats),false)
         CXXFLAGS += -D_NOSTATS
+        LXXFLAGS += -D_NOSTATS
 endif
 
 #Enforce platform

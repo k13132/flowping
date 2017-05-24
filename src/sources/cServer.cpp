@@ -151,7 +151,11 @@ int cServer::run() {
                 double delta = ((double) (connection->curTv.tv_sec - connection->refTv.tv_sec)*1000.0 + (double) (connection->curTv.tv_nsec - connection->refTv.tv_nsec) / 1000000.0);
                 ss.str("");
                 if (setup->toJSON(connection->J_par)) {
-                    ss << "{";
+                    if (connection->pkt_cnt == 0){
+                        ss << "{\n\t\"server_data\": [\n\t\t{";
+                    }else{
+                        ss << ",\n\t\t{";
+                    }
                 }
                 if (setup->showTimeStamps(connection->D_par)) {
                     if (setup->toCSV(connection->C_par)) {
@@ -166,7 +170,7 @@ int cServer::run() {
                         ss.fill('0');
                         ss.width(9);
                         ss << connection->curTv.tv_nsec;
-                        ss << ",";
+                        ss << ",\n\t\t\t";
                     }
                     if (!setup->toCSV(connection->C_par)&&!setup->toJSON(connection->J_par)) {
                         ss << "[" << connection->curTv.tv_sec << ".";
@@ -193,7 +197,7 @@ int cServer::run() {
                     ss << delta << ";";
                 }
                 if (setup->toJSON(connection->J_par)) {
-                    ss << "\"size\":" << rec_size << ",\"remote\":\"" << client_ip << "\",\"seq\":" << ping_pkt->seq << ",";
+                    ss << "\"size\":" << rec_size << ",\n\t\t\t\"remote\":\"" << client_ip << "\",\n\t\t\t\"seq\":" << ping_pkt->seq << ",\n\t\t\t";
                     ss.setf(ios_base::right, ios_base::adjustfield);
                     ss.setf(ios_base::fixed, ios_base::floatfield);
                     ss.precision(3);
@@ -218,7 +222,7 @@ int cServer::run() {
                         ss.setf(ios_base::right, ios_base::adjustfield);
                         ss.setf(ios_base::fixed, ios_base::floatfield);
                         ss.precision(2);
-                        ss << ",\"rx_bitrate\":" << (1000 / delta) * rec_size * 8 / 1000;
+                        ss << ",\n\t\t\t\"rx_bitrate\":" << (1000 / delta) * rec_size * 8 / 1000;
                     }
                     if (!setup->toCSV(connection->C_par)&&!setup->toJSON(connection->J_par)) {
                         ss.setf(ios_base::right, ios_base::adjustfield);
@@ -242,7 +246,7 @@ int cServer::run() {
                         ss.setf(ios_base::right, ios_base::adjustfield);
                         ss.setf(ios_base::fixed, ios_base::floatfield);
                         ss.precision(2);
-                        ss << ",\"tx_bitrate\":" << (1000 / delta) * ret_size * 8 / 1000;
+                        ss << ",\n\t\t\t\"tx_bitrate\":" << (1000 / delta) * ret_size * 8 / 1000;
                     }
                     if (!setup->toCSV(connection->C_par)&&!setup->toJSON(connection->J_par)) {
                         ss.setf(ios_base::right, ios_base::adjustfield);
@@ -257,9 +261,10 @@ int cServer::run() {
                     }
                 }
                 if (setup->toJSON(connection->J_par)) {
-                    ss << "}";
+                    ss << "\n\t\t}";
+                }else{
+                    ss << endl;
                 }
-                ss << endl;
                 if (setup->useTimedBuffer(connection->W_par)) {
                     connection->msg_store.push_back(ss.str());
                 } else {
@@ -429,6 +434,11 @@ int cServer::run() {
                         fprintf(connection->fp, "%s", tmp_str.c_str());
                     }
                     connection->msg_store.clear();
+                }
+                if (setup->toJSON(connection->J_par)) {
+                    ss.str("");
+                    ss << "\n\t]\n}\n";
+                    fprintf(connection->fp, "%s", ss.str().c_str());
                 }
                 if (connection->fp != stdout) {
                     fclose(connection->fp);

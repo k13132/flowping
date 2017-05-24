@@ -126,7 +126,6 @@ public:
     u_int64_t getTimedBufferDelay();
     virtual ~cSetup();
 
-
 private:
     pthread_mutex_t mutex;
     uint64_t debug_temp;
@@ -199,7 +198,7 @@ private:
     uint64_t longFromTS(ts_t ts);
     double doubleFromTS(ts_t ts);
     timed_packet_t tmp_tpck;
-
+    
     //prepNextPacket
     u_int32_t s_tmp_rate, e_tmp_rate;
     u_int16_t tmp_len;

@@ -37,6 +37,7 @@
 #include "cClient.h"
 
 cClient::cClient(cSetup *setup, cStats *stats) {
+    first = true;
     this->setup = setup;
     if (stats) {
         this->stats = (cClientStats *) stats;
@@ -102,7 +103,7 @@ int cClient::run_packetFactory() {
         }
         msg_store.reserve(setup->getTimedBufferSize() + 10);
         msg_store_snd.reserve(setup->getTimedBufferSize() + 10);
-        cerr << "Allocating message storage for: " << setup->getTimedBufferSize() + 10 << " itemns" << endl;
+        //cerr << "Allocating message storage for: " << setup->getTimedBufferSize() + 10 << " itemns" << endl;
     }
     return 0;
 }
@@ -139,6 +140,18 @@ int cClient::run_receiver() {
         perror("Failed in creating socket");
         exit(1);
     }
+    int err, trysize, gotsize;
+    socklen_t len;
+    len = sizeof(int);
+    trysize = 1048576+32768;
+    do {
+        trysize -= 32768;
+        setsockopt(this->sock,SOL_SOCKET,SO_RCVBUF,(char*)&trysize,len);
+        err = getsockopt(this->sock,SOL_SOCKET,SO_RCVBUF,(char*)&gotsize,&len);
+        if (err < 0) { perror("getsockopt"); break; }
+    } while (gotsize < trysize);
+    //printf("Size set to %d\n",gotsize);
+    
     if (setup->useInterface()) {
         setsockopt(this->sock, SOL_SOCKET, SO_BINDTODEVICE, setup->getInterface().c_str(), strlen(setup->getInterface().c_str()));
         if (show && !setup->toCSV() && !setup->toJSON()) {
@@ -217,9 +230,16 @@ int cClient::run_receiver() {
 #ifndef _NOSTATS
             stats->addCRxInfo(r_curTv, nRet, ping_pkt->seq, rtt); // Also updates  rx_pkts
 #endif            
+
+            //ToDo Make separate class for output processing
             if (show) {
                 if (setup->toJSON()) {
-                    ss << "{";
+                    if (first) {
+                        first = false;
+                        ss << std::endl << "\t\t{\n\t\t\t";
+                    } else {
+                        ss << ",\n\t\t{\n\t\t\t";
+                    }
                 }
                 if (setup->showTimeStamps()) {
                     if (setup->toCSV()) {
@@ -234,7 +254,7 @@ int cClient::run_receiver() {
                         ss.fill('0');
                         ss.width(9);
                         ss << r_curTv.tv_nsec;
-                        ss << ",";
+                        ss << ",\n\t\t\t";
                     }
                     if (!setup->toCSV() && !setup->toJSON()) {
                         ss << "[" << r_curTv.tv_sec << ".";
@@ -254,9 +274,9 @@ int cClient::run_receiver() {
                     ss << ping_pkt->seq << ";";
                 }
                 if (setup->toJSON()) {
-                    ss << "\"direction\":\"rx\",\"size\":" << nRet << ",";
-                    ss << "\"remote\":\"" << setup->getHostname() << "\",";
-                    ss << "\"seq\":" << ping_pkt->seq << ",";
+                    ss << "\"direction\":\"rx\",\n\t\t\t\"size\":" << nRet << ",\n\t\t\t";
+                    ss << "\"remote\":\"" << setup->getHostname() << "\",\n\t\t\t";
+                    ss << "\"seq\":" << ping_pkt->seq << ",\n\t\t\t";
                 }
                 if (!setup->toCSV() && !setup->toJSON()) {
                     if (setup->compat()) {
@@ -304,7 +324,7 @@ int cClient::run_receiver() {
                         ss.precision(3);
                         ss.setf(ios_base::right, ios_base::adjustfield);
                         ss.setf(ios_base::fixed, ios_base::floatfield);
-                        ss << ",\"delta\":" << r_delta << ",";
+                        ss << ",\n\t\t\t\"delta\":" << r_delta << ",\n\t\t\t";
                         ss.precision(2);
                         ss << "\"rx_bitrate\":" << (1000 / r_delta) * nRet * 8 / 1000;
                     }
@@ -323,7 +343,7 @@ int cClient::run_receiver() {
                     }
                 }
                 if (setup->toJSON()) {
-                    ss << "}";
+                    ss << "\n\t\t}";
                 }
 
             }
@@ -336,7 +356,9 @@ int cClient::run_receiver() {
 #endif                
             } else {
                 if (show) {
-                    ss << endl;
+                    if (!setup->toJSON()) {
+                        ss << endl;
+                    }
                 }
                 if (setup->useTimedBuffer()) {
                     event.ts.sec = r_curTv.tv_sec;
@@ -360,9 +382,12 @@ int cClient::run_receiver() {
     //gettimeofday(&curTv, NULL);
     this->tSent = (double) ((r_curTv.tv_sec - this->start_ts.tv_sec)*1000.0 + (r_curTv.tv_nsec - this->start_ts.tv_nsec) / 1000000.0);
     if (setup->useTimedBuffer()) {
+
+#ifdef _DEBUG
         if (show) {
             cerr << ".::. Writeing data into file." << endl;
         }
+#endif
         string tmp_str;
         int idx, idx_snd;
         idx = 0;
@@ -371,10 +396,12 @@ int cClient::run_receiver() {
         vmsg_len = msg_store.size();
         vmsg_snd_len = msg_store_snd.size();
         event_t ev, ev_snd;
+#ifdef _DEBUG
         if (show) {
             cerr << "     ~ Messages to be writen - mgs_store:" << vmsg_len << endl;
             cerr << "     ~ Messages to be writen - mgs_store_snd:" << vmsg_snd_len << endl;
         }
+#endif        
         while ((idx < vmsg_len) || (idx_snd < vmsg_snd_len)) {
             if ((idx < vmsg_len) && (idx_snd < vmsg_snd_len)) {
                 ev = msg_store[idx];
@@ -401,13 +428,16 @@ int cClient::run_receiver() {
                 }
             }
         }
+#ifdef _DEBUG
         if (show) {
             cerr << "     ~ Messages writen - msg_store:" << idx << endl;
             cerr << "     ~ Messages writen - msg_store_snd:" << idx_snd << endl;
         }
+#endif        
         msg_store.clear();
     }
-    if (!setup->toCSV()) this->report();
+    //std::cout  <<"FINISH" <<std::endl;
+    this->report();
     this->r_running = false;
     return 1;
 }
@@ -523,6 +553,19 @@ int cClient::run_sender() {
         }
     }
 
+    int err, trysize, gotsize;
+    socklen_t len;
+    len = sizeof(int);
+    trysize = 1048576+32768;
+    do {
+        trysize -= 32768;
+        setsockopt(this->sock,SOL_SOCKET,SO_SNDBUF,(char*)&trysize,len);
+        err = getsockopt(this->sock,SOL_SOCKET,SO_SNDBUF,(char*)&gotsize,&len);
+        if (err < 0) { perror("getsockopt"); break; }
+    } while (gotsize < trysize);
+    //printf("Size set to %d\n",gotsize);
+
+    
     ping_pkt->type = PING; //prepare the first packet
     clock_gettime(CLOCK_REALTIME, &start_ts);
     my_ts.tv_sec += setup->getTime_t();
@@ -537,6 +580,18 @@ int cClient::run_sender() {
         if (setup->toCSV()) {
             ss.str("");
             ss << "C_TimeStamp;C_Direction;C_PacketSize;C_From;C_Sequence;C_RTT;C_Delta;C_RX_Rate;C_To;C_TX_Rate;\n";
+            if (setup->useTimedBuffer()) {
+                event.ts.sec = refTv.tv_sec;
+                event.ts.nsec = refTv.tv_nsec;
+                event.msg = ss.str();
+                msg_store_snd.push_back(event);
+            } else {
+                fprintf(fp, "%s", ss.str().c_str());
+            }
+        }
+        if (setup->toJSON()) {
+            ss.str("");
+            ss << "{\n\t\"client_data\": [";
             if (setup->useTimedBuffer()) {
                 event.ts.sec = refTv.tv_sec;
                 event.ts.nsec = refTv.tv_nsec;
@@ -621,8 +676,7 @@ int cClient::run_sender() {
             payload_size -= 42; //todo check negative size of payload.
 
         }
-
-        nRet = sendto(this->sock, packet, HEADER_LENGTH + payload_size, 0, (struct sockaddr *) &saServer, sizeof (struct sockaddr));
+        nRet = sendto(this->sock, packet, HEADER_LENGTH + payload_size, 0 , (struct sockaddr *) &saServer, sizeof (struct sockaddr));
         if (nRet < 0) {
             cerr << "Packet size:" << HEADER_LENGTH + payload_size << endl;
             close(this->sock);
@@ -639,7 +693,13 @@ int cClient::run_sender() {
             //"C_TimeStamp;RX/TX;C_PacketSize;C_From;C_Sequence;C_RTT;C_Delta;C_RX_Rate;C_To;C_TX_Rate;"
 
             if (setup->toJSON()) {
-                ss << "{";
+                if (first) {
+                    first = false;
+                    ss << std::endl << "\t\t{\n\t\t\t";
+                } else {
+                    ss << ",\n\t\t{\n\t\t\t";
+
+                }
             }
 
             if (setup->showTimeStamps()) {
@@ -655,7 +715,7 @@ int cClient::run_sender() {
                     ss.fill('0');
                     ss.width(9);
                     ss << curTv.tv_nsec;
-                    ss << ",";
+                    ss << ",\n\t\t\t";
                 }
                 if (!setup->toCSV() && !setup->toJSON()) {
                     ss << "[" << curTv.tv_sec << ".";
@@ -679,13 +739,13 @@ int cClient::run_sender() {
                 ss << (1000000.0 / delta) * (nRet) * 8 << ";;;\n";
             }
             if (setup->toJSON()) {
-                ss << "\"direction\":\"tx\",\"size\":" << nRet << ",\"seq\":" << ping_pkt->seq << ",";
+                ss << "\"direction\":\"tx\",\n\t\t\t\"size\":" << nRet << ",\n\t\t\t\"seq\":" << ping_pkt->seq << ",\n\t\t\t";
                 ss.precision(3);
                 ss.setf(ios_base::right, ios_base::adjustfield);
                 ss.setf(ios_base::fixed, ios_base::floatfield);
-                ss << "\"delta\":" << (delta / 1000000.0) << ",\"remote\":\"" << setup->getHostname().c_str() << "\",";
+                ss << "\"delta\":" << (delta / 1000000.0) << ",\n\t\t\t\"remote\":\"" << setup->getHostname().c_str() << "\",\n\t\t\t";
                 ss.precision(2);
-                ss << "\"tx_bitrate\":" << (1000000.0 / delta) * (nRet) * 8 << "}\n";
+                ss << "\"tx_bitrate\":" << (1000000.0 / delta) * (nRet) * 8 << "\n\t\t}";
             }
             if (!setup->toCSV() && !setup->toJSON()) {
                 ss << nRet << " bytes to " << setup->getHostname().c_str() << ": req=" << ping_pkt->seq;
@@ -737,6 +797,9 @@ void cClient::report() {
 #ifndef _NOSTATS
     fprintf(fp, "%s", stats->getReport().c_str());
 #endif   
+    if (setup->toJSON()) {
+        fprintf(fp, "%s", "}\n");
+    }
     fclose(fp);
 }
 

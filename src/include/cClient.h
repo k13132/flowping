@@ -47,10 +47,10 @@ public:
     virtual ~cClient();
 
 private:
+    bool first;
     bool gennerator_running;
     bool r_running,s_running;
     bool pktBufferReady;
-
     vector <event_t> msg_store;
     vector <event_t> msg_store_snd;
     queue <ping_pkt_t> rcv_queue;

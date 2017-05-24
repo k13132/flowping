@@ -207,14 +207,14 @@ void cClientStats::printRealTime(void) {
         ss << "\"tx_pkts\":" << stats->tx_pkts << ",";
         ss << "\"rx_pkts\":" << stats->rx_pkts << ",";
         ss << "\"tx_bytes\":" << stats->tx_bytes << ",";
-        ss << "\"rx_bytes\":" << stats->rx_bytes  << ",";
-        ss << "\"tx_bitrate\":" << stats->tx_bytes * 8 / (duration*1000) << ",";
-        ss << "\"rx_bitrate\":" << stats->rx_bytes * 8 / (duration*1000) << ",";
+        ss << "\"rx_bytes\":" << stats->rx_bytes << ",";
+        ss << "\"tx_bitrate\":" << stats->tx_bytes * 8 / (duration * 1000) << ",";
+        ss << "\"rx_bitrate\":" << stats->rx_bytes * 8 / (duration * 1000) << ",";
         ss << "\"tx_pkt_rate\":" << stats->tx_pkts / duration << ",";
         ss << "\"rx_pkt_rate\":" << stats->rx_pkts / duration << "},";
         ss << "\"live_stats\":{";
-        ss << "\"tx_bitrate\":" << stats->tx_bitrare/1000 << ",";
-        ss << "\"rx_bitrate\":" << stats->rx_bitrare/1000 << ",";
+        ss << "\"tx_bitrate\":" << stats->tx_bitrare / 1000 << ",";
+        ss << "\"rx_bitrate\":" << stats->rx_bitrare / 1000 << ",";
         ss << "\"tx_pkt_rate\":" << stats->tx_pps << ",";
         ss << "\"rx_pkt_rate\":" << stats->rx_pps << ",";
         ss.precision(3);
@@ -242,12 +242,12 @@ void cClientStats::printRealTime(void) {
         ss.precision(0);
         ss << stats->tx_pkts << ";";
         ss << stats->rx_pkts << ";";
-        ss << stats->tx_bytes  << ";";
-        ss << stats->rx_bytes  << ";";
+        ss << stats->tx_bytes << ";";
+        ss << stats->rx_bytes << ";";
         ss << stats->tx_bytes * 8 / (duration * 1000) << ";";
         ss << stats->rx_bytes * 8 / (duration * 1000) << ";";
-        ss << stats->tx_pkts  / duration << ";";
-        ss << stats->rx_pkts  / duration << ";";
+        ss << stats->tx_pkts / duration << ";";
+        ss << stats->rx_pkts / duration << ";";
         ss << stats->tx_bitrare / 1000 << ";";
         ss << stats->rx_bitrare / 10000 << ";";
         ss.precision(3);
@@ -280,8 +280,8 @@ void cClientStats::printRealTime(void) {
         ss << "rx_packets: " << stats->rx_pkts << std::endl;
         ss << "tx_bytes: " << stats->tx_bytes << " [B]" << std::endl;
         ss << "rx_bytes: " << stats->rx_bytes << " [B]" << std::endl;
-        ss << "tx_bitrate: " << stats->tx_bytes * 8 / (duration * 1000)<< " [kbps]" << std::endl;
-        ss << "rx_bitrate: " << stats->rx_bytes * 8 / (duration * 1000)<< " [kbps]" << std::endl;
+        ss << "tx_bitrate: " << stats->tx_bytes * 8 / (duration * 1000) << " [kbps]" << std::endl;
+        ss << "rx_bitrate: " << stats->rx_bytes * 8 / (duration * 1000) << " [kbps]" << std::endl;
         ss << "tx_pkt_rate: " << stats->tx_pkts / duration << " [pps]" << std::endl;
         ss << "rx_pkt_rate: " << stats->rx_pkts / duration << " [pps]" << std::endl;
         ss << "\n>>> LIVE STATS (last 10 sec)" << std::endl;
@@ -311,35 +311,43 @@ std::string cClientStats::getReport() {
 
     this->prepareStats(1, RX, stats);
     this->prepareStats(1, TX, stats);
-
-
     this->stats->rtt_avg = (float) ((double) this->stats->cumulative_rtt / (float) (this->stats->rx_pkts * 1000));
-
-    std::stringstream ss;
     float p = (100.0 * (stats->tx_pkts - stats->rx_pkts)) / stats->tx_pkts;
     float uloss = (float) (100.0 * (stats->tx_pkts - stats->server_rx_pkts)) / stats->tx_pkts;
     float dloss = (float) (100.0 * (stats->server_rx_pkts - stats->rx_pkts)) / stats->server_rx_pkts;
 
+    std::stringstream ss;
     ss.str("");
     ss.setf(std::ios_base::right, std::ios_base::adjustfield);
     ss.setf(std::ios_base::fixed, std::ios_base::floatfield);
     ss.precision(2);
 
-    ss << "\n---Client report--- " << setup->getHostname() << " ping statistics ---\n";
+    if (!setup->toJSON()) {
+        ss << "\n---Client report--- " << setup->getHostname() << " ping statistics ---\n";
+        ss << stats->tx_pkts << " packets transmitted, " << stats->rx_pkts << " received, ";
+        ss << p << "% packet loss, time ";
+        ss << (NS_TIME(curTv) - stats->test_start) / 1000000 << "ms\n";
 
+        ss << "rtt min/avg/max = ";
+        ss << stats->rtt_min << "/" << stats->rtt_avg << "/" << stats->rtt_max << " ms ";
+        ss << "Out of Order = " << stats->ooo_pkts << " packets\n";
 
-    ss << stats->tx_pkts << " packets transmitted, " << stats->rx_pkts << " received, ";
-    ss << p << "% packet loss, time ";
-    ss << (NS_TIME(curTv) - stats->test_start) / 1000000 << "ms\n";
+        ss << "\n---Server report--- " << setup->getHostname() << " ping statistics ---\n";
+        ss << stats->server_rx_pkts << " received, ";
+        ss << uloss << "% upstream packet loss, ";
+        ss << dloss << "% downstream packet loss\n\n";
+    }
+    if (setup->toJSON()) {
+        ss << "\n\t],\n\t\"client_stats\":{\n\t\t\"host\":\""<< setup->getHostname() << "\",\n\t\t\"tx_pkts\":\""<< stats->tx_pkts << "\"";
+        ss << ",\n\t\t\"rx_pkts\":\""<< stats->rx_pkts << "\",\n\t\t\"loss\":\""<< p << "\",\n\t\t\"duration\":\""<< (NS_TIME(curTv) - stats->test_start) / 1000000 << "\"";
+        ss << ",\n\t\t\"rtt_min\":\""<<stats->rtt_min << "\",\n\t\t\"rtt_avg\":\"" << stats->rtt_avg << "\",\n\t\t\"rtt_max\":\""<< stats->rtt_max << "\"";
+        ss << ",\n\t\t\"out of order\":\"" << stats->ooo_pkts << "\"\n\t},\n";
 
-    ss << "rtt min/avg/max = ";
-    ss << stats->rtt_min << "/" << stats->rtt_avg << "/" << stats->rtt_max << " ms ";
-    ss << "Out of Order = " << stats->ooo_pkts << " packets\n";
-
-    ss << "\n---Server report--- " << setup->getHostname() << " ping statistics ---\n";
-    ss << stats->server_rx_pkts << " received, ";
-    ss << uloss << "% upstream packet loss, ";
-    ss << dloss << "% downstream packet loss\n\n";
+        ss << "\t\"server_stats\":{\n\t\t\"host\":\""<< setup->getHostname() << "\",\n\t\t\"rx_pkts\":\""<< stats->server_rx_pkts << "\"";
+        ss << ",\n\t\t\"up_loss\":\""<< uloss << "\"";
+        ss << ",\n\t\t\"down_loss\":\""<< dloss << "\"\n\t}" << std::endl;
+    }
+    
     return ss.str();
 }
 
@@ -490,7 +498,7 @@ void cServerStats::printRealTime(void) {
             ss << "rx_bytes: " << it->second->rx_bytes << " [B]" << std::endl;
             ss << "tx_bitrate: " << it->second->tx_bytes * 8 / duration << " [bps]" << std::endl;
             ss << "rx_bitrate: " << it->second->rx_bytes * 8 / duration << " [bps]" << std::endl;
-            ss << "rxtx_pkt_rate: " << it->second->rx_pkts  / duration << " [pps]" << std::endl;
+            ss << "rxtx_pkt_rate: " << it->second->rx_pkts / duration << " [pps]" << std::endl;
             ss << "rx_loss: " << it->second->rx_pkts - it->second->max_seq << std::endl;
             ss << "\n>>> LIVE STATS (last 10 sec)" << std::endl;
             ss << "tx_bitrate: " << it->second->tx_bitrare << " [bps]" << std::endl;
