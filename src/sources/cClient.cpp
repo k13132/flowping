@@ -140,18 +140,7 @@ int cClient::run_receiver() {
         perror("Failed in creating socket");
         exit(1);
     }
-    int err, trysize, gotsize;
-    socklen_t len;
-    len = sizeof(int);
-    trysize = 1048576+32768;
-    do {
-        trysize -= 32768;
-        setsockopt(this->sock,SOL_SOCKET,SO_RCVBUF,(char*)&trysize,len);
-        err = getsockopt(this->sock,SOL_SOCKET,SO_RCVBUF,(char*)&gotsize,&len);
-        if (err < 0) { perror("getsockopt"); break; }
-    } while (gotsize < trysize);
-    //printf("Size set to %d\n",gotsize);
-    
+   
     if (setup->useInterface()) {
         setsockopt(this->sock, SOL_SOCKET, SO_BINDTODEVICE, setup->getInterface().c_str(), strlen(setup->getInterface().c_str()));
         if (show && !setup->toCSV() && !setup->toJSON()) {
@@ -553,19 +542,6 @@ int cClient::run_sender() {
         }
     }
 
-    int err, trysize, gotsize;
-    socklen_t len;
-    len = sizeof(int);
-    trysize = 1048576+32768;
-    do {
-        trysize -= 32768;
-        setsockopt(this->sock,SOL_SOCKET,SO_SNDBUF,(char*)&trysize,len);
-        err = getsockopt(this->sock,SOL_SOCKET,SO_SNDBUF,(char*)&gotsize,&len);
-        if (err < 0) { perror("getsockopt"); break; }
-    } while (gotsize < trysize);
-    //printf("Size set to %d\n",gotsize);
-
-    
     ping_pkt->type = PING; //prepare the first packet
     clock_gettime(CLOCK_REALTIME, &start_ts);
     my_ts.tv_sec += setup->getTime_t();

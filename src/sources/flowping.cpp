@@ -71,14 +71,18 @@ void signalHandler(int sig) {
     if ((sig == SIGQUIT) || (sig == SIGTERM) || (sig == SIGINT)) { //SIG 3 //15 //2   QUIT
         if (setup->isServer()) {
             server->terminate();
+#ifdef DEBUG
             cerr << "Server shutdown initiated." << endl;
+#endif
             usleep(200000);
             pthread_cancel(t_sServer);
         } else {
             u_int16_t cnt;
             cnt=0;
             client->terminate();
+#ifdef DEBUG
             cerr << "Client shutdown initiated." << endl;
+#endif            
             while ((client->status()&&(cnt<100))){
                 usleep(50000);
                 cnt++;
@@ -141,12 +145,6 @@ int main(int argc, char** argv) {
     version << "ARM_32 1.5.1";
     version << " (" << DD << " "<< TT << ")";
 #endif    
-    
-    //AntiAsym mode FIX
-    //Advanced Realtime Statistics / Stats module
-    //todo asym modes packet sizes - difers from server 64B vs 32B min size
-    //Output to JSON
-    
     
     setup = new cSetup(argc, argv, version.str());
 
