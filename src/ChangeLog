@@ -1,6 +1,6 @@
 1.5.1
       - performance tuning for [-W]
-      - do not compile STATS module: FP_STATS=false, ~20% performance gain
+      - possibility to build without STATS module ~20% performance gain
       - possibility to enable debug mode: FP_DEBUG=enable
       - JSON output enhancements
       - minor bug fixes
