@@ -67,30 +67,30 @@ else
 endif		
 
 #Debug
-ifeq ($(debug),true)
+ifeq ($(FP_DEBUG),true)
         CXXFLAGS += -g -D_DEBUG
         LXXFLAGS += -g -D_DEBUG
 endif
 
 #Profiling
-ifeq ($(profile),true)
+ifeq ($(FP_PROFILE),true)
         CXXFLAGS += -pg
         LXXFLAGS += -pg
 endif
 
 #Turn Off Stats Module
-ifeq ($(stats),false)
+ifeq ($(FP_STATS),false)
         CXXFLAGS += -D_NOSTATS
         LXXFLAGS += -D_NOSTATS
 endif
 
 #Enforce platform
-ifeq ($(platform),x86_64)
+ifeq ($(FP_PLATFORM),x86_64)
     	CXXFLAGS += -m64
 	LXXFLAGS += -m64 
 endif
 
-ifeq ($(platform),x86_32)
+ifeq ($(FP_PLATFORM),x86_32)
     	CXXFLAGS += -m32
 	LXXFLAGS += -m32 
 endif

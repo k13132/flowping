@@ -113,7 +113,7 @@ public:
     u_int64_t getBaseRate(void);
     void setExtFilename(string);
     string getExtFilename(void);
-    uint8_t extFilenameLen(void);
+    uint16_t extFilenameLen(void);
     int parseSrcFile();
     int parseCmdLine();
     bool prepNextPacket();  //if false deadline reached

@@ -116,7 +116,7 @@ int cServer::run() {
             connection->D_par = false;
             connection->e_par = false;
             connection->E_par = false;
-            connection->F_par = false;
+            connection->F_par = false;          //ToDo not used anymore
             connection->H_par = false;
             connection->J_par = false;
             connection->W_par = false;
@@ -146,7 +146,7 @@ int cServer::run() {
             stats->pktReceived(conn_id, connection->curTv, rec_size, ping_pkt->seq, string(client_ip), saClient.sin_port);
             stats->pktSent(conn_id, connection->curTv, ret_size, ping_pkt->seq, string(client_ip), saClient.sin_port);
 #endif            
-            if (show) {
+            if (show || connection->fp != stdout) {
 
                 double delta = ((double) (connection->curTv.tv_sec - connection->refTv.tv_sec)*1000.0 + (double) (connection->curTv.tv_nsec - connection->refTv.tv_nsec) / 1000000.0);
                 ss.str("");
@@ -291,7 +291,7 @@ int cServer::run() {
                     }
                 }
                 connection->fp = fopen(ping_msg->msg, "w+"); //RW - overwrite file
-                cerr << ping_msg->msg << endl;
+                //cerr << ping_msg->msg << endl;
                 ping_msg->code = CNT_FNAME_OK;
                 if (connection->fp == NULL) {
                     perror("Unable to open file, redirecting to STDOUT");
@@ -299,10 +299,13 @@ int cServer::run() {
                     ping_msg->code = CNT_OUTPUT_REDIR;
                 } else {
                     //setup->setExtFilename((string) ping_msg->msg);
+                    connection->F_par = true;
+                    //print version to output file
                     if (setup->self_check() == SETUP_CHCK_VER) fprintf(connection->fp, "%s", setup->get_version().c_str());
                 }
             }
             if (ping_msg->code == CNT_NOFNAME) {
+                message.str("");
                 if (setup->getFilename().length() && setup->outToFile()) {
                     //                    if (connection->fp!= NULL) {
                     //                        if (connection->fp != stdout) {
@@ -334,7 +337,7 @@ int cServer::run() {
                 message.str("");
                 message << endl << ".::. Test from " << client_ip << " started. \t\t[";
                 setup->setAntiAsym(false);
-                if (setup->extFilenameLen()) {
+                if (setup->extFilenameLen() || connection->F_par) {
                     message << "F";
                     connection->F_par = true;
                 }
@@ -395,7 +398,7 @@ int cServer::run() {
                     connection->J_par = true;
                     message << "J";
                 } else {
-                    setup->setCPAR(false);
+                    setup->setJPAR(false);
                 }
                 message << "]";
                 cerr << message.str() << endl;
@@ -435,7 +438,7 @@ int cServer::run() {
                     }
                     connection->msg_store.clear();
                 }
-                if (setup->toJSON(connection->J_par)) {
+                if ((show || connection->fp != stdout) && setup->toJSON(connection->J_par)) {
                     ss.str("");
                     ss << "\n\t]\n}\n";
                     fprintf(connection->fp, "%s", ss.str().c_str());

@@ -118,6 +118,7 @@ void cStats::prepareStats(const u_int64_t conn_id, const uint16_t direction, sta
     qstats_t * pk_stats;
     pk_stats = NULL;
     pk_queue = NULL;
+    u_int32_t max_seq;
     if (qstats.count(conn_id) == 0) {
         cerr << "cStats::ERRROR (1) - no stats for connId: " << conn_id << endl;
     } else {
@@ -144,7 +145,8 @@ void cStats::prepareStats(const u_int64_t conn_id, const uint16_t direction, sta
         if (!setup->isServer()) {
             ((c_stats_t *) stats)->cur_rtt = (float) ((double) (pk_stats->rx_q_cumulative_rtt) / ((float) pk_queue->size()*1000));
         }
-        stats->cur_loss = 100.0 * ((float) (1 + (max(pk_queue->back().seq, pk_stats->max_seq) - pk_queue->front().seq) - pk_queue->size()) / (float) pk_queue->size());
+        max_seq = max(pk_queue->back().seq, pk_stats->max_seq);
+        stats->cur_loss = 100.0 * ((float) (1 + (max_seq - pk_queue->front().seq) - pk_queue->size()) / (float) (max_seq - pk_queue->front().seq));
         stats->rx_pps = pk_queue->size() * 1000000000 / (pk_stats->rx_qtime);
     }
 }
@@ -338,7 +340,10 @@ std::string cClientStats::getReport() {
         ss << dloss << "% downstream packet loss\n\n";
     }
     if (setup->toJSON()) {
-        ss << "\n\t],\n\t\"client_stats\":{\n\t\t\"host\":\""<< setup->getHostname() << "\",\n\t\t\"tx_pkts\":\""<< stats->tx_pkts << "\"";
+        if (!setup->silent()){
+            ss << "\n\t],\n";
+        }
+        ss << "\t\"client_stats\":{\n\t\t\"host\":\""<< setup->getHostname() << "\",\n\t\t\"tx_pkts\":\""<< stats->tx_pkts << "\"";
         ss << ",\n\t\t\"rx_pkts\":\""<< stats->rx_pkts << "\",\n\t\t\"loss\":\""<< p << "\",\n\t\t\"duration\":\""<< (NS_TIME(curTv) - stats->test_start) / 1000000 << "\"";
         ss << ",\n\t\t\"rtt_min\":\""<<stats->rtt_min << "\",\n\t\t\"rtt_avg\":\"" << stats->rtt_avg << "\",\n\t\t\"rtt_max\":\""<< stats->rtt_max << "\"";
         ss << ",\n\t\t\"out of order\":\"" << stats->ooo_pkts << "\"\n\t},\n";
@@ -438,7 +443,7 @@ void cServerStats::printRealTime(void) {
             ss << "\"tx_bitrate\":" << it->second->tx_bytes * 8 / duration << ",";
             ss << "\"rx_bitrate\":" << it->second->rx_bytes * 8 / duration << ",";
             ss << "\"rxtx_pkt_rate\":" << it->second->rx_pkts / duration << ",";
-            ss << "\"rx_loss\":" << it->second->rx_pkts - it->second->max_seq << "},";
+            ss << "\"rx_loss\":" << it->second->max_seq - it->second->rx_pkts<< "},";
             ss << "\"live_stats\":{";
             ss << "\"tx_bitrate\":" << it->second->tx_bitrare << ",";
             ss << "\"rx_bitrate\":" << it->second->rx_bitrare << ",";
@@ -499,7 +504,7 @@ void cServerStats::printRealTime(void) {
             ss << "tx_bitrate: " << it->second->tx_bytes * 8 / duration << " [bps]" << std::endl;
             ss << "rx_bitrate: " << it->second->rx_bytes * 8 / duration << " [bps]" << std::endl;
             ss << "rxtx_pkt_rate: " << it->second->rx_pkts / duration << " [pps]" << std::endl;
-            ss << "rx_loss: " << it->second->rx_pkts - it->second->max_seq << std::endl;
+            ss << "rx_loss: " << it->second->max_seq - it->second->rx_pkts << std::endl;
             ss << "\n>>> LIVE STATS (last 10 sec)" << std::endl;
             ss << "tx_bitrate: " << it->second->tx_bitrare << " [bps]" << std::endl;
             ss << "rx_bitrate: " << it->second->rx_bitrare << " [bps]" << std::endl;
@@ -539,6 +544,7 @@ void cServerStats::connInit(const u_int64_t conn_id, const string src, const u_i
     stats = s_stats[conn_id];
     stats->tx_bitrare = 0;
     stats->rx_bitrare = 0;
+    stats->max_seq = 0;
     stats->src = src;
     stats->port = port;
     stats->rx_pkts = 0;

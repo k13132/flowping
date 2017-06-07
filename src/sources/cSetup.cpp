@@ -929,7 +929,7 @@ string cSetup::getExtFilename() {
     return this->extfilename;
 }
 
-uint8_t cSetup::extFilenameLen() {
+uint16_t cSetup::extFilenameLen() {
     return this->extfilename.length();
 }
 

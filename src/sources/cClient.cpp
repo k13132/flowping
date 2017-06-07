@@ -577,6 +577,19 @@ int cClient::run_sender() {
                 fprintf(fp, "%s", ss.str().c_str());
             }
         }
+    }else{
+        if (setup->toJSON()) {
+            ss.str("");
+            ss << "{\n";
+            if (setup->useTimedBuffer()) {
+                event.ts.sec = refTv.tv_sec;
+                event.ts.nsec = refTv.tv_nsec;
+                event.msg = ss.str();
+                msg_store_snd.push_back(event);
+            } else {
+                fprintf(fp, "%s", ss.str().c_str());
+            }
+        }
     }
 
     timespec ts;

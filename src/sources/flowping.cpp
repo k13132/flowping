@@ -146,6 +146,12 @@ int main(int argc, char** argv) {
     version << " (" << DD << " "<< TT << ")";
 #endif    
     
+#ifdef __MIPS_ISA32__
+    version << "MIPS_32 1.5.1";
+    version << " (" << DD << " "<< TT << ")";
+#endif    
+
+    
     setup = new cSetup(argc, argv, version.str());
 
     //Check cmd line parameters

@@ -1,11 +1,14 @@
-1.5.1-devel 
+1.5.1
       - performance tuning for [-W]
-      - possibility to disable stats module
+      - do not compile STATS module: FP_STATS=false, ~20% performance gain
+      - possibility to enable debug mode: FP_DEBUG=enable
+      - JSON output enhancements
+      - minor bug fixes
 1.5.0
       - new stats module
       - modified build structure with single makefile
       - improved platform detection
-      - realtime stats
+      - realtime stats: SIG_USR1
       - JSON output
 1.4.1
     - licence change to GNU GPLv3
