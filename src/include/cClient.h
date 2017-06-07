@@ -1,7 +1,7 @@
 /*
  * File:   cClient.h
  *
- * Copyright (C) 2016: Department of Telecommunication Engineering, FEE, CTU in Prague
+ * Copyright (C) 2017: Department of Telecommunication Engineering, FEE, CTU in Prague
  *
  * This file is part of FlowPing.
  *
@@ -47,10 +47,10 @@ public:
     virtual ~cClient();
 
 private:
+    bool first;
     bool gennerator_running;
     bool r_running,s_running;
     bool pktBufferReady;
-
     vector <event_t> msg_store;
     vector <event_t> msg_store_snd;
     queue <ping_pkt_t> rcv_queue;

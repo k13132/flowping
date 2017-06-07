@@ -71,14 +71,18 @@ void signalHandler(int sig) {
     if ((sig == SIGQUIT) || (sig == SIGTERM) || (sig == SIGINT)) { //SIG 3 //15 //2   QUIT
         if (setup->isServer()) {
             server->terminate();
+#ifdef DEBUG
             cerr << "Server shutdown initiated." << endl;
+#endif
             usleep(200000);
             pthread_cancel(t_sServer);
         } else {
             u_int16_t cnt;
             cnt=0;
             client->terminate();
+#ifdef DEBUG
             cerr << "Client shutdown initiated." << endl;
+#endif            
             while ((client->status()&&(cnt<100))){
                 usleep(50000);
                 cnt++;
@@ -91,6 +95,8 @@ void signalHandler(int sig) {
     if (sig == SIGUSR1) { //SIG 10              
         if (stats){
             stats->printRealTime();
+        }else{
+            cerr << "Error: Stats module is not enabled. Recompile FlowPing with Stats module.\n";
         }
     }
     if (sig == SIGUSR2) { //SIG 12              
@@ -127,24 +133,24 @@ int main(int argc, char** argv) {
 
     version.str("");
 #ifdef __i386
-    version << "x86_32 1.5.0a";
+    version << "x86_32 1.5.1";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 #ifdef __x86_64__
-    version << "x86_64 1.5.0a";
+    version << "x86_64 1.5.1";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
 #ifdef __ARM_ARCH_7A__
-    version << "ARM_32 1.5.0a";
+    version << "ARM_32 1.5.1";
     version << " (" << DD << " "<< TT << ")";
 #endif    
     
-    //AntiAsym mode FIX
-    //Advanced Realtime Statistics / Stats module
-    //todo asym modes packet sizes - difers from server 64B vs 32B min size
-    //Output to JSON
-    
+#ifdef __MIPS_ISA32__
+    version << "MIPS_32 1.5.1";
+    version << " (" << DD << " "<< TT << ")";
+#endif    
+
     
     setup = new cSetup(argc, argv, version.str());
 
@@ -168,7 +174,9 @@ int main(int argc, char** argv) {
         sched_setscheduler(0, SCHED_FIFO, &param);
     }
     if (setup->isServer()) {
+#ifndef _NOSTATS        
         stats = new cServerStats(setup);
+#endif
         server = new cServer(setup, stats);
         if (pthread_create(&t_sServer, NULL, t_helper_sServer, (void *) server) != 0) {
             perror("pthread_create");
@@ -187,7 +195,9 @@ int main(int argc, char** argv) {
 
             }
         }
+#ifndef _NOSTATS        
         stats = new cClientStats(setup);
+#endif
         client = new cClient(setup, stats);
         pthread_setconcurrency(4);
         if (pthread_create(&t_cPacketFactory, NULL, t_helper_cPacketFactory, (void *) client) != 0) {
@@ -223,7 +233,7 @@ int main(int argc, char** argv) {
     }
     delete(setup);
     delete(stats);
-    cerr << endl << ".::. Good bye!" << endl;
+    //cerr << endl << ".::. Good bye!" << endl;
     return EXIT_SUCCESS;
 }
 

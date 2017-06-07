@@ -1,15 +1,22 @@
+1.5.1
+      - performance tuning for [-W]
+      - possibility to build without STATS module ~20% performance gain
+      - possibility to enable debug mode: FP_DEBUG=enable
+      - JSON output enhancements
+      - minor bug fixes
+      - known issues: traffic profile defined via cmd line does not work properly -> use profile definition file instead
 1.5.0a
-    - all non standard (ping) output is redirected to stderr
-    known issues: traffic profile defined via cmd line does not work properly -> use profile definition file instead
+      - all non standard (ping) output is redirected to stderr
+      - known issues: traffic profile defined via cmd line does not work properly -> use profile definition file instead
 1.5.0
-    - new stats module, stats reporting completely rewriten
-    - stats available in text, CSV and JSON format
-    - realtime stats /SIG USR1 triggered
-    - asym mode FIX
-    - minor fixes
+      - new stats module
+      - modified build structure with single makefile
+      - improved platform detection
+      - realtime stats: SIG_USR1
+      - JSON output
 1.4.1
     - licence change to GNU GPLv3
-    - platform detection code change
+    - Platform detection code change
     - minor fixes
 1.4.0
     - complete packet generator core redesign
@@ -19,4 +26,5 @@
     - packet buffer consumes is aprox. 830KB heap memory
     - performance and stability improvements
     - other bugfixes
+
 1.3.x

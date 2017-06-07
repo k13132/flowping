@@ -32,7 +32,9 @@
 
 cServer::cServer(cSetup *setup, cStats *stats) {
     this->setup = setup;
-    this->stats = (cServerStats *) stats;
+    if (stats){
+        this->stats = (cServerStats *) stats;
+    }
     this->stop = false;
 
     //ToDo: zjistit, zdqa je to potreba a zda to ma nejaky prinos    
@@ -114,7 +116,7 @@ int cServer::run() {
             connection->D_par = false;
             connection->e_par = false;
             connection->E_par = false;
-            connection->F_par = false;
+            connection->F_par = false;          //ToDo not used anymore
             connection->H_par = false;
             connection->J_par = false;
             connection->W_par = false;
@@ -140,14 +142,20 @@ int cServer::run() {
             //Update stats
             //cout << ping_pkt->size<<endl;
             inet_ntop(AF_INET, &ip, client_ip, INET_ADDRSTRLEN);
+#ifndef _NOSTATS
             stats->pktReceived(conn_id, connection->curTv, rec_size, ping_pkt->seq, string(client_ip), saClient.sin_port);
             stats->pktSent(conn_id, connection->curTv, ret_size, ping_pkt->seq, string(client_ip), saClient.sin_port);
-            if (show) {
+#endif            
+            if (show || connection->fp != stdout) {
 
                 double delta = ((double) (connection->curTv.tv_sec - connection->refTv.tv_sec)*1000.0 + (double) (connection->curTv.tv_nsec - connection->refTv.tv_nsec) / 1000000.0);
                 ss.str("");
                 if (setup->toJSON(connection->J_par)) {
-                    ss << "{";
+                    if (connection->pkt_cnt == 0){
+                        ss << "{\n\t\"server_data\": [\n\t\t{";
+                    }else{
+                        ss << ",\n\t\t{";
+                    }
                 }
                 if (setup->showTimeStamps(connection->D_par)) {
                     if (setup->toCSV(connection->C_par)) {
@@ -162,7 +170,7 @@ int cServer::run() {
                         ss.fill('0');
                         ss.width(9);
                         ss << connection->curTv.tv_nsec;
-                        ss << ",";
+                        ss << ",\n\t\t\t";
                     }
                     if (!setup->toCSV(connection->C_par)&&!setup->toJSON(connection->J_par)) {
                         ss << "[" << connection->curTv.tv_sec << ".";
@@ -189,7 +197,7 @@ int cServer::run() {
                     ss << delta << ";";
                 }
                 if (setup->toJSON(connection->J_par)) {
-                    ss << "\"size\":" << rec_size << ",\"remote\":\"" << client_ip << "\",\"seq\":" << ping_pkt->seq << ",";
+                    ss << "\"size\":" << rec_size << ",\n\t\t\t\"remote\":\"" << client_ip << "\",\n\t\t\t\"seq\":" << ping_pkt->seq << ",\n\t\t\t";
                     ss.setf(ios_base::right, ios_base::adjustfield);
                     ss.setf(ios_base::fixed, ios_base::floatfield);
                     ss.precision(3);
@@ -214,7 +222,7 @@ int cServer::run() {
                         ss.setf(ios_base::right, ios_base::adjustfield);
                         ss.setf(ios_base::fixed, ios_base::floatfield);
                         ss.precision(2);
-                        ss << ",\"rx_bitrate\":" << (1000 / delta) * rec_size * 8 / 1000;
+                        ss << ",\n\t\t\t\"rx_bitrate\":" << (1000 / delta) * rec_size * 8 / 1000;
                     }
                     if (!setup->toCSV(connection->C_par)&&!setup->toJSON(connection->J_par)) {
                         ss.setf(ios_base::right, ios_base::adjustfield);
@@ -238,7 +246,7 @@ int cServer::run() {
                         ss.setf(ios_base::right, ios_base::adjustfield);
                         ss.setf(ios_base::fixed, ios_base::floatfield);
                         ss.precision(2);
-                        ss << ",\"tx_bitrate\":" << (1000 / delta) * ret_size * 8 / 1000;
+                        ss << ",\n\t\t\t\"tx_bitrate\":" << (1000 / delta) * ret_size * 8 / 1000;
                     }
                     if (!setup->toCSV(connection->C_par)&&!setup->toJSON(connection->J_par)) {
                         ss.setf(ios_base::right, ios_base::adjustfield);
@@ -253,9 +261,10 @@ int cServer::run() {
                     }
                 }
                 if (setup->toJSON(connection->J_par)) {
-                    ss << "}";
+                    ss << "\n\t\t}";
+                }else{
+                    ss << endl;
                 }
-                ss << endl;
                 if (setup->useTimedBuffer(connection->W_par)) {
                     connection->msg_store.push_back(ss.str());
                 } else {
@@ -272,7 +281,9 @@ int cServer::run() {
 #ifdef DEBUG
             if (setup->debug()) cerr << "Control packet received! code:" << (int) ping_msg->code << endl;
 #endif
+#ifndef _NOSTATS
             stats->connInit(conn_id, string(client_ip), saClient.sin_port);
+#endif
             if (ping_msg->code == CNT_FNAME) {
                 if (connection->fp != NULL) {
                     if (connection->fp != stdout) {
@@ -280,7 +291,7 @@ int cServer::run() {
                     }
                 }
                 connection->fp = fopen(ping_msg->msg, "w+"); //RW - overwrite file
-                cerr << ping_msg->msg << endl;
+                //cerr << ping_msg->msg << endl;
                 ping_msg->code = CNT_FNAME_OK;
                 if (connection->fp == NULL) {
                     perror("Unable to open file, redirecting to STDOUT");
@@ -288,10 +299,13 @@ int cServer::run() {
                     ping_msg->code = CNT_OUTPUT_REDIR;
                 } else {
                     //setup->setExtFilename((string) ping_msg->msg);
+                    connection->F_par = true;
+                    //print version to output file
                     if (setup->self_check() == SETUP_CHCK_VER) fprintf(connection->fp, "%s", setup->get_version().c_str());
                 }
             }
             if (ping_msg->code == CNT_NOFNAME) {
+                message.str("");
                 if (setup->getFilename().length() && setup->outToFile()) {
                     //                    if (connection->fp!= NULL) {
                     //                        if (connection->fp != stdout) {
@@ -323,7 +337,7 @@ int cServer::run() {
                 message.str("");
                 message << endl << ".::. Test from " << client_ip << " started. \t\t[";
                 setup->setAntiAsym(false);
-                if (setup->extFilenameLen()) {
+                if (setup->extFilenameLen() || connection->F_par) {
                     message << "F";
                     connection->F_par = true;
                 }
@@ -384,7 +398,7 @@ int cServer::run() {
                     connection->J_par = true;
                     message << "J";
                 } else {
-                    setup->setCPAR(false);
+                    setup->setJPAR(false);
                 }
                 message << "]";
                 cerr << message.str() << endl;
@@ -424,6 +438,11 @@ int cServer::run() {
                     }
                     connection->msg_store.clear();
                 }
+                if ((show || connection->fp != stdout) && setup->toJSON(connection->J_par)) {
+                    ss.str("");
+                    ss << "\n\t]\n}\n";
+                    fprintf(connection->fp, "%s", ss.str().c_str());
+                }
                 if (connection->fp != stdout) {
                     fclose(connection->fp);
                 }
@@ -431,9 +450,11 @@ int cServer::run() {
                 connection->fp = stdout;
                 delete connection;
                 connections.erase(conn_id);
+#ifndef _NOSTATS
                 if (stats->connStatRemove(conn_id)) {
                     std::cerr << "cServerStats::connStatRemove FAILED - conn_id [" << conn_id << "]" << endl;
                 }
+#endif
             }
         }
     }

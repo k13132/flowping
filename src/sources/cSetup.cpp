@@ -324,7 +324,7 @@ u_int8_t cSetup::self_check(void) {
         return SETUP_CHCK_SHOW;
     }
     if (isServer()) {
-        if (a_par || Q_par || b_par || B_par || c_par || F_par || E_par || h_par || H_par || i_par || I_par || s_par || t_par || T_par || R_par || P_par || W_par || U_par || w_par) {
+        if (a_par || Q_par || b_par || B_par || c_par || F_par || J_par || h_par || H_par || i_par || I_par || s_par || t_par || T_par || R_par || P_par || W_par || U_par || w_par) {
             return SETUP_CHCK_ERR;
         }
     } else {
@@ -879,6 +879,8 @@ bool cSetup::prepNextPacket() {
             tmp_len = td_tmp.len;
             tpoints.pop();
         }
+    }else{
+        return false;
     }
     return true;
 }
@@ -927,7 +929,7 @@ string cSetup::getExtFilename() {
     return this->extfilename;
 }
 
-uint8_t cSetup::extFilenameLen() {
+uint16_t cSetup::extFilenameLen() {
     return this->extfilename.length();
 }
 

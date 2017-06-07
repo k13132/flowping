@@ -1,7 +1,7 @@
 /*
  * File:   cSetup.h
  *
- * Copyright (C) 2016: Department of Telecommunication Engineering, FEE, CTU in Prague
+ * Copyright (C) 2017: Department of Telecommunication Engineering, FEE, CTU in Prague
  *
  * This file is part of FlowPing.
  *
@@ -113,7 +113,7 @@ public:
     u_int64_t getBaseRate(void);
     void setExtFilename(string);
     string getExtFilename(void);
-    uint8_t extFilenameLen(void);
+    uint16_t extFilenameLen(void);
     int parseSrcFile();
     int parseCmdLine();
     bool prepNextPacket();  //if false deadline reached
@@ -125,7 +125,6 @@ public:
     u_int64_t getTimedBufferSize();
     u_int64_t getTimedBufferDelay();
     virtual ~cSetup();
-
 
 private:
     pthread_mutex_t mutex;
@@ -199,7 +198,7 @@ private:
     uint64_t longFromTS(ts_t ts);
     double doubleFromTS(ts_t ts);
     timed_packet_t tmp_tpck;
-
+    
     //prepNextPacket
     u_int32_t s_tmp_rate, e_tmp_rate;
     u_int16_t tmp_len;
