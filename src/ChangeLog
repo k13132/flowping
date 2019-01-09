@@ -1,3 +1,7 @@
+1.5.2
+      - minor bug fixes
+      - blank lines are now allowed in definition file
+      - known issues: traffic profile defined via cmd line does not work properly -> use profile definition file instead
 1.5.1
       - performance tuning for [-W]
       - possibility to build without STATS module ~20% performance gain

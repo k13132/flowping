@@ -267,6 +267,10 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 } else {
                     this->size = atoi(optarg);
                 }
+                if (this->size < 32){
+                    cerr << "Wrong packet length!" << endl;
+                    exit(1);
+                }
                 if (!fpsize_set) {
                     fpsize = this->size;
                     fpsize_set = true;
@@ -381,8 +385,8 @@ void cSetup::usage() {
     cout << "|         [-S]                       Run as server                                              |" << endl;
     cout << "| Client:                                                                                       |" << endl;
     cout << "|         [-a]                       Busy-loop mode! (100% CPU usage), more accurate bitrate    |" << endl;
-    cout << "|         [-b kbit/s]                BitRate (Lower limit)                                      |" << endl;
-    cout << "|         [-B kbit/s]                BitRate (Upper limit)                                      |" << endl;
+    cout << "|         [-b kbit/s]                BitRate (first limit)                                      |" << endl;
+    cout << "|         [-B kbit/s]                BitRate (second limit)                                     |" << endl;
     cout << "|         [-c count]    [unlimited]  Send specified number of packets                           |" << endl;
     cout << "|         [-C ]                      CSV output format [;;;;]                                   |" << endl;
     cout << "|         [-J ]                      JSON output format                                         |" << endl;
@@ -693,6 +697,10 @@ int cSetup::parseSrcFile() {
         }
         while (getline(infile, stmp)) {
             str = strdup(stmp.c_str());
+            //std::cout << strlen(str) <<std::endl;
+            if (strlen(str)==0){
+                continue;
+            }
             xstr = strtok(str, "\t ,;");
             if (xstr == NULL) {
                 cerr << "Can't parse source file!" << endl;
