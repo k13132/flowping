@@ -625,6 +625,12 @@ bool cSetup::descFileInUse() {
     return this->u_par;
 }
 
+std::ostream& operator<<(std::ostream& os, const tpoint_def_t& obj)
+{
+  os << "ts:" << obj.ts << " rate:" << obj.bitrate << " length:"<<obj.len;
+  return os;
+}
+
 int cSetup::parseCmdLine() {
     //Overit zda to funguje - pripadne zda to takto budeme delat?
     //cout << this->size << "\t" << this->interval_i << "\t" << this->interval_I << endl;
@@ -755,7 +761,8 @@ void cSetup::refactorTPoints() {
     double reftime = 0;
     double last_ts = 0;
     if (tpoints.empty()) return;
-    if (((tpoint_def_t) tpoints.back()).ts > deadline) return;
+    //???
+    //if (((tpoint_def_t) tpoints.back()).ts > deadline) return;
     vector<tpoint_def_t> tmp_tpoints;
     while (!tpoints.empty()) {
         tmp_tpoints.push_back(tpoints.front());

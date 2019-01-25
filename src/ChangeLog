@@ -1,3 +1,5 @@
+1.5.2a
+      - traffic profile defined via cmd line does works properly again
 1.5.2
       - minor bug fixes
       - blank lines are now allowed in definition file
