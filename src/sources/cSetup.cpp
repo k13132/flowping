@@ -30,6 +30,9 @@
 #include "cServer.h"
 #include "_types.h"
 
+using namespace std;
+
+
 cSetup::cSetup(int argc, char **argv, string version) {
     pthread_mutex_init(&mutex, NULL);
     this->tp_ready = false;

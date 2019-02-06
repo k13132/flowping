@@ -25,13 +25,19 @@
  */
 
 
-#include "flowping.h"
+
+
+#include "_types.h"
+#include "cClient.h"
+#include "cServer.h"
+#include "cSetup.h"
+#include "cStats.h"
+#include <pthread.h>
+
 #include <cstdlib>
 #include <iostream>
 #include <signal.h>
 #include <sched.h>
-
-using namespace std;
 
 cSetup *setup = NULL;
 cClient *client = NULL;
@@ -153,7 +159,6 @@ int main(int argc, char** argv) {
 
     
     setup = new cSetup(argc, argv, version.str());
-
     //Check cmd line parameters
     if (setup->self_check() == SETUP_CHCK_SHOW) {
         setup->usage();

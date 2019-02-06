@@ -34,6 +34,7 @@
 #include "cStats.h"
 #include <map>
 
+using namespace std;
 
 struct t_conn{
     timespec  curTv, refTv;

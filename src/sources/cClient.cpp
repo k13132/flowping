@@ -36,6 +36,8 @@
 
 #include "cClient.h"
 
+using namespace std;
+
 cClient::cClient(cSetup *setup, cStats *stats) {
     first = true;
     this->setup = setup;
@@ -45,10 +47,6 @@ cClient::cClient(cSetup *setup, cStats *stats) {
     this->s_running = false;
     this->r_running = false;
     this->gennerator_running = false;
-    if (pthread_barrier_init(&barr, NULL, 2)) //2 == Sender + Receiver
-    {
-        printf("Could not create a barrier\n");
-    }
     this->started = false;
     this->stop = false;
     this->done = false;
@@ -67,11 +65,27 @@ cClient::cClient(cSetup *setup, cStats *stats) {
     this->max_interval = setup->getMaxInterval();
     this->bchange = setup->getBchange();
     this->pktBufferReady = false;
+    this->senderReady = false;
+    this->receiverReady = false;
 }
 
 cClient::~cClient() {
     close(this->sock);
 }
+
+
+bool cClient::isReceiverReady() {
+    return this->receiverReady;
+}
+
+bool cClient::isSenderReady() {
+    return this->senderReady;
+}
+
+bool cClient::isSenderReceiverReady() {
+    return this->senderReady && this->receiverReady;
+}
+
 
 int cClient::run_packetFactory() {
     bool pkt_created;
@@ -152,10 +166,9 @@ int cClient::run_receiver() {
     saServer.sin_family = AF_INET;
     saServer.sin_port = htons(setup->getPort()); // Port number from command line
     // Synchronization point
-    int rc = pthread_barrier_wait(&barr);
-    if (rc != 0 && rc != PTHREAD_BARRIER_SERIAL_THREAD) {
-        printf("Could not wait on barrier\n");
-        exit(-1);
+    this->receiverReady = true;
+    while (not isSenderReceiverReady()){
+        usleep(200000);
     }
     struct ping_pkt_t *ping_pkt;
     struct ping_msg_t *ping_msg;
@@ -519,10 +532,9 @@ int cClient::run_sender() {
     unsigned int pk_len = HEADER_LENGTH + strlen(ping_msg->msg);
     int timeout = 0;
     // Synchronization point
-    int rc = pthread_barrier_wait(&barr);
-    if (rc != 0 && rc != PTHREAD_BARRIER_SERIAL_THREAD) {
-        cerr << "Could not wait on barrier\n";
-        exit(-1);
+    this->senderReady = true;
+    while (not isSenderReceiverReady()){
+        usleep(200000);
     }
     while (!started) {
 #ifdef DEBUG        

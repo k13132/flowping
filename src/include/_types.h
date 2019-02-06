@@ -85,7 +85,7 @@
 #define TX 0
 #define RX 1
 
-
+using namespace std;
 
 struct ts_t{
     u_int64_t sec;

@@ -35,6 +35,8 @@
 #include "flowping.h"
 #include "queue"
 
+using namespace std;
+
 class cClient {
 public:
     cClient(cSetup *setup, cStats *stats);
@@ -61,6 +63,15 @@ private:
     
     u_int64_t getInterval(void);
     u_int16_t getPacketSize(void);
+
+
+    bool senderReady;
+    bool receiverReady;
+    bool isSenderReady();
+    bool isReceiverReady();
+    bool isSenderReceiverReady();
+
+
     pthread_t t_sender, t_receiver;
     bool started, stop, done;
     int sock;

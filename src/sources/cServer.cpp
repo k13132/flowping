@@ -30,6 +30,8 @@
 #include "cServer.h"
 #include "_types.h"
 
+using namespace std;
+
 cServer::cServer(cSetup *setup, cStats *stats) {
     this->setup = setup;
     if (stats){

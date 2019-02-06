@@ -32,6 +32,8 @@
 #define NS_TIME(tv1) ( (tv1).tv_sec*1000000000 +  (tv1).tv_nsec )
 #define max(a,b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
 
+using namespace std;
+
 cStats::cStats() {
 }
 
@@ -197,6 +199,7 @@ void cClientStats::printRealTime(void) {
         ss << "\"remote_host\":\"" << setup->getHostname() << "\",";
         ss << "\"life_time_stats\":{";
         ss << "\"duration\":" << duration << ",";
+        ss << "\"pkt_buffer_fill\":" << setup->getTimedBufferSize() << ",";
         ss.precision(3);
         ss.fill('0');
         ss.width(6);
@@ -269,6 +272,7 @@ void cClientStats::printRealTime(void) {
         ss << curTv.tv_nsec << " [s]\n";
         ss << "\n>>> LIFE TIME STATS" << std::endl;
         ss << "test_duration [s]: " << duration << std::endl;
+        ss << "pkt_buffer_fill [pkts]:" << setup->getTimedBufferSize() << std::endl;
         ss.precision(3);
         ss.fill('0');
         ss.width(6);
