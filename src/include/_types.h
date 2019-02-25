@@ -28,42 +28,41 @@
 #ifndef _TYPES_H
 #define	_TYPES_H
 
-
-#include <sys/time.h>
-#include <time.h>
+//#include <cstdlib>
+#include <string>
+#include <ctime>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <string>
 #include <sstream>
 #include <climits>
-#include <stdlib.h>
+#include <cstdlib>
 #include <getopt.h>
-#include <stdio.h>
+#include <cstdio>
 #include <unistd.h>
 #include <fcntl.h>
 #include <vector>
 #include <queue>
-#include <stdint.h>
+#include <cstdint>
 #include <iostream>
 #include <fstream>
-#include <stdio.h>
-#include <string.h>
+#include <ostream>
+#include <cstdio>
+#include <cstring>
 #include <iostream>
-#include <pthread.h>
-#include <errno.h>
-#include <math.h>
+#include <cerrno>
+#include <cmath>
 #include <map>
 
 #define MAX_PKT_SIZE 1476
 #define MIN_PKT_SIZE 64  //equal to packet header + FP header size
 #define HEADER_LENGTH 32
 
-#define CONTROL 1
-#define PING 0
+#define CONTROL 0
+#define PING 32
 #define CNT_NONE 0
 #define CNT_DONE 1
 #define CNT_DONE_OK  2
@@ -80,6 +79,15 @@
 #define CNT_ePAR 32  //0010 0000
 #define CNT_EPAR 64  //0100 0000
 #define CNT_JPAR 128  //1000 0000       
+
+
+#define MSG_RX_CNT 0
+#define MSG_TX_CNT 1
+#define MSG_RX_PKT 32
+#define MSG_TX_PKT 33
+#define MSG_KEEP_ALIVE 64
+#define MSG_RX_KEEP_ALIVE 5
+#define MSG_TX_KEEP_ALIVE 6
 
 
 #define TX 0
@@ -119,6 +127,11 @@ struct ping_msg_t {         //Min MSG SIZE 16B
     u_int8_t id;
     u_int16_t check;
     char msg[MAX_PKT_SIZE];
+};
+
+struct gen_msg_t{
+    u_int8_t msgType;
+    unsigned char packet[MAX_PKT_SIZE + 60];
 };
 
 struct tpoint_def_t{

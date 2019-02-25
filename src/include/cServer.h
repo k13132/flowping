@@ -57,7 +57,7 @@ struct t_conn{
 
 class cServer {
 public:
-    cServer(cSetup *setup, cStats *stats);
+    cServer(cSetup *setup, cStats *stats, cMessageBroker * mbroker);
     void terminate(void);
     virtual ~cServer();
     int run(void);
@@ -65,6 +65,7 @@ private:
     uint64_t conn_id;
     map <u_int64_t, t_conn *> connections;
     t_conn * connection;
+    cMessageBroker *mbroker;
     cServerStats *stats;
     cSetup *setup;
     int sock;

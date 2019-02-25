@@ -29,9 +29,9 @@
 #ifndef CLIENT_H
 #define	CLIENT_H
 
+#include "_types.h"
 #include "cSetup.h"
 #include "cStats.h"
-#include "_types.h"
 #include "flowping.h"
 #include "queue"
 
@@ -39,7 +39,7 @@ using namespace std;
 
 class cClient {
 public:
-    cClient(cSetup *setup, cStats *stats);
+    cClient(cSetup *setup, cStats *stats, cMessageBroker *mbroker);
     bool status(void);
     int run_sender(void);
     int run_receiver(void);
@@ -49,8 +49,8 @@ public:
     virtual ~cClient();
 
 private:
+    float rtt;
     bool first;
-    bool gennerator_running;
     bool r_running,s_running;
     bool pktBufferReady;
     vector <event_t> msg_store;
@@ -58,6 +58,10 @@ private:
     queue <ping_pkt_t> rcv_queue;
     void delay(struct timespec);
 
+    struct ping_pkt_t *ping_pkt;
+    struct ping_msg_t *ping_msg;
+
+    cMessageBroker *mbroker;
     cSetup *setup;
     cClientStats *stats;
     
@@ -67,16 +71,16 @@ private:
 
     bool senderReady;
     bool receiverReady;
-    bool isSenderReady();
-    bool isReceiverReady();
     bool isSenderReceiverReady();
 
 
     pthread_t t_sender, t_receiver;
-    bool started, stop, done;
+
     int sock;
     struct sockaddr_in saServer;
     FILE * fp;
+    std::ofstream fout;
+    std::ostream* output;
     u_int64_t time, pkt_sent, server_received, pkt_rcvd, last_seq_rcv, ooo_cnt;
     struct timeval my_ts, rrefTv, refTv2,  tmpTv;
     struct timespec req, rem, refTv, curTv, sentTv, r_curTv, r_refTv, start_ts;

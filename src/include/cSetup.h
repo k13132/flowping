@@ -36,6 +36,8 @@
 #define SETUP_CHCK_SHOW 2
 #define SETUP_CHCK_OK 3
 
+
+
 #include "_types.h"
 
 using namespace std;
@@ -52,6 +54,7 @@ public:
     u_int8_t self_check(void);
     int getPort();
     FILE * getFP(void);
+    std::ostream* getOutput(void);
     bool showTimeStamps(void);
     bool showTimeStamps(bool);
     bool isAsym(void);
@@ -125,10 +128,22 @@ public:
     u_int64_t getTimedBufferSize();
     u_int64_t getTimedBufferDelay();
     virtual ~cSetup();
+    timed_packet_t get_tmp_tpck();
+    void recordLastDelay(timespec last_delay);
+    timespec getLastDelay();
+    pthread_mutex_t *getMutex();
+
+    bool isStarted() const;
+    bool isStop() const;
+    bool isDone() const;
+    void setStarted(bool started);
+    void setStop(bool stop);
+    void setDone(bool done);
 
 private:
     pthread_mutex_t mutex;
     uint64_t debug_temp;
+    bool started, stop, done;
     bool v_par;
     bool a_par;
     bool A_par;
@@ -183,6 +198,8 @@ private:
     string host, interface;
     string version;
     FILE *fp;
+    std::ofstream fout;
+    std::ostream* output;
     int64_t brate, erate;
     u_int64_t bts, ets;
     bool first_brate;
@@ -198,6 +215,7 @@ private:
     uint64_t longFromTS(ts_t ts);
     double doubleFromTS(ts_t ts);
     timed_packet_t tmp_tpck;
+    timespec last_delay;
     
     //prepNextPacket
     u_int32_t s_tmp_rate, e_tmp_rate;
