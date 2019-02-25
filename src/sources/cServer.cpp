@@ -25,18 +25,28 @@
  */
 
 
-#include <stdlib.h>
+#include <cstdlib> 
 #include <sstream>
 #include "cServer.h"
 #include "_types.h"
 
 using namespace std;
 
-cServer::cServer(cSetup *setup, cStats *stats) {
+cServer::cServer(cSetup *setup, cStats *stats, cMessageBroker *mbroker) {
+    this->mbroker = mbroker;
     this->setup = setup;
     if (stats){
         this->stats = (cServerStats *) stats;
+    }else{
+        this->stats = nullptr;
     }
+
+    if (mbroker) {
+        this->mbroker = mbroker;
+    }else{
+        this->mbroker = nullptr;
+    }
+
     this->stop = false;
 
     //ToDo: zjistit, zdqa je to potreba a zda to ma nejaky prinos    
@@ -145,8 +155,8 @@ int cServer::run() {
             //cout << ping_pkt->size<<endl;
             inet_ntop(AF_INET, &ip, client_ip, INET_ADDRSTRLEN);
 #ifndef _NOSTATS
-            stats->pktReceived(conn_id, connection->curTv, rec_size, ping_pkt->seq, string(client_ip), saClient.sin_port);
-            stats->pktSent(conn_id, connection->curTv, ret_size, ping_pkt->seq, string(client_ip), saClient.sin_port);
+            //stats->pktReceived(conn_id, connection->curTv, rec_size, ping_pkt->seq, string(client_ip), saClient.sin_port);
+            //stats->pktSent(conn_id, connection->curTv, ret_size, ping_pkt->seq, string(client_ip), saClient.sin_port);
 #endif            
             if (show || connection->fp != stdout) {
 

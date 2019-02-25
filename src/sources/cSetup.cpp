@@ -10,6 +10,8 @@
  * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
+ *
+ *
  * FlowPing is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -26,15 +28,20 @@
 
 
 
-#include "cSetup.h"
-#include "cServer.h"
 #include "_types.h"
+#include "cSetup.h"
+
+
 
 using namespace std;
 
+pthread_mutex_t * cSetup::getMutex() {
+    return &this->mutex;
+}
 
 cSetup::cSetup(int argc, char **argv, string version) {
-    pthread_mutex_init(&mutex, NULL);
+
+    pthread_mutex_init(&mutex, nullptr);
     this->tp_ready = false;
     this->td_tmp.len = 0;
     this->td_tmp.bitrate = 0;
@@ -42,6 +49,7 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->version = "Not Defined";
     this->debug_temp = LONG_MAX;
     fp = stdout; //output to terminal
+    output = &std::cout; //output to terminal
     this->vonly = true;
     this->a_par = false;
     this->A_par = false;
@@ -423,6 +431,9 @@ bool cSetup::useInterface() {
 FILE * cSetup::getFP() {
     return this->fp;
 }
+std::ostream* cSetup::getOutput() {
+    return this->output;
+}
 
 bool cSetup::showTimeStamps() {
     return this->D_par;
@@ -449,7 +460,7 @@ string cSetup::getFilename() {
 }
 
 string cSetup::getF_Filename() {
-    if (this->F_filename.size()) return this->F_filename;
+    if (not this->F_filename.empty()) return this->F_filename;
     else return this->filename;
 }
 
@@ -628,11 +639,24 @@ bool cSetup::descFileInUse() {
     return this->u_par;
 }
 
+timed_packet_t cSetup::get_tmp_tpck(){
+    return tmp_tpck;
+}
+
+timespec cSetup::getLastDelay() {
+    return last_delay;
+}
+
+void cSetup::recordLastDelay(timespec last_delay) {
+    this->last_delay = last_delay;
+}
+
 std::ostream& operator<<(std::ostream& os, const tpoint_def_t& obj)
 {
   os << "ts:" << obj.ts << " rate:" << obj.bitrate << " length:"<<obj.len;
   return os;
 }
+
 
 int cSetup::parseCmdLine() {
     //Overit zda to funguje - pripadne zda to takto budeme delat?
@@ -905,7 +929,7 @@ bool cSetup::prepNextPacket() {
 
 u_int64_t cSetup::getTimedBufferDelay() {
     u_int64_t delay;
-    if (pbuffer.size()) {
+    if (not pbuffer.empty()) {
         delay = (pbuffer.back().sec * 1000000000L + pbuffer.back().nsec)-(pbuffer.front().sec * 1000000000L + pbuffer.front().nsec);
         return delay;
     } else {
@@ -932,7 +956,7 @@ timed_packet_t cSetup::getNextPacket() {
 }
 
 bool cSetup::nextPacket() {
-    return pbuffer.empty();
+    return not pbuffer.empty();
 }
 
 u_int64_t cSetup::getTimedBufferSize() {
@@ -1005,4 +1029,28 @@ u_int16_t cSetup::getFirstPacketSize() {
 
 u_int64_t cSetup::getConnectionID(u_int32_t ip, uint16_t port) {
     return (u_int64_t) ip * (u_int64_t) port;
+}
+
+bool cSetup::isStarted() const {
+    return started;
+}
+
+bool cSetup::isStop() const {
+    return stop;
+}
+
+bool cSetup::isDone() const {
+    return done;
+}
+
+void cSetup::setStarted(bool started) {
+    cSetup::started = started;
+}
+
+void cSetup::setStop(bool stop) {
+    cSetup::stop = stop;
+}
+
+void cSetup::setDone(bool done) {
+    cSetup::done = done;
 }

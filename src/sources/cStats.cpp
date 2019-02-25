@@ -26,6 +26,7 @@
 
 
 #include "cStats.h"
+#include "iomanip"
 
 
 #define NS_TDIFF(tv1,tv2) ( ((tv1).tv_sec-(tv2).tv_sec)*1000000000 +  ((tv1).tv_nsec-(tv2).tv_nsec) )
@@ -118,8 +119,8 @@ void cStats::pk_enque(const u_int64_t conn_id, const u_int16_t direction, const 
 void cStats::prepareStats(const u_int64_t conn_id, const uint16_t direction, stats_t* stats) {
     queue<pinfo_t> * pk_queue;
     qstats_t * pk_stats;
-    pk_stats = NULL;
-    pk_queue = NULL;
+    pk_stats = nullptr;
+    pk_queue = nullptr;
     u_int32_t max_seq;
     if (qstats.count(conn_id) == 0) {
         cerr << "cStats::ERRROR (1) - no stats for connId: " << conn_id << endl;
@@ -153,7 +154,12 @@ void cStats::prepareStats(const u_int64_t conn_id, const uint16_t direction, sta
     }
 }
 
-cClientStats::cClientStats(cSetup *setup) {
+cClientStats::cClientStats(cSetup *setup, cMessageBroker *mbroker) {
+    if (mbroker) {
+        this->mbroker = mbroker;
+    }else{
+        this->mbroker = nullptr;
+    }
     timespec curTv;
     clock_gettime(CLOCK_REALTIME, &curTv);
     stats = new c_stats_t;
@@ -176,6 +182,35 @@ cClientStats::cClientStats(cSetup *setup) {
     stats->cumulative_rtt = 0;
     this->setup = setup;
 }
+
+
+
+std::ostream& operator<<(std::ostream& os, const timed_packet_t& obj)
+{
+    os << "ts:" << obj.sec << "." << std::setfill('0') << std::setw(3) << (obj.nsec/1000000) << " length:"<<obj.len;
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const ts_t& obj)
+{
+    os << "ts:" << obj.sec << "." << std::setfill('0') << std::setw(9) << obj.nsec;
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const timespec& obj)
+{
+    os << "ts:" << obj.tv_sec << "." << std::setfill('0') << std::setw(9) << obj.tv_nsec;
+    return os;
+}
+
+void cStats::printStatus() {
+    std::cout << "status: " << status << std::endl;
+}
+
+void cStats::setStatus(std::string status) {
+    this->status = status;
+}
+
 
 void cClientStats::printRealTime(void) {
     std::stringstream ss;
@@ -200,6 +235,8 @@ void cClientStats::printRealTime(void) {
         ss << "\"life_time_stats\":{";
         ss << "\"duration\":" << duration << ",";
         ss << "\"pkt_buffer_fill\":" << setup->getTimedBufferSize() << ",";
+        ss << "\"last_timed_pkt_info\":" << setup->get_tmp_tpck() << ",";
+        ss << "\"last_delay\":" << setup->getLastDelay() << ",";
         ss.precision(3);
         ss.fill('0');
         ss.width(6);
@@ -273,6 +310,7 @@ void cClientStats::printRealTime(void) {
         ss << "\n>>> LIFE TIME STATS" << std::endl;
         ss << "test_duration [s]: " << duration << std::endl;
         ss << "pkt_buffer_fill [pkts]:" << setup->getTimedBufferSize() << std::endl;
+        ss << "last timed packet info:" << setup->get_tmp_tpck() << std::endl;
         ss.precision(3);
         ss.fill('0');
         ss.width(6);
@@ -389,8 +427,17 @@ void cClientStats::pktOoo() {
     stats->ooo_pkts++;
 }
 
-cServerStats::cServerStats(cSetup *setup) {
-    this->setup = setup;
+cServerStats::cServerStats(cSetup *setup, cMessageBroker *mbroker) {
+    if (setup) {
+        this->setup = setup;
+    }else{
+        this->setup = nullptr;
+    }
+    if (mbroker) {
+        this->mbroker = mbroker;
+    }else{
+        this->mbroker = nullptr;
+    }
 }
 
 void cServerStats::pktSent(const u_int64_t conn_id, const timespec ts, const uint16_t len, const u_int64_t seq, const std::string src, const u_int32_t port) {

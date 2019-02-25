@@ -32,70 +32,68 @@
 #include "cServer.h"
 #include "cSetup.h"
 #include "cStats.h"
-#include <pthread.h>
+#include "cMBroker.h"
+#include <thread>
 
 #include <cstdlib>
 #include <iostream>
-#include <signal.h>
+#include <csignal>
 #include <sched.h>
 
-cSetup *setup = NULL;
-cClient *client = NULL;
-cServer *server = NULL;
-cStats *stats = NULL;
-pthread_t t_cSender, t_cReceiver, t_cReceiver_output, t_sServer, t_cPacketFactory;
+cSetup *setup = nullptr;
+cClient *client = nullptr;
+cServer *server = nullptr;
+cStats *stats = nullptr;
+cMessageBroker * mbroker = nullptr;
 
 void * t_helper_sServer(void * arg) {
     server = (cServer *) arg;
     server->run();
-    return NULL;
+    return nullptr;
 }
 
 //Send packets
 void * t_helper_cSender(void * arg) {
     client = (cClient *) arg;
     client->run_sender();
-    return NULL;
+    return nullptr;
 }
 
 //Packet generator
 void * t_helper_cPacketFactory(void * arg) {
     client = (cClient *) arg;
     client->run_packetFactory();
-    return NULL;
+    return nullptr;
 }
 
 //Receives packets
 void * t_helper_cReceiver(void * arg) {
     client = (cClient *) arg;
     client->run_receiver();
-    return NULL;
+    return nullptr;
 }
+
+//Message Broker
+void * t_helper_cMBroker(void * arg) {
+    mbroker = (cMessageBroker *) arg;
+    mbroker->run();
+    return nullptr;
+}
+
 
 //Handle some basic signals
 void signalHandler(int sig) {
     if ((sig == SIGQUIT) || (sig == SIGTERM) || (sig == SIGINT)) { //SIG 3 //15 //2   QUIT
         if (setup->isServer()) {
             server->terminate();
-#ifdef DEBUG
-            cerr << "Server shutdown initiated." << endl;
-#endif
-            usleep(200000);
-            pthread_cancel(t_sServer);
         } else {
             u_int16_t cnt;
             cnt=0;
             client->terminate();
-#ifdef DEBUG
-            cerr << "Client shutdown initiated." << endl;
-#endif            
             while ((client->status()&&(cnt<100))){
                 usleep(50000);
                 cnt++;
             }
-            pthread_cancel(t_cSender);
-            pthread_cancel(t_cReceiver);
-            pthread_cancel(t_cPacketFactory);
         }
     }
     if (sig == SIGUSR1) { //SIG 10              
@@ -106,7 +104,11 @@ void signalHandler(int sig) {
         }
     }
     if (sig == SIGUSR2) { //SIG 12              
-        //zatim nedela nic
+        if (stats){
+            stats->printStatus();
+        }else{
+            cerr << "Error: Stats module is not enabled. Recompile FlowPing with Stats module.\n";
+        }
     }
 }
 
@@ -116,26 +118,16 @@ int main(int argc, char** argv) {
     act.sa_handler = signalHandler;
     sigemptyset(&act.sa_mask);
     act.sa_flags = 0;
-    sigaction(SIGQUIT, &act, 0);
-    sigaction(SIGTERM, &act, 0);
-    sigaction(SIGINT, &act, 0);
-    sigaction(SIGUSR1, &act, 0);
-    sigaction(SIGUSR2, &act, 0);
-
-    //    cpu_set_t mask;
-    //    pthread_t thread;
-    //    thread = pthread_self();
-    //    CPU_ZERO(&mask);
-    //    CPU_SET(0, &mask); //To run on CPU 0
-    //
-    //    pthread_setaffinity_np(thread, sizeof (cpu_set_t), &mask);
-    //int result = sched_setaffinity(0, sizeof (mask), &mask);
+    sigaction(SIGQUIT, &act, nullptr);
+    sigaction(SIGTERM, &act, nullptr);
+    sigaction(SIGINT, &act, nullptr);
+    sigaction(SIGUSR1, &act, nullptr);
+    sigaction(SIGUSR2, &act, nullptr);
 
 #define DD __DATE__
 #define TT __TIME__    
 
     stringstream version;
-
 
     version.str("");
 #ifdef __i386
@@ -143,7 +135,7 @@ int main(int argc, char** argv) {
     version << " (" << DD << " "<< TT << ")";
 #endif    
 #ifdef __x86_64__
-    version << "x86_64 1.5.2a";
+    version << "x86_64 2.0.0-devel";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
@@ -157,7 +149,6 @@ int main(int argc, char** argv) {
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
-    
     setup = new cSetup(argc, argv, version.str());
     //Check cmd line parameters
     if (setup->self_check() == SETUP_CHCK_SHOW) {
@@ -173,72 +164,29 @@ int main(int argc, char** argv) {
         setup->usage();
         return EXIT_FAILURE;
     }
-    if (setup->raisePriority()) {
-        struct sched_param param;
-        param.sched_priority = sched_get_priority_max(SCHED_FIFO);
-        sched_setscheduler(0, SCHED_FIFO, &param);
-    }
+    mbroker = new cMessageBroker(setup);
+    std::thread t_mBroker (t_helper_cMBroker, (void *) mbroker);
     if (setup->isServer()) {
-#ifndef _NOSTATS        
-        stats = new cServerStats(setup);
-#endif
-        server = new cServer(setup, stats);
-        if (pthread_create(&t_sServer, NULL, t_helper_sServer, (void *) server) != 0) {
-            perror("pthread_create");
-            exit(1);
-        }
-        pthread_join(t_sServer, NULL);
+        stats = new cServerStats(setup, mbroker);
+        server = new cServer(setup, stats, mbroker);
+        std::thread t_sServer (t_helper_sServer, (void *) server);
+        t_sServer.join();
         delete(server);
     } else {
-        if (setup->npipe()) {
-            if (access("/tmp/flowping", F_OK) == -1) {
-                int stat = mkfifo("/tmp/flowping", 0700);
-                if (stat != 0) {
-                    fprintf(stdout, "Failed to create named pipe\n");
-                    exit(-1);
-                }
-
-            }
-        }
-#ifndef _NOSTATS        
-        stats = new cClientStats(setup);
-#endif
-        client = new cClient(setup, stats);
-        pthread_setconcurrency(4);
-        if (pthread_create(&t_cPacketFactory, NULL, t_helper_cPacketFactory, (void *) client) != 0) {
-            perror("pthread_create");
-            exit(1);
-        }
-
-        if (pthread_create(&t_cReceiver, NULL, t_helper_cReceiver, (void *) client) != 0) {
-            perror("pthread_create");
-            exit(1);
-        }
-        if (pthread_create(&t_cSender, NULL, t_helper_cSender, (void *) client) != 0) {
-            perror("pthread_create");
-            exit(1);
-        }
-        pthread_join(t_cSender, NULL);
-        pthread_join(t_cReceiver, NULL);
-        //pthread_join(t_cPacketFactory, NULL);
-
-        //timespec * tout;
-        //tout = new timespec;
-        //tout->tv_sec=2;
-        //tout->tv_nsec=0;
-        //pthread_timedjoin_np(t_cPacketFactory, NULL, tout);
+        stats = new cClientStats(setup, mbroker);
+        client = new cClient(setup, stats, mbroker);
+        std::thread t_cPacketFactory (t_helper_cPacketFactory, (void *) client);
+        std::thread t_cReceiver (t_helper_cReceiver, (void *) client);
+        std::thread t_cSender (t_helper_cSender, (void *) client);
+        t_cSender.join();
+        t_cReceiver.join();
+        t_cPacketFactory.join();
         delete(client);
-	//delete(tout);
-        if (setup->npipe()) {
-            if (system("rm -f /tmp/flowping")){
-            perror("npipe removal failed");
-            exit(1);
-            }
-        }
     }
+    t_mBroker.join();
+    delete(mbroker);
     delete(setup);
     delete(stats);
-    //cerr << endl << ".::. Good bye!" << endl;
     return EXIT_SUCCESS;
 }
 
