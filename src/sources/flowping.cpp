@@ -179,11 +179,15 @@ int main(int argc, char** argv) {
         std::thread t_cReceiver (t_helper_cReceiver, (void *) client);
         std::thread t_cSender (t_helper_cSender, (void *) client);
         t_cSender.join();
-        t_cReceiver.join();
+        std::cout << "sender joined to main thread" << std::endl;
         t_cPacketFactory.join();
+        std::cout << "factory joined to main thread" << std::endl;
+        t_cReceiver.join();
+        std::cout << "receiver joined to main thread" << std::endl;
         delete(client);
     }
     t_mBroker.join();
+    std::cout << "mBroker joined to main thread" << std::endl;
     delete(mbroker);
     delete(setup);
     delete(stats);

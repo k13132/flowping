@@ -16,11 +16,15 @@ public:
     virtual ~cMessageBroker();
     void push_rx(gen_msg_t *msg);
     void push_tx(gen_msg_t *msg);
+    void d_print();
     void run();
 private:
     //todo remove dup
     u_int64_t dup;
-    std::mutex msg_buf_mutex, msg_buf_mutex_rx, msg_buf_mutex_tx;
+    u_int64_t key_rx, key_tx;
+    u_int64_t dcnt_rx, dcnt_tx;
+    std::mutex msg_buf_mutex_rx;
+    std::mutex msg_buf_mutex_tx;
     struct timespec curTv;
     cSetup *setup;
     cMessageBroker *mbroker;

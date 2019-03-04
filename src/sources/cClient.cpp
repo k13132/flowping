@@ -125,7 +125,6 @@ int cClient::run_packetFactory() {
 
 int cClient::run_receiver() {
     struct hostent *hp;
-
     this->r_running = true;
 
     // Convert the host name as a dotted-decimal number.
@@ -143,7 +142,7 @@ int cClient::run_receiver() {
         perror("Failed in creating socket");
         exit(1);
     }
-   
+
     if (setup->useInterface()) {
         setsockopt(this->sock, SOL_SOCKET, SO_BINDTODEVICE, setup->getInterface().c_str(), strlen(setup->getInterface().c_str()));
     }
@@ -169,19 +168,26 @@ int cClient::run_receiver() {
 
     //MAIN RX LOOP  *******************************************
     gen_msg_t * msg;
-    void * myself = this;
+
+    struct timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = 100000;
+    setsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv));
+
     while (!setup->isDone()) {
         nRet = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, (struct sockaddr *) &saServer, (socklen_t *) & nFromLen);
         if (nRet < 0) {
-            perror("ERROR :: RX failure!");
-            close(this->sock);
-            exit(1);
+            usleep(1000);
+            continue;
         }
         msg = new(gen_msg_t);
-        memcpy(msg->packet,packet, sizeof(packet)+HEADER_LENGTH);
-        msg->msgType = (u_int8_t)packet[0];
+        memcpy(msg,packet, HEADER_LENGTH);
+        if (msg->type == MSG_RX_CNT){
+            std::cout << "msg type/code: " << (u_int16_t)msg->type << "/" << (u_int16_t)((ping_msg_t *)msg)->code << std::endl;
+        }
         mbroker->push_rx(msg);
     }
+    std::cout << "receiver is done" << std::endl;
     this->r_running = false;
     this->report();
     return 1;
@@ -342,8 +348,8 @@ int cClient::run_sender() {
         //SEND PKT ************************
         nRet = sendto(this->sock, packet, HEADER_LENGTH + payload_size, 0 , (struct sockaddr *) &saServer, sizeof (struct sockaddr));
         msg = new(gen_msg_t);
-        memcpy(msg->packet,packet, HEADER_LENGTH);
-        msg->msgType = MSG_TX_PKT;
+        memcpy(msg,packet, HEADER_LENGTH);
+        msg->type = MSG_TX_PKT;
         mbroker->push_tx(msg);
         //Todo Remove to improve performance?
 //        if (nRet < 0) {
@@ -359,21 +365,24 @@ int cClient::run_sender() {
     ping_pkt->type = CONTROL;
     ping_msg->code = CNT_DONE;
     timeout = 0;
-    //sleep(2); //wait for network congestion "partialy" disapear.
+    //sleep(1); //wait for network congestion "partialy" disapear.
     while (!setup->isDone()) {
+        std::cout << "trying to shutdown generator" << std::endl;
         nRet = sendto(this->sock, packet, pk_len, 0, (struct sockaddr *) &saServer, sizeof (struct sockaddr));
         if (nRet < 0) {
             cerr << "Send ERRROR\n";
             close(this->sock);
             exit(1);
         }
-        usleep(200000); //  5pkt/s
+        usleep(250000); //  4pkt/s
         timeout++;
-        if (timeout == 150) { //30s
+        if (timeout == 40) { //10s
             cerr << "Can't get stats from server\n";
             exit(1);
         }
+        mbroker->d_print();
     }
+    std::cout << "sender is done" << std::endl;
     this->s_running = false;
     return 0;
 }
@@ -381,7 +390,7 @@ int cClient::run_sender() {
 void cClient::report() {
 #ifndef _NOSTATS
     //fprintf(fp, "%s", stats->getReport().c_str());
-    *output << stats->getReport().c_str();
+    //*output << stats->getReport().c_str();
 #endif   
     if (setup->toJSON()) {
         //fprintf(fp, "%s", "}\n");

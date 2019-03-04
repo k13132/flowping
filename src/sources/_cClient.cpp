@@ -157,7 +157,6 @@ int cClient::run_receiver() {
         perror("Failed in creating socket");
         exit(1);
     }
-   
     if (setup->useInterface()) {
         setsockopt(this->sock, SOL_SOCKET, SO_BINDTODEVICE, setup->getInterface().c_str(), strlen(setup->getInterface().c_str()));
         if (show && !setup->toCSV() && !setup->toJSON()) {

@@ -129,9 +129,14 @@ struct ping_msg_t {         //Min MSG SIZE 16B
     char msg[MAX_PKT_SIZE];
 };
 
-struct gen_msg_t{
-    u_int8_t msgType;
-    unsigned char packet[MAX_PKT_SIZE + 60];
+struct gen_msg_t{           //Min MSG SIZE 16B
+    u_int8_t type;
+    u_int8_t id;
+    u_int16_t size;
+    u_int64_t padding_3;
+    u_int64_t padding_4;
+    u_int64_t padding_5;
+    char msg[MAX_PKT_SIZE];
 };
 
 struct tpoint_def_t{
