@@ -19,7 +19,7 @@ public:
     void d_print();
     void run();
 private:
-    //todo remove dup
+    // todo remove dup
     u_int64_t dup;
     u_int64_t key_rx, key_tx;
     u_int64_t dcnt_rx, dcnt_tx;

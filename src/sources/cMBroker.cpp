@@ -75,7 +75,7 @@ void cMessageBroker::run(){
     u_int64_t first=0;
     u_int64_t last=0;
     while (!setup->isDone()){
-        usleep(3000);
+        usleep(30);
         while ((not msg_buf_rx.empty())||(not msg_buf_tx.empty())){
             key_rx = 0;
             key_tx = 0;
