@@ -76,7 +76,8 @@ private:
     bool started, stop, done;
     int sock;
     struct sockaddr_in saServer;
-    FILE * fp;
+    std::ofstream fout;
+    std::ostream* output;
     u_int64_t time, pkt_sent, server_received, pkt_rcvd, last_seq_rcv, ooo_cnt;
     struct timeval my_ts, rrefTv, refTv2,  tmpTv;
     struct timespec req, rem, refTv, curTv, sentTv, r_curTv, r_refTv, start_ts;

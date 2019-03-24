@@ -43,7 +43,7 @@ cSetup *setup = NULL;
 cClient *client = NULL;
 cServer *server = NULL;
 cStats *stats = NULL;
-pthread_t t_cSender, t_cReceiver, t_cReceiver_output, t_sServer, t_cPacketFactory;
+pthread_t t_cSender, t_cReceiver, t_sServer, t_cPacketFactory;
 
 void * t_helper_sServer(void * arg) {
     server = (cServer *) arg;
@@ -139,21 +139,21 @@ int main(int argc, char** argv) {
 
     version.str("");
 #ifdef __i386
-    version << "x86_32 1.5.2a";
+    version << "x86_32 1.5.3";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 #ifdef __x86_64__
-    version << "x86_64 1.5.2a";
+    version << "x86_64 1.5.3";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
 #ifdef __ARM_ARCH_7A__
-    version << "ARM_32 1.5.2a";
+    version << "ARM_32 1.5.3";
     version << " (" << DD << " "<< TT << ")";
 #endif    
     
 #ifdef __MIPS_ISA32__
-    version << "MIPS_32 1.5.2a";
+    version << "MIPS_32 1.5.3";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
@@ -173,11 +173,6 @@ int main(int argc, char** argv) {
         setup->usage();
         return EXIT_FAILURE;
     }
-    if (setup->raisePriority()) {
-        struct sched_param param;
-        param.sched_priority = sched_get_priority_max(SCHED_FIFO);
-        sched_setscheduler(0, SCHED_FIFO, &param);
-    }
     if (setup->isServer()) {
 #ifndef _NOSTATS        
         stats = new cServerStats(setup);
@@ -190,17 +185,7 @@ int main(int argc, char** argv) {
         pthread_join(t_sServer, NULL);
         delete(server);
     } else {
-        if (setup->npipe()) {
-            if (access("/tmp/flowping", F_OK) == -1) {
-                int stat = mkfifo("/tmp/flowping", 0700);
-                if (stat != 0) {
-                    fprintf(stdout, "Failed to create named pipe\n");
-                    exit(-1);
-                }
-
-            }
-        }
-#ifndef _NOSTATS        
+#ifndef _NOSTATS
         stats = new cClientStats(setup);
 #endif
         client = new cClient(setup, stats);
@@ -228,13 +213,7 @@ int main(int argc, char** argv) {
         //tout->tv_nsec=0;
         //pthread_timedjoin_np(t_cPacketFactory, NULL, tout);
         delete(client);
-	//delete(tout);
-        if (setup->npipe()) {
-            if (system("rm -f /tmp/flowping")){
-            perror("npipe removal failed");
-            exit(1);
-            }
-        }
+    	//delete(tout);
     }
     delete(setup);
     delete(stats);

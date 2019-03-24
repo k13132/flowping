@@ -41,7 +41,8 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->td_tmp.ts = 0;
     this->version = "Not Defined";
     this->debug_temp = LONG_MAX;
-    fp = stdout; //output to terminal
+    //fp = stdout; //output to terminal
+    output = &std::cout; //output to terminal
     this->vonly = true;
     this->a_par = false;
     this->A_par = false;
@@ -82,8 +83,8 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->port = 2424;
     this->interval_i = 1000000000; // 1s
     this->interval_I = 1000000000; // 1s
-    this->time_t = 10; // 10s
-    this->time_T = 10; // 10s
+    this->time_t = 0; // 0s
+    this->time_T = 0; // 0s
     this->time_R = 0; // 0s
     this->size = 64; // 64B Payload
     this->rate_b = 1; // 1kbit/s
@@ -317,6 +318,10 @@ cSetup::cSetup(int argc, char **argv, string version) {
             exit(1);
         }
     }
+    if (R_par && not T_par){
+        T_par = R_par;
+        time_T = time_R;
+    }
 }
 
 cSetup::~cSetup() {
@@ -402,8 +407,8 @@ void cSetup::usage() {
     cout << "|         [-P]                       Packet size change from 22B to 1472B                       |" << endl;
     cout << "|         [-Q]                       linux ping output compatibility                            |" << endl;
     cout << "|         [-s size]     [64]         Payload size in Bytes                                      |" << endl;
-    cout << "|         [-t seconds]  [10]         T1 interval specification  (for i,I,b,B,P params)          |" << endl;
-    cout << "|         [-T seconds]  [10]         T2 interval specification  (for i,I,b,B,P params)          |" << endl;
+    cout << "|         [-t seconds]  [0]         T1 interval specification  (for i,I,b,B,P params)          |" << endl;
+    cout << "|         [-T seconds]  [0]         T2 interval specification  (for i,I,b,B,P params)          |" << endl;
     cout << "|         [-R seconds]  [T3=T2]      T3 interval specification  (for i,I,b,B,P params)          |" << endl;
     cout << "|         [-u filename]              Read Interval and BitRate definitions from file            |" << endl;
     cout << "|         [-U]                       Fill packets with data from named pipe at /tmp/uping       |" << endl;
@@ -459,6 +464,10 @@ string cSetup::getSrcFilename() {
 
 bool cSetup::outToFile() {
     return this->f_par;
+}
+
+std::ostream* cSetup::getOutput() {
+    return this->output;
 }
 
 u_int64_t cSetup::getTime_t() {

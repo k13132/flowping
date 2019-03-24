@@ -108,7 +108,8 @@ int cServer::run() {
             connection = connections.at(conn_id);
         } else {
             connection = new t_conn;
-            connection->fp = setup->getFP();
+            //connection->fp = setup->getFP();
+            connection->output = setup->getOutput();
             connection->pkt_cnt = 0;
             connection->refTv.tv_sec = 0;
             connection->refTv.tv_nsec = 0;
@@ -148,7 +149,7 @@ int cServer::run() {
             stats->pktReceived(conn_id, connection->curTv, rec_size, ping_pkt->seq, string(client_ip), saClient.sin_port);
             stats->pktSent(conn_id, connection->curTv, ret_size, ping_pkt->seq, string(client_ip), saClient.sin_port);
 #endif            
-            if (show || connection->fp != stdout) {
+            if (show || connection->output != &std::cout) {
 
                 double delta = ((double) (connection->curTv.tv_sec - connection->refTv.tv_sec)*1000.0 + (double) (connection->curTv.tv_nsec - connection->refTv.tv_nsec) / 1000000.0);
                 ss.str("");
@@ -270,7 +271,7 @@ int cServer::run() {
                 if (setup->useTimedBuffer(connection->W_par)) {
                     connection->msg_store.push_back(ss.str());
                 } else {
-                    fprintf(connection->fp, "%s", ss.str().c_str());
+                    *connection->output << ss.str().c_str();
 
                 }
             }
@@ -287,46 +288,40 @@ int cServer::run() {
             stats->connInit(conn_id, string(client_ip), saClient.sin_port);
 #endif
             if (ping_msg->code == CNT_FNAME) {
-                if (connection->fp != NULL) {
-                    if (connection->fp != stdout) {
-                        fclose(connection->fp);
-                    }
+                //std::cout << "FNAME" << std::endl;
+                if (connection->fout.is_open()) {
+                        connection->fout.close();
                 }
-                connection->fp = fopen(ping_msg->msg, "w+"); //RW - overwrite file
-                //cerr << ping_msg->msg << endl;
-                ping_msg->code = CNT_FNAME_OK;
-                if (connection->fp == NULL) {
-                    perror("Unable to open file, redirecting to STDOUT");
-                    connection->fp = stdout;
-                    ping_msg->code = CNT_OUTPUT_REDIR;
-                } else {
-                    //setup->setExtFilename((string) ping_msg->msg);
+                connection->fout.open(ping_msg->msg);
+                if (connection->fout.is_open()) {
+                    connection->output = &connection->fout;
+                    if (setup->self_check() == SETUP_CHCK_VER) *connection->output << setup->get_version().c_str();
+                    ping_msg->code = CNT_FNAME_OK;
                     connection->F_par = true;
-                    //print version to output file
-                    if (setup->self_check() == SETUP_CHCK_VER) fprintf(connection->fp, "%s", setup->get_version().c_str());
+                } else {
+                    std::cerr << "Unable to open file, redirecting to STDOUT" << std::endl;
+                    connection->output = &std::cout; //output to terminal
+                    ping_msg->code = CNT_OUTPUT_REDIR;
                 }
             }
             if (ping_msg->code == CNT_NOFNAME) {
+                //std::cout << "NOFNAME" << std::endl;
                 message.str("");
                 if (setup->getFilename().length() && setup->outToFile()) {
-                    //                    if (connection->fp!= NULL) {
-                    //                        if (connection->fp != stdout) {
-                    //                            fclose(connection->fp);
-                    //                        }
-                    //                    }
                     ss.str("");
-                    ss << setup->getFilename().c_str() << "_" << conn_id;
+                    ss << conn_id << "_" <<  setup->getFilename().c_str();
                     sprintf(filename, "%s", ss.str().c_str());
-                    connection->fp = fopen(filename, "w+"); //RW - overwrite file
-                    if (connection->fp == NULL) {
-                        perror("Unable to open file, redirecting to STDOUT");
-                        connection->fp = stdout;
-                        ping_msg->code = CNT_OUTPUT_REDIR;
+                    connection->fout.open(filename);
+                    if (connection->fout.is_open()) {
+                        connection->output = &connection->fout;
+                        if (setup->self_check() == SETUP_CHCK_VER) *connection->output << setup->get_version().c_str();
                     } else {
-                        if (setup->self_check() == SETUP_CHCK_VER) fprintf(connection->fp, "%s", setup->get_version().c_str());
+                        std::cerr << "Unable to open file, redirecting to STDOUT" << std::endl;
+                        connection->output = &std::cout; //output to terminal
+                        ping_msg->code = CNT_OUTPUT_REDIR;
                     }
                 } else {
-                    connection->fp = setup->getFP();
+                    connection->output = setup->getOutput();
                 }
                 ping_msg->code = CNT_FNAME_OK;
             }
@@ -413,7 +408,7 @@ int cServer::run() {
                     if (setup->useTimedBuffer()) {
                         connection->msg_store.push_back(ss.str());
                     } else {
-                        fprintf(connection->fp, "%s", ss.str().c_str());
+                        *connection->output << ss.str().c_str();
                     }
                 }
             }
@@ -436,20 +431,20 @@ int cServer::run() {
                     string tmp_str;
                     for (unsigned int i = 0; i < connection->msg_store.size(); i++) {
                         tmp_str = connection->msg_store[i];
-                        fprintf(connection->fp, "%s", tmp_str.c_str());
+                        *connection->output << tmp_str.c_str();
                     }
                     connection->msg_store.clear();
                 }
-                if ((show || connection->fp != stdout) && setup->toJSON(connection->J_par)) {
+                if ((show || connection->output != &std::cout) && setup->toJSON(connection->J_par)) {
                     ss.str("");
                     ss << "\n\t]\n}\n";
-                    fprintf(connection->fp, "%s", ss.str().c_str());
+                    *connection->output << ss.str().c_str();
                 }
-                if (connection->fp != stdout) {
-                    fclose(connection->fp);
+                if (connection->output != &std::cout) {
+                    connection->fout.close();
                 }
                 cerr << ".::. Test from " << client_ip << " finished.  ~  " << connection->pkt_cnt << " packets processed." << endl;
-                connection->fp = stdout;
+                connection->output = &std::cout;
                 delete connection;
                 connections.erase(conn_id);
 #ifndef _NOSTATS

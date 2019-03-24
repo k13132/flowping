@@ -52,6 +52,7 @@ public:
     u_int8_t self_check(void);
     int getPort();
     FILE * getFP(void);
+    std::ostream* getOutput(void);
     bool showTimeStamps(void);
     bool showTimeStamps(bool);
     bool isAsym(void);
@@ -183,6 +184,8 @@ private:
     string host, interface;
     string version;
     FILE *fp;
+    std::ofstream fout;
+    std::ostream* output;
     int64_t brate, erate;
     u_int64_t bts, ets;
     bool first_brate;

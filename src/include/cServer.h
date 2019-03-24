@@ -50,7 +50,9 @@ struct t_conn{
     bool X_par;
     bool AX_par;
     bool W_par;
-    FILE * fp;
+    //FILE * fp;
+    std::ofstream fout;
+    std::ostream* output;
 };
 
 //#include "uping.h"

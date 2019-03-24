@@ -98,7 +98,7 @@ int cClient::run_packetFactory() {
             this->pktBufferReady = true;
         }
         while (!done && !stop) {
-            while (pkt_created && setup->getTimedBufferSize() < 32000) {
+            while (pkt_created && setup->getTimedBufferSize() < 64000) {
                 pkt_created = setup->prepNextPacket();
 
                 if (stop) {
@@ -117,7 +117,6 @@ int cClient::run_packetFactory() {
         }
         msg_store.reserve(setup->getTimedBufferSize() + 10);
         msg_store_snd.reserve(setup->getTimedBufferSize() + 10);
-        //cerr << "Allocating message storage for: " << setup->getTimedBufferSize() + 10 << " itemns" << endl;
     }
     return 0;
 }
@@ -176,13 +175,6 @@ int cClient::run_receiver() {
     int nRet;
     ping_pkt = (struct ping_pkt_t*) (packet);
     ping_msg = (struct ping_msg_t*) (packet);
-
-    /*
-    cpu_set_t mask;
-    CPU_ZERO(&mask);
-    CPU_SET(0, &mask); //To run on CPU 0
-    int result = sched_setaffinity(0, sizeof (mask), &mask);
-     */
 
 
     // Wait for the first reply
@@ -368,7 +360,7 @@ int cClient::run_receiver() {
                     event.msg = ss.str();
                     msg_store.push_back(event);
                 } else {
-                    fprintf(fp, "%s", ss.str().c_str());
+                    *output << ss.str().c_str();
                 }
                 last_seq_rcv = ping_pkt->seq;
             }
@@ -409,22 +401,21 @@ int cClient::run_receiver() {
                 ev = msg_store[idx];
                 ev_snd = msg_store_snd[idx_snd];
                 if ((ev.ts.sec * 1000000000 + ev.ts.nsec) <= (ev_snd.ts.sec * 1000000000 + ev_snd.ts.nsec)) {
-                    fprintf(fp, "%s", ev.msg.c_str());
+                    *output << ev.msg.c_str();
                     idx++;
                 } else {
-                    fprintf(fp, "%s", ev_snd.msg.c_str());
+                    *output << ev_snd.msg.c_str();
                     idx_snd++;
                 }
             } else {
                 if (idx < vmsg_len) {
                     ev = msg_store[idx];
-                    fprintf(fp, "%s", ev.msg.c_str());
-                    //cerr << ev.ts.sec << "." <<ev.ts.usec << "\t" << ev.msg<<endl;
+                    *output << ev.msg.c_str();
                     idx++;
                 }
                 if (idx_snd < vmsg_snd_len) {
                     ev_snd = msg_store_snd[idx_snd];
-                    fprintf(fp, "%s", ev_snd.msg.c_str());
+                    *output << ev_snd.msg.c_str();
                     //cerr << ev_snd.ts.sec << "." <<ev_snd.ts.usec << "\t" << ev_snd.msg<<endl;
                     idx_snd++;
                 }
@@ -453,43 +444,22 @@ int cClient::run_sender() {
     stringstream ss;
     unsigned char packet[MAX_PKT_SIZE + 60] = {0}; //Random FILL will be better
     int nRet;
-    int pipe_handle;
-    pipe_handle = 0; //warning elimination
     bool show = not setup->silent();
 
     delta = 0;
     clock_gettime(CLOCK_REALTIME, &sentTv); //FIX initial delta
 
-    /*
-    cpu_set_t mask;
-    CPU_ZERO(&mask);
-    CPU_SET(0, &mask); //To run on CPU 0
-    int result = sched_setaffinity(0, sizeof (mask), &mask);
-     */
-    if (setup->npipe()) {
-        pipe_handle = open("/tmp/flowping", O_RDONLY | O_NONBLOCK);
-        if (pipe_handle == -1) {
-            fprintf(stdout, "Failed to open the named pipe\n");
-            exit(-2);
-        }
-    }
-    bool pipe_started = false;
-    char pipe_buffer[MAX_PKT_SIZE];
-    memset(pipe_buffer, 0, MAX_PKT_SIZE);
-    if (setup->getFilename().length() > 255) {
-        perror("Filename to long, exiting.");
-        exit(1);
-    }
     if (setup->getFilename().length() && setup->outToFile()) {
-        fp = fopen(setup->getFilename().c_str(), "w+"); //RW - overwrite file
-        if (fp == NULL) {
-            perror("Unable to open file, redirecting to STDOUT");
-            fp = stdout;
+        fout.open(setup->getFilename().c_str());
+        if (fout.is_open()) {
+            output = &fout;
+            if (setup->self_check() == SETUP_CHCK_VER) *output << setup->get_version().c_str();
         } else {
-            if (setup->self_check() == SETUP_CHCK_VER) fprintf(fp, "%s", setup->get_version().c_str());
+            std::cerr << "Unable to open file, redirecting to STDOUT" << std::endl;
+            output = &std::cout; //output to terminal
         }
     } else {
-        fp = setup->getFP();
+        output = setup->getOutput();
     }
     ping_pkt = (struct ping_pkt_t*) (packet);
     ping_msg = (struct ping_msg_t*) (packet);
@@ -561,7 +531,6 @@ int cClient::run_sender() {
     ping_pkt->nsec = start_ts.tv_nsec;
     u_int16_t payload_size;
 
-    int pipe_cnt = 0;
     clock_gettime(CLOCK_REALTIME, &refTv);
 
     if (show) {
@@ -574,7 +543,7 @@ int cClient::run_sender() {
                 event.msg = ss.str();
                 msg_store_snd.push_back(event);
             } else {
-                fprintf(fp, "%s", ss.str().c_str());
+                *output << ss.str().c_str();
             }
         }
         if (setup->toJSON()) {
@@ -586,7 +555,7 @@ int cClient::run_sender() {
                 event.msg = ss.str();
                 msg_store_snd.push_back(event);
             } else {
-                fprintf(fp, "%s", ss.str().c_str());
+                *output << ss.str().c_str();
             }
         }
     }else{
@@ -599,7 +568,7 @@ int cClient::run_sender() {
                 event.msg = ss.str();
                 msg_store_snd.push_back(event);
             } else {
-                fprintf(fp, "%s", ss.str().c_str());
+                *output << ss.str().c_str();
             }
         }
     }
@@ -644,34 +613,9 @@ int cClient::run_sender() {
         ping_pkt->nsec = curTv.tv_nsec;
         ping_pkt->size = payload_size; //info for server side in AntiAsym mode; //Real size should be obtained as ret size of send and receive
         ping_pkt->seq = i;
-        if (setup->npipe()) {
-            payload_size = read(pipe_handle, pipe_buffer, payload_size);
-            if (!pipe_started) {
-                if (payload_size == 0) {
-                    usleep(200000);
-                    pipe_cnt++;
-                    if (pipe_cnt++ < 3000) continue; //10 minutes timeout.
-                } else {
-                    pipe_started = true;
-                }
-            }
-            if (payload_size > 0) {
-                memcpy(ping_pkt->padding, pipe_buffer, payload_size);
-            }
-            if (setup->frameSize()) {
-                if (payload_size < (this->getPacketSize() - (HEADER_LENGTH + 42))) {
-                    stop = true;
-                }
-            } else {
-                if (payload_size < (this->getPacketSize() - HEADER_LENGTH)) {
-                    stop = true;
-                }
-
-            }
-        }
 
         if (setup->isAntiAsym()) {
-            payload_size = 0; //No reading from pipe
+            payload_size = 0;
         }
         if (setup->frameSize()) {
             payload_size -= 42; //todo check negative size of payload.
@@ -763,7 +707,7 @@ int cClient::run_sender() {
                 event.msg = ss.str();
                 msg_store_snd.push_back(event);
             } else {
-                fprintf(fp, "%s", ss.str().c_str());
+                *output << ss.str().c_str();
             }
         }
 
@@ -771,7 +715,7 @@ int cClient::run_sender() {
     ping_pkt->type = CONTROL;
     ping_msg->code = CNT_DONE;
     timeout = 0;
-    //sleep(2); //wait for network congestion "partialy" disapear.
+    sleep(1); //wait for network congestion "partialy" disapear.
     while (!done) {
         nRet = sendto(this->sock, packet, pk_len, 0, (struct sockaddr *) &saServer, sizeof (struct sockaddr));
         if (nRet < 0) {
@@ -786,7 +730,6 @@ int cClient::run_sender() {
             exit(1);
         }
     }
-    close(pipe_handle);
 #ifdef DEBUG
     cerr << setup->getInterval() << endl;
 #endif
@@ -796,12 +739,13 @@ int cClient::run_sender() {
 
 void cClient::report() {
 #ifndef _NOSTATS
-    fprintf(fp, "%s", stats->getReport().c_str());
+    *output << stats->getReport().c_str();
 #endif   
     if (setup->toJSON()) {
-        fprintf(fp, "%s", "}\n");
+        *output << "}" << std::endl;
     }
-    fclose(fp);
+    //no write to output after this point.
+    fout.close();
 }
 
 void cClient::terminate() {
