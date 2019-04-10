@@ -181,11 +181,12 @@ int cClient::run_receiver() {
             continue;
         }
         msg = new(gen_msg_t);
+        //std::cout << "RX MSG create at: " << msg << std::endl;
         memcpy(msg,packet, HEADER_LENGTH);
         if (msg->type == MSG_RX_CNT){
             std::cout << "msg type/code: " << (u_int16_t)msg->type << "/" << (u_int16_t)((ping_msg_t *)msg)->code << std::endl;
         }
-        mbroker->push_rx(msg);
+        mbroker->push(msg);
     }
     std::cout << "receiver is done" << std::endl;
     this->r_running = false;
@@ -348,9 +349,10 @@ int cClient::run_sender() {
         //SEND PKT ************************
         nRet = sendto(this->sock, packet, HEADER_LENGTH + payload_size, 0 , (struct sockaddr *) &saServer, sizeof (struct sockaddr));
         msg = new(gen_msg_t);
+        //std::cout << "TX MSG create at: " << msg << std::endl;
         memcpy(msg,packet, HEADER_LENGTH);
         msg->type = MSG_TX_PKT;
-        mbroker->push_tx(msg);
+        mbroker->push(msg);
         //Todo Remove to improve performance?
 //        if (nRet < 0) {
 //            cerr << "Packet size:" << HEADER_LENGTH + payload_size << endl;
@@ -380,7 +382,6 @@ int cClient::run_sender() {
             cerr << "Can't get stats from server\n";
             exit(1);
         }
-        mbroker->d_print();
     }
     std::cout << "sender is done" << std::endl;
     this->s_running = false;

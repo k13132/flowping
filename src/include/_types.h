@@ -118,7 +118,7 @@ struct ping_pkt_t {         //Min PK SIZE 32B
     char padding[MAX_PKT_SIZE];
 };
 
-struct ping_msg_t {         //Min MSG SIZE 16B
+struct ping_msg_t {         //Min MSG SIZE 18B
     u_int8_t type;
     u_int8_t code;
     u_int64_t count;
@@ -129,7 +129,7 @@ struct ping_msg_t {         //Min MSG SIZE 16B
     char msg[MAX_PKT_SIZE];
 };
 
-struct gen_msg_t{           //Min MSG SIZE 16B
+struct gen_msg_t{           //Min MSG SIZE 32B
     u_int8_t type;
     u_int8_t id;
     u_int16_t size;
@@ -137,6 +137,11 @@ struct gen_msg_t{           //Min MSG SIZE 16B
     u_int64_t padding_4;
     u_int64_t padding_5;
     char msg[MAX_PKT_SIZE];
+};
+
+struct t_msg_t{
+    uint64_t ts;
+    gen_msg_t* msg;
 };
 
 struct tpoint_def_t{

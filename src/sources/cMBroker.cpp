@@ -22,15 +22,12 @@ std::ostream& operator<<(std::ostream& os, const ping_msg_t& obj)
 
 
 cMessageBroker::cMessageBroker(cSetup *setup){
-    dup = 0;
     if (setup) {
         this->setup = setup;
     }else{
         //todo KILL execution, we can not continue without setup module;
         this->setup = nullptr;
     }
-    dcnt_rx = 0;
-    dcnt_tx = 0;
 }
 
 
@@ -39,73 +36,23 @@ cMessageBroker::~cMessageBroker(){
 }
 
 
-void cMessageBroker::push_rx(gen_msg_t *msg){
+void cMessageBroker::push(gen_msg_t *msg){
     std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
-    key_rx = tp.time_since_epoch().count();
-    msg_buf_mutex_rx.lock();
-    msg_buf_rx[key_rx] = msg;
-    msg_buf_mutex_rx.unlock();
-    dcnt_rx++;
-}
-
-void cMessageBroker::push_tx(gen_msg_t *msg){
-    std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
-    key_tx = tp.time_since_epoch().count();
-    msg_buf_mutex_tx.lock();
-    msg_buf_tx[key_tx] = msg;
-    msg_buf_mutex_tx.unlock();
-    dcnt_tx++;
-}
-
-void cMessageBroker::d_print() {
-    msg_buf_mutex_tx.lock();
-    msg_buf_mutex_rx.lock();
-    std::cout << "buffer TX contains: " << msg_buf_tx.size() << " records" << std::endl;
-    std::cout << "buffer RX contains: " << msg_buf_rx.size() << " records" << std::endl;
-    msg_buf_mutex_tx.unlock();
-    msg_buf_mutex_rx.unlock();
+    t_msg_t * t_msg = new t_msg_t;
+    t_msg->ts = tp.time_since_epoch().count();
+    t_msg->msg = msg;
+    msg_buf.enqueue(t_msg);
 }
 
 void cMessageBroker::run(){
-    //while ((not setup->isDone()) && (not setup->isStop())){
-    u_int64_t key_rx;
-    u_int64_t key_tx;
-    u_int64_t key;
-    gen_msg_t * msg;
-    u_int64_t first=0;
-    u_int64_t last=0;
+    t_msg_t * msg;
     while (!setup->isDone()){
-        usleep(30);
-        while ((not msg_buf_rx.empty())||(not msg_buf_tx.empty())){
-            key_rx = 0;
-            key_tx = 0;
-            if (not msg_buf_rx.empty()){
-                key_rx= msg_buf_rx.begin()->first;
-            }
-            if (not msg_buf_tx.empty()){
-                key_tx= msg_buf_tx.begin()->first;
-            }
-            if ((key_rx < key_tx) || ((key_tx)&&(not key_rx))){
-                msg_buf_mutex_tx.lock();
-                msg = msg_buf_tx.begin()->second;
-                msg_buf_tx.erase(key_tx);
-                msg_buf_mutex_tx.unlock();
-                if (first==0) first = key_tx;
-                last = key_tx;
-                processMessage(key_tx,msg); //msg is deleted at this point
-            }
-            if ((key_rx >= key_tx) || ((not key_tx)&&(key_rx))){
-                msg_buf_mutex_rx.lock();
-                msg = msg_buf_rx.begin()->second;
-                msg_buf_rx.erase(key_rx);
-                msg_buf_mutex_rx.unlock();
-                processMessage(key_rx,msg); //msg is deleted at this point
-            }
+        //usleep(30);
+        while (msg_buf.try_dequeue(msg)){
+            processMessage(msg->ts,msg->msg); //msg is deleted at this point
+            delete msg;
         }
     }
-    std::cerr << "MSG processed TX/RX: " << dcnt_tx << "/" << dcnt_rx << std::endl;
-    std::cerr << "Packet generator was active for [sec]:  " << (last-first)/1000000000.0 << std::endl;
-    std::cerr << "Key collisions:  " << dup << std::endl;
 }
 
 void cMessageBroker::processMessage(u_int64_t  key, gen_msg_t * msg){
@@ -133,7 +80,7 @@ void cMessageBroker::processMessage(u_int64_t  key, gen_msg_t * msg){
         case MSG_RX_PKT:
             //std::cout << "MSG_RX_PKT" << std::endl;
             //Todo modify structure !!!! packet data not present - ONLY header was copied
-            ping_pkt = (struct ping_pkt_t*) (msg);
+            //ping_pkt = (struct ping_pkt_t*) (msg);
             //std::cerr << *ping_pkt << std::endl;
             break;
         case MSG_TX_PKT:
@@ -145,6 +92,7 @@ void cMessageBroker::processMessage(u_int64_t  key, gen_msg_t * msg){
         default:
             std::cerr << "ERROR :: UNKNOWN MSG TYPE RECEIVED!";
     }
+    //std::cout << "MSG delete at: " << msg << std::endl;
     delete(msg);
     msg = nullptr;
 };
