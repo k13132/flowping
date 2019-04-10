@@ -186,7 +186,7 @@ int cClient::run_receiver() {
         if (msg->type == MSG_RX_CNT){
             std::cout << "msg type/code: " << (u_int16_t)msg->type << "/" << (u_int16_t)((ping_msg_t *)msg)->code << std::endl;
         }
-        mbroker->push(msg);
+        mbroker->push_rx(msg);
     }
     std::cout << "receiver is done" << std::endl;
     this->r_running = false;
@@ -352,7 +352,7 @@ int cClient::run_sender() {
         //std::cout << "TX MSG create at: " << msg << std::endl;
         memcpy(msg,packet, HEADER_LENGTH);
         msg->type = MSG_TX_PKT;
-        mbroker->push(msg);
+        mbroker->push_tx(msg);
         //Todo Remove to improve performance?
 //        if (nRet < 0) {
 //            cerr << "Packet size:" << HEADER_LENGTH + payload_size << endl;
