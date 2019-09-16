@@ -58,13 +58,6 @@ cClient::cClient(cSetup *setup, cStats *stats, cMessageBroker *mbroker) {
     setup->setStarted(false);
     setup->setStop(false);
     setup->setDone(false);
-    this->rtt_avg = -1;
-    this->rtt_min = -1;
-    this->rtt_max = -1;
-    this->pkt_rcvd = 0;
-    this->pkt_sent = 0;
-    this->last_seq_rcv = 0;
-    this->ooo_cnt = 0;
     this->t1 = (u_int64_t) (setup->getTime_t()*1000000000.0); //convert s to ns
     this->t2 = (u_int64_t) (this-> t1 + setup->getTime_T()*1000000000.0); //convert s to ns
     this->t3 = (u_int64_t) (setup->getTime_R()*1000000000.0); //convert s to ns
@@ -90,36 +83,26 @@ int cClient::run_packetFactory() {
     while (!setup->tpReady()) {
         usleep(50000);
     }
-    if (!setup->useTimedBuffer()) {
-        pkt_created = setup->prepNextPacket();
-        if (pkt_created) {
-            this->pktBufferReady = true;
-        }
-        while (!setup->isDone() && !setup->isStop()) {
-            //std::cout << "pbuffer size: " << setup->getTimedBufferSize()<<std::endl;
-            while (pkt_created && setup->getTimedBufferSize() < 64000) {
-                pkt_created = setup->prepNextPacket();
+    pkt_created = setup->prepNextPacket();
+    if (pkt_created) {
+        this->pktBufferReady = true;
+    }
+    while (!setup->isDone() && !setup->isStop()) {
+        //std::cout << "pbuffer size: " << setup->getTimedBufferSize()<<std::endl;
+        while (pkt_created && setup->getTimedBufferSize() < 96000) {
+            pkt_created = setup->prepNextPacket();
 
-                if (setup->isStop()) {
-                    return 0;
-                }
-            }
-            if (!pkt_created) {
-                std::cout << "Packet not prepared." << std::endl;
+            if (setup->isStop()) {
                 return 0;
             }
-            usleep(setup->getTimedBufferDelay() / 25000);
         }
-        std::cout << "Packet Factory is done." << std::endl;
-    } else {
-        while (setup->prepNextPacket());
-        if (setup->getTimedBufferSize()) {
-            this->pktBufferReady = true;
+        if (!pkt_created) {
+            //std::cout << "Packet not prepared." << std::endl;
+            return 0;
         }
-        msg_store.reserve(setup->getTimedBufferSize() + 10);
-        msg_store_snd.reserve(setup->getTimedBufferSize() + 10);
-        //cerr << "Allocating message storage for: " << setup->getTimedBufferSize() + 10 << " itemns" << endl;
+        usleep(1);
     }
+    //std::cout << "Packet Factory is done." << std::endl;
     return 0;
 }
 
@@ -170,27 +153,23 @@ int cClient::run_receiver() {
     gen_msg_t * msg;
 
     struct timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = 100000;
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
     setsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv));
 
     while (!setup->isDone()) {
         nRet = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, (struct sockaddr *) &saServer, (socklen_t *) & nFromLen);
         if (nRet < 0) {
-            usleep(1000);
+            msg = new gen_msg_t;
+            msg->type = MSG_KEEP_ALIVE;
+            mbroker->push_lp(msg);
             continue;
         }
-        msg = new(gen_msg_t);
-        //std::cout << "RX MSG create at: " << msg << std::endl;
+        msg = new gen_msg_t;
         memcpy(msg,packet, HEADER_LENGTH);
-        if (msg->type == MSG_RX_CNT){
-            std::cout << "msg type/code: " << (u_int16_t)msg->type << "/" << (u_int16_t)((ping_msg_t *)msg)->code << std::endl;
-        }
         mbroker->push_rx(msg);
     }
-    std::cout << "receiver is done" << std::endl;
     this->r_running = false;
-    this->report();
     return 1;
 }
 
@@ -199,30 +178,22 @@ int cClient::run_sender() {
     event_t event;
     struct ping_pkt_t *ping_pkt;
     struct ping_msg_t *ping_msg;
+    struct gen_msg_t *gen_msg;
     stringstream ss;
+    //Todo RANDOM PACKET CONTENT
     unsigned char packet[MAX_PKT_SIZE + 60] = {0}; //Random FILL will be better
     int nRet;
-    int pipe_handle;
-    pipe_handle = 0; //warning elimination
-    bool show = not setup->silent();
+    //bool show = not setup->silent();
+
+    //initiate output
+    gen_msg_t * t = new gen_msg_t;
+    t->type = MSG_OUTPUT_INIT;
+    mbroker->push_lp(t);
+
 
     delta = 0;
     clock_gettime(CLOCK_REALTIME, &sentTv); //FIX initial delta
 
-    if (setup->getFilename().length() && setup->outToFile()) {
-        fp = fopen(setup->getFilename().c_str(), "w+"); //RW - overwrite file
-        fout.open(setup->getFilename().c_str());
-        output = &fout;
-        if (fp == nullptr) {
-            perror("Unable to open file, redirecting to STDOUT");
-            fp = stdout;
-        } else {
-            if (setup->self_check() == SETUP_CHCK_VER) *output << setup->get_version().c_str();
-        }
-    } else {
-        fp = setup->getFP();
-        output = setup->getOutput();
-    }
     ping_pkt = (struct ping_pkt_t*) (packet);
     ping_msg = (struct ping_msg_t*) (packet);
 
@@ -240,9 +211,6 @@ int cClient::run_sender() {
     }
     if (setup->wholeFrame()) {
         ping_msg->params = (ping_msg->params | CNT_HPAR);
-    }
-    if (setup->useTimedBuffer()) {
-        ping_msg->params = (ping_msg->params | CNT_WPAR);
     }
     if (setup->isAsym()) {
         ping_msg->params = (ping_msg->params | CNT_XPAR);
@@ -293,7 +261,6 @@ int cClient::run_sender() {
     ping_pkt->nsec = start_ts.tv_nsec;
     u_int16_t payload_size;
 
-    int pipe_cnt = 0;
     clock_gettime(CLOCK_REALTIME, &refTv);
 
 
@@ -305,33 +272,17 @@ int cClient::run_sender() {
     while (!pktBufferReady) {
         usleep(200000);
     }
-    for (unsigned int i = 1; i <= setup->getCount(); i++) {
-        //deadline reached [ -w ];
-        if (setup->isStop()) {
-            break;
-        }
+    u_int64_t start_time = NS_TIME(start_ts);
+    for (unsigned int i = 1; (i <= setup->getCount() && not setup->isStop()); i++) {
         refTv = sentTv;
         clock_gettime(CLOCK_REALTIME, &sentTv);
         curTv = sentTv;
         if (setup->nextPacket()) {
             tinfo = setup->getNextPacket();
-            payload_size = tinfo.len - HEADER_LENGTH;
-            ping_pkt->sec = curTv.tv_sec;
-            ping_pkt->nsec = curTv.tv_nsec;
-            ping_pkt->size = payload_size; //info for server side in AntiAsym mode; //Real size should be obtained as ret size of send and receive
-            ping_pkt->seq = i;
-            //ToDo chceck if it is possible to compute this in cSetup
-            if (setup->isAntiAsym()) {
-                payload_size = 0; //No reading from pipe
-            }
-            if (setup->frameSize()) {
-                payload_size -= 42; //todo check negative size of payload.
-
-            }
             //Target time
-            tgTime = (uint64_t) ((uint64_t) start_ts.tv_nsec + ((uint64_t) start_ts.tv_sec) * 1000000000)+(tinfo.nsec + tinfo.sec * 1000000000);
+            tgTime = start_time + tinfo.ts;
             if (setup->actWaiting()) {
-                while (((uint64_t) curTv.tv_nsec + ((uint64_t) curTv.tv_sec) * 1000000000L) < tgTime) {
+                while (NS_TIME(curTv) < tgTime) {
                     clock_gettime(CLOCK_REALTIME, &curTv);
                 }
             } else {
@@ -341,35 +292,37 @@ int cClient::run_sender() {
                 delay(ts);
                 clock_gettime(CLOCK_REALTIME, &curTv);
             }
+            payload_size = tinfo.len - HEADER_LENGTH;
+            ping_pkt->sec = curTv.tv_sec;
+            ping_pkt->nsec = curTv.tv_nsec;
+            ping_pkt->size = payload_size; //info for server side in AntiAsym mode; //Real size should be obtained as ret size of send and receive
+            ping_pkt->seq = i;
         } else {
             setup->setStop(true);
             break;
         }
 
+        if (setup->isAntiAsym()) {
+            payload_size = 0;
+        }
         //SEND PKT ************************
         nRet = sendto(this->sock, packet, HEADER_LENGTH + payload_size, 0 , (struct sockaddr *) &saServer, sizeof (struct sockaddr));
         msg = new(gen_msg_t);
-        //std::cout << "TX MSG create at: " << msg << std::endl;
-        memcpy(msg,packet, HEADER_LENGTH);
+        //Todo May not be safe / nRet (packet) size can be lower than gen_msg_t -> but only in case of corrupted packet / socket reading failure
+        memcpy(msg,packet, sizeof(gen_msg_t));
         msg->type = MSG_TX_PKT;
         mbroker->push_tx(msg);
-        //Todo Remove to improve performance?
-//        if (nRet < 0) {
-//            cerr << "Packet size:" << HEADER_LENGTH + payload_size << endl;
-//            close(this->sock);
-//            exit(1);
-//        }
-        if (setup->frameSize()) nRet += 42;
-#ifndef _NOSTATS
-        //stats->pktSent(curTv, nRet, ping_pkt->seq);
-#endif
     }
+
     ping_pkt->type = CONTROL;
+    t = new gen_msg_t;
+    t->type = MSG_TIMER_END;
+    mbroker->push_lp(t);
     ping_msg->code = CNT_DONE;
     timeout = 0;
-    //sleep(1); //wait for network congestion "partialy" disapear.
+    sleep(1); //wait for network congestion "partialy" disapear.
     while (!setup->isDone()) {
-        std::cout << "trying to shutdown generator" << std::endl;
+        //std::cout << "Get server stats..." << std::endl;
         nRet = sendto(this->sock, packet, pk_len, 0, (struct sockaddr *) &saServer, sizeof (struct sockaddr));
         if (nRet < 0) {
             cerr << "Send ERRROR\n";
@@ -378,52 +331,23 @@ int cClient::run_sender() {
         }
         usleep(250000); //  4pkt/s
         timeout++;
-        if (timeout == 40) { //10s
+        if (timeout == 60) { //15s
             cerr << "Can't get stats from server\n";
             exit(1);
         }
     }
-    std::cout << "sender is done" << std::endl;
+    //std::cout << "sender is done" << std::endl;
     this->s_running = false;
     return 0;
 }
 
-void cClient::report() {
-#ifndef _NOSTATS
-    //fprintf(fp, "%s", stats->getReport().c_str());
-    //*output << stats->getReport().c_str();
-#endif   
-    if (setup->toJSON()) {
-        //fprintf(fp, "%s", "}\n");
-        *output << "}"<<std::endl;
-    }
-    fclose(fp);
-}
 
 void cClient::terminate() {
     setup->setStop(true);
 }
 
-u_int16_t cClient::getPacketSize() {
-    struct timespec cur_ts;
-    u_int16_t payload_size = setup->getPacketSize();
-    if (setup->pkSizeChange()) {
-        clock_gettime(CLOCK_REALTIME, &cur_ts);
-        time = ((cur_ts.tv_sec * 1000000000 + cur_ts.tv_nsec)-(this->start_ts.tv_sec * 1000000000 + this->start_ts.tv_nsec)) % this->t2;
-        if (time >= this->t1) {
-            u_int16_t tmp = (u_int16_t) (setup->getSchange() * (time - this->t1));
-            payload_size = MIN_PKT_SIZE + tmp;
-            //cout << "* Payload size: " << payload_size << endl;
-            if (payload_size > MAX_PKT_SIZE) payload_size = MAX_PKT_SIZE;
-            if (payload_size < MIN_PKT_SIZE) payload_size = MIN_PKT_SIZE;
-            return payload_size;
-        }
-    }
-    return payload_size;
-}
 
 void cClient::delay(timespec req) {
-    //int e = clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &req, &req);
     clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &req, &req);
 }
 

@@ -32,28 +32,10 @@
 #include "_types.h"
 #include "cSetup.h"
 #include "cStats.h"
+#include "cMBroker.h"
 #include <map>
 
 using namespace std;
-
-struct t_conn{
-    timespec  curTv, refTv;
-    u_int64_t pkt_cnt;
-    vector <string> msg_store;
-    bool C_par;
-    bool J_par;
-    bool D_par;
-    bool e_par;
-    bool E_par;
-    bool F_par;
-    bool H_par;
-    bool X_par;
-    bool AX_par;
-    bool W_par;
-    FILE * fp;
-};
-
-//#include "uping.h"
 
 class cServer {
 public:
@@ -62,7 +44,6 @@ public:
     virtual ~cServer();
     int run(void);
 private:
-    uint64_t conn_id;
     map <u_int64_t, t_conn *> connections;
     t_conn * connection;
     cMessageBroker *mbroker;
@@ -70,6 +51,9 @@ private:
     cSetup *setup;
     int sock;
     bool stop;
+private:
+    t_conn * getConnection(u_int32_t ip, uint16_t port);
+    void processCMessage(gen_msg_t *msg, t_conn * connection);
 };
 
 #endif	/* SERVER_H */

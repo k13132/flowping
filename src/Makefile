@@ -31,7 +31,7 @@ CXXFLAGS += -pipe -O2 -Wall -D_REENTRANT -fPIC -W
 LXXFLAGS=
 
 # Header files prefix
-INCLUDE_PATHS= -I . -I include
+INCLUDE_PATHS= -I . -I include -I external
 
 # Source files directory
 SRC_DIR = sources
@@ -50,7 +50,7 @@ LIBS_PATH=
 
 
 # Object files
-OBJS = cClient.o cServer.o cSetup.o cStats.o flowping.o
+OBJS = cClient.o cServer.o cSetup.o cStats.o cMBroker.o flowping.o
 
 all: $(TARGET)
 	
@@ -106,6 +106,9 @@ cSetup.o: $(SRC_DIR)/cSetup.cpp
 
 cStats.o: $(SRC_DIR)/cStats.cpp
 	$(CROSS_PREFIX)$(CXX) -c $(CXXFLAGS) $(CFLAGS_ARCH) $(INCLUDE_PATHS) -o cStats.o $(SRC_DIR)/cStats.cpp 
+
+cMBroker.o: $(SRC_DIR)/cMBroker.cpp
+	$(CROSS_PREFIX)$(CXX) -c $(CXXFLAGS) $(CFLAGS_ARCH) $(INCLUDE_PATHS) -o cMBroker.o $(SRC_DIR)/cMBroker.cpp 
 
 flowping.o: $(SRC_DIR)/flowping.cpp
 	$(CROSS_PREFIX)$(CXX) -c $(CXXFLAGS) $(CFLAGS_ARCH) $(INCLUDE_PATHS) -o flowping.o $(SRC_DIR)/flowping.cpp 

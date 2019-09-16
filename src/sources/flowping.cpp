@@ -113,6 +113,9 @@ void signalHandler(int sig) {
 }
 
 int main(int argc, char** argv) {
+    // CPUs
+    unsigned int cpus = std::thread::hardware_concurrency();
+
     // Osetreni reakci na signaly
     struct sigaction act;
     act.sa_handler = signalHandler;
@@ -131,21 +134,21 @@ int main(int argc, char** argv) {
 
     version.str("");
 #ifdef __i386
-    version << "x86_32 1.5.2a";
+    version << "x86_32 2.0.0 .::. F-Tester edition .::.";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 #ifdef __x86_64__
-    version << "x86_64 2.0.0-devel";
+    version << "x86_64 2.0.0 .::. F-Tester edition .::.";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
 #ifdef __ARM_ARCH_7A__
-    version << "ARM_32 1.5.2a";
+    version << "ARM_32 2.0.0-mb-dev";
     version << " (" << DD << " "<< TT << ")";
 #endif    
     
 #ifdef __MIPS_ISA32__
-    version << "MIPS_32 1.5.2a";
+    version << "MIPS_32 2.0.0-mb-dev";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
@@ -157,38 +160,82 @@ int main(int argc, char** argv) {
     }
     if (setup->self_check() == SETUP_CHCK_VER) {
         setup->show_version();
-        if (setup->is_vonly()) return EXIT_SUCCESS;
+        //if (setup->is_vonly()) return EXIT_SUCCESS;
+        return EXIT_SUCCESS;
     }
     if (setup->self_check() == SETUP_CHCK_ERR) {
-        cerr << "Invalid option!" << setup->self_check() << endl<< endl;
+        cerr << "Invalid option!" << setup->self_check() << endl;
+        //ToDo remove in other than F-Tester edition.
+        if (setup->isClient()){
+            std::cerr << "Missing [-J] parameter: Output to JSON is mandatory in FlowPing 2 F-Tester edition." << endl << endl;
+        }
         setup->usage();
         return EXIT_FAILURE;
     }
-    mbroker = new cMessageBroker(setup);
-    std::thread t_mBroker (t_helper_cMBroker, (void *) mbroker);
+
+
+
+    //cpu_set_t cpuset;
     if (setup->isServer()) {
-        stats = new cServerStats(setup, mbroker);
+        stats = new cServerStats(setup);
+        mbroker = new cMessageBroker(setup, stats);
+        std::thread t_mBroker (t_helper_cMBroker, (void *) mbroker);
+        // CPU_ZERO(&cpuset);
+        //CPU_SET(0, &cpuset);
+        //pthread_setaffinity_np(t_mBroker.native_handle(), sizeof(cpu_set_t), &cpuset);
+
         server = new cServer(setup, stats, mbroker);
         std::thread t_sServer (t_helper_sServer, (void *) server);
+        //if (cpus > 1) {
+        //    CPU_ZERO(&cpuset);
+        //    CPU_SET(cpus-1, &cpuset);
+        //}
+        //pthread_setaffinity_np(t_sServer.native_handle(), sizeof(cpu_set_t), &cpuset);
+
         t_sServer.join();
         delete(server);
+        t_mBroker.join();
+        //std::cout << "mBroker joined to main thread" << std::endl;
+        delete(mbroker);
     } else {
-        stats = new cClientStats(setup, mbroker);
+        stats = new cClientStats(setup);
+        mbroker = new cMessageBroker(setup, stats);
         client = new cClient(setup, stats, mbroker);
+        unsigned int cpu = 0;
+
         std::thread t_cPacketFactory (t_helper_cPacketFactory, (void *) client);
+        //CPU_ZERO(&cpuset);
+        //CPU_SET(cpu % cpus, &cpuset);
+        //pthread_setaffinity_np(t_cPacketFactory.native_handle(), sizeof(cpu_set_t), &cpuset);
+        //cpu++;
+
+        std::thread t_mBroker (t_helper_cMBroker, (void *) mbroker);
+        //CPU_ZERO(&cpuset);
+        //CPU_SET(cpu % cpus, &cpuset);
+        //pthread_setaffinity_np(t_mBroker.native_handle(), sizeof(cpu_set_t), &cpuset);
+        cpu++;
+
         std::thread t_cReceiver (t_helper_cReceiver, (void *) client);
+        //CPU_ZERO(&cpuset);
+        //CPU_SET(cpu % cpus, &cpuset);
+        //pthread_setaffinity_np(t_cReceiver.native_handle(), sizeof(cpu_set_t), &cpuset);
+        //cpu++;
+
         std::thread t_cSender (t_helper_cSender, (void *) client);
+        //CPU_ZERO(&cpuset);
+        //CPU_SET(cpu % cpus, &cpuset);
+        //pthread_setaffinity_np(t_cSender.native_handle(), sizeof(cpu_set_t), &cpuset);
         t_cSender.join();
-        std::cout << "sender joined to main thread" << std::endl;
+        //std::cout << "sender joined to main thread" << std::endl;
         t_cPacketFactory.join();
-        std::cout << "factory joined to main thread" << std::endl;
+        //std::cout << "factory joined to main thread" << std::endl;
         t_cReceiver.join();
-        std::cout << "receiver joined to main thread" << std::endl;
+        //std::cout << "receiver joined to main thread" << std::endl;
         delete(client);
+        t_mBroker.join();
+        //std::cout << "mBroker joined to main thread" << std::endl;
+        delete(mbroker);
     }
-    t_mBroker.join();
-    std::cout << "mBroker joined to main thread" << std::endl;
-    delete(mbroker);
     delete(setup);
     delete(stats);
     return EXIT_SUCCESS;

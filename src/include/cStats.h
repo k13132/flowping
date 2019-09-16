@@ -29,7 +29,6 @@
 
 #include "_types.h"
 #include "cSetup.h"
-#include "cMBroker.h"
 
 //timestamp;hostname;test_duration;bytes_sent;bytes_received;avg_bitrate_tx, avg_bitrate_rx;avg_rtt;avg_pk_loss;current_bitrate_tx;current_bitrate_rx;current_rtt;current_pk_loss
 
@@ -97,7 +96,6 @@ protected:
     void pk_enque(const u_int64_t conn_id, const uint16_t direction, const timespec ts, const u_int16_t len, const u_int64_t seq, const float rtt);
     void prepareStats(const u_int64_t conn_id, const uint16_t direction, stats_t * stats);
     cSetup *setup;
-    cMessageBroker * mbroker;
 
 private:
     map<u_int64_t, queue<pinfo_t> *> pk_info_rx_queues;
@@ -109,7 +107,7 @@ private:
 
 class cServerStats : public cStats {
 public:
-    cServerStats(cSetup *setup, cMessageBroker * mbroker);
+    cServerStats(cSetup *setup);
     virtual void printSummary(void);
     virtual void printRealTime(void);
     void pktSent(const u_int64_t conn_id, const timespec ts, const uint16_t len, const u_int64_t seq, const std::string src, const u_int32_t port); //increment tx_pkts & calculate bitrate;
@@ -123,11 +121,13 @@ private:
 
 class cClientStats : public cStats {
 public:
-    cClientStats(cSetup *setup, cMessageBroker *mbroker);
+    cClientStats(cSetup *setup);
     std::string getReport(void);
-    void pktSent(const timespec ts, const uint16_t len, const u_int64_t seq); //increment tx_pkts  & calculate bitrate;
     void pktOoo(void); //increment OutOfOrder packet counter;
-    void addCRxInfo(const timespec ts, const u_int16_t len, const u_int64_t seq, const float rtt); //increment rx_pkts & calculate bitrate;
+    void pktSent(const timespec ts, const uint16_t len, const u_int64_t seq); //increment tx_pkts  & calculate bitrate;
+    void pktRecv(const timespec ts, const u_int16_t len, const u_int64_t seq, const float rtt); //increment rx_pkts & calculate bitrate;
+    void pktSent(const u_int64_t ts, const uint16_t len, const u_int64_t seq); //increment tx_pkts  & calculate bitrate;
+    void pktRecv(const u_int64_t ts, const u_int16_t len, const u_int64_t seq, const float rtt); //increment rx_pkts & calculate bitrate;
     void addServerStats(const u_int64_t server_rx_pkts);
     virtual void printSummary(void);
     virtual void printRealTime(void);

@@ -26,12 +26,10 @@
 
 
 #include "cStats.h"
+#include "_types.h"
 #include "iomanip"
 
 
-#define NS_TDIFF(tv1,tv2) ( ((tv1).tv_sec-(tv2).tv_sec)*1000000000 +  ((tv1).tv_nsec-(tv2).tv_nsec) )
-#define NS_TIME(tv1) ( (tv1).tv_sec*1000000000 +  (tv1).tv_nsec )
-#define max(a,b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
 
 using namespace std;
 
@@ -154,12 +152,7 @@ void cStats::prepareStats(const u_int64_t conn_id, const uint16_t direction, sta
     }
 }
 
-cClientStats::cClientStats(cSetup *setup, cMessageBroker *mbroker) {
-    if (mbroker) {
-        this->mbroker = mbroker;
-    }else{
-        this->mbroker = nullptr;
-    }
+cClientStats::cClientStats(cSetup *setup) {
     timespec curTv;
     clock_gettime(CLOCK_REALTIME, &curTv);
     stats = new c_stats_t;
@@ -191,11 +184,11 @@ std::ostream& operator<<(std::ostream& os, const timed_packet_t& obj)
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const ts_t& obj)
-{
-    os << "ts:" << obj.sec << "." << std::setfill('0') << std::setw(9) << obj.nsec;
-    return os;
-}
+//std::ostream& operator<<(std::ostream& os, const ts_t& obj)
+//{
+//    os << "ts:" << obj.tv_sec << "." << std::setfill('0') << std::setw(9) << obj.tv_nsec;
+//    return os;
+//}
 
 std::ostream& operator<<(std::ostream& os, const timespec& obj)
 {
@@ -328,7 +321,7 @@ void cClientStats::printRealTime(void) {
         ss << "rx_bitrate: " << stats->rx_bytes * 8 / (duration * 1000) << " [kbps]" << std::endl;
         ss << "tx_pkt_rate: " << stats->tx_pkts / duration << " [pps]" << std::endl;
         ss << "rx_pkt_rate: " << stats->rx_pkts / duration << " [pps]" << std::endl;
-        ss << "\n>>> LIVE STATS (last 10 sec)" << std::endl;
+        ss << "\n>>> LIVE STATS (last 10 tv_sec)" << std::endl;
         ss << "tx_bitrate: " << stats->tx_bitrare / 1000 << " [kbps]" << std::endl;
         ss << "rx_bitrate: " << stats->rx_bitrare / 1000 << " [kbps]" << std::endl;
         ss.precision(3);
@@ -398,7 +391,7 @@ std::string cClientStats::getReport() {
     return ss.str();
 }
 
-void cClientStats::addCRxInfo(const timespec ts, const u_int16_t len, const u_int64_t seq, const float rtt) {
+void cClientStats::pktRecv(const timespec ts, const u_int16_t len, const u_int64_t seq, const float rtt) {
     stats->rx_pkts++;
     stats->rx_bytes += len;
     stats->cumulative_rtt += (rtt * 1000);
@@ -417,26 +410,52 @@ void cClientStats::addCRxInfo(const timespec ts, const u_int16_t len, const u_in
     this->pk_enque(1, RX, ts, len, seq, rtt);
 }
 
+void cClientStats::pktRecv(const u_int64_t ts, const u_int16_t len, const u_int64_t seq, const float rtt) {
+    stats->rx_pkts++;
+    stats->rx_bytes += len;
+    stats->cumulative_rtt += (rtt * 1000);
+    if (stats->rtt_min == -1) {
+        stats->rtt_min = rtt;
+        stats->rtt_max = rtt;
+    } else {
+        if (rtt < stats->rtt_min) {
+            stats->rtt_min = rtt;
+        }
+        if (rtt > stats->rtt_max) {
+            stats->rtt_max = rtt;
+        }
+    }
+    //ToDo Rewrite to simplified form //cumulative rtt/rc_pkts
+    timespec tv;
+    tv.tv_sec = TV_SEC(ts);
+    tv.tv_nsec = TV_NSEC(ts);
+    this->pk_enque(1, RX, tv, len, seq, rtt);
+}
+
 void cClientStats::pktSent(const timespec ts, const uint16_t len, const u_int64_t seq) {
     stats->tx_pkts++;
     stats->tx_bytes += len;
     this->pk_enque(1, TX, ts, len, seq, 0);
 }
 
+void cClientStats::pktSent(const u_int64_t ts, const uint16_t len, const u_int64_t seq) {
+    stats->tx_pkts++;
+    stats->tx_bytes += len;
+    timespec tv;
+    tv.tv_sec = TV_SEC(ts);
+    tv.tv_nsec = TV_NSEC(ts);
+    this->pk_enque(1, TX, tv, len, seq, 0);
+}
+
 void cClientStats::pktOoo() {
     stats->ooo_pkts++;
 }
 
-cServerStats::cServerStats(cSetup *setup, cMessageBroker *mbroker) {
+cServerStats::cServerStats(cSetup *setup) {
     if (setup) {
         this->setup = setup;
     }else{
         this->setup = nullptr;
-    }
-    if (mbroker) {
-        this->mbroker = mbroker;
-    }else{
-        this->mbroker = nullptr;
     }
 }
 
@@ -556,7 +575,7 @@ void cServerStats::printRealTime(void) {
             ss << "rx_bitrate: " << it->second->rx_bytes * 8 / duration << " [bps]" << std::endl;
             ss << "rxtx_pkt_rate: " << it->second->rx_pkts / duration << " [pps]" << std::endl;
             ss << "rx_loss: " << it->second->max_seq - it->second->rx_pkts << std::endl;
-            ss << "\n>>> LIVE STATS (last 10 sec)" << std::endl;
+            ss << "\n>>> LIVE STATS (last 10 tv_sec)" << std::endl;
             ss << "tx_bitrate: " << it->second->tx_bitrare << " [bps]" << std::endl;
             ss << "rx_bitrate: " << it->second->rx_bitrare << " [bps]" << std::endl;
             ss << "rxtx_pkt_rate: " << it->second->rx_pps << " [pps]" << std::endl;

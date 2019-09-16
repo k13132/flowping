@@ -29,8 +29,10 @@
 #define	_TYPES_H
 
 //#include <cstdlib>
+#include <stdint.h>
 #include <string>
 #include <ctime>
+#include <chrono>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -86,22 +88,26 @@
 #define MSG_RX_PKT 32
 #define MSG_TX_PKT 33
 #define MSG_KEEP_ALIVE 64
-#define MSG_RX_KEEP_ALIVE 5
-#define MSG_TX_KEEP_ALIVE 6
+#define MSG_OUTPUT_INIT 65
+#define MSG_OUTPUT_CLOSE 66
+#define MSG_TIMER_ONE 99
+#define MSG_TIMER_END 100
 
 
 #define TX 0
 #define RX 1
 
+#define TV_SEC(ts) ( ((ts) / 1000000000L) )
+#define TV_NSEC(ts) ( ((ts) % 1000000000L) )
+#define NS_TDIFF(tv1,tv2) ( ((tv1).tv_sec-(tv2).tv_sec)*1000000000 +  ((tv1).tv_nsec-(tv2).tv_nsec) )
+#define NS_TIME(tv1) ( (tv1).tv_sec*1000000000 +  (tv1).tv_nsec )
+#define max(a,b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
+
+
 using namespace std;
 
-struct ts_t{
-    u_int64_t sec;
-    u_int64_t nsec;
-};
-
 struct event_t{
-    ts_t ts;
+    timespec ts;
     std::string msg;
 };
 
@@ -139,10 +145,33 @@ struct gen_msg_t{           //Min MSG SIZE 32B
     char msg[MAX_PKT_SIZE];
 };
 
-struct t_msg_t{
-    uint64_t ts;
-    gen_msg_t* msg;
+struct t_conn{
+    timespec  curTv, refTv;
+    u_int64_t pkt_cnt;
+    u_int32_t ip;
+    u_int16_t port;
+    u_int64_t conn_id;
+    string client_ip;
+    bool C_par;
+    bool J_par;
+    bool D_par;
+    bool e_par;
+    bool E_par;
+    bool F_par;
+    bool H_par;
+    bool X_par;
+    bool AX_par;
+    bool W_par;
+    std::ofstream fout;
 };
+
+
+struct t_msg_t{
+    std::chrono::system_clock::time_point tp;
+    gen_msg_t* msg;
+    t_conn* conn;
+};
+
 
 struct tpoint_def_t{
     double ts;
@@ -151,10 +180,23 @@ struct tpoint_def_t{
 };
 
 struct timed_packet_t{
+    u_int64_t ts;
     u_int64_t sec;
     u_int64_t nsec;
     u_int16_t len;
 };
+
+struct sampled_int_t{
+    bool first;
+    double rtt_sum;
+    u_int64_t first_seq;
+    u_int64_t pkt_cnt;
+    u_int64_t bytes;
+    u_int64_t ts_limit;
+    u_int64_t seq;
+};
+
+
 
 #endif	/* _TYPES_H */
 

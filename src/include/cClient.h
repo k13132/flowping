@@ -45,12 +45,10 @@ public:
     int run_sender(void);
     int run_receiver(void);
     int run_packetFactory(void);
-    void report(void);
     void terminate(void);
     virtual ~cClient();
 
 private:
-    float rtt;
     bool first;
     bool r_running,s_running;
     bool pktBufferReady;
@@ -66,30 +64,19 @@ private:
     cSetup *setup;
     cClientStats *stats;
     
-    u_int64_t getInterval(void);
-    u_int16_t getPacketSize(void);
-
-
     bool senderReady;
     bool receiverReady;
     bool isSenderReceiverReady();
 
 
-    pthread_t t_sender, t_receiver;
-
     int sock;
     struct sockaddr_in saServer;
-    FILE * fp;
-    std::ofstream fout;
-    std::ostream* output;
-    u_int64_t time, pkt_sent, server_received, pkt_rcvd, last_seq_rcv, ooo_cnt;
     struct timeval my_ts, rrefTv, refTv2,  tmpTv;
     struct timespec req, rem, refTv, curTv, sentTv, r_curTv, r_refTv, start_ts;
     double r_delta, delta, delta2, delta3;
     double sent_ts, tSent;
     double interval_i, interval_I;
     pthread_barrier_t barr;
-    float rtt_min, rtt_max, rtt_avg;
     u_int64_t t1, t2, t3;
     double bchange; //interval change - bitrate change
     u_int16_t frame_size;

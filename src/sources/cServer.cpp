@@ -46,14 +46,7 @@ cServer::cServer(cSetup *setup, cStats *stats, cMessageBroker *mbroker) {
     }else{
         this->mbroker = nullptr;
     }
-
     this->stop = false;
-
-    //ToDo: zjistit, zdqa je to potreba a zda to ma nejaky prinos    
-    /*if (setup->useTimedBuffer()) {
-        this->msg_store.resize(10000000);
-    }
-     */
 }
 
 cServer::~cServer() {
@@ -62,9 +55,6 @@ cServer::~cServer() {
 
 int cServer::run() {
     struct sockaddr_in saServer;
-    bool show = not setup->silent();
-    char msg[400] = "";
-    char filename[256] = "";
     stringstream message;
     stringstream ss;
 
@@ -81,8 +71,7 @@ int cServer::run() {
 
     // bind to the socket
     int ret_size;
-    int rec_size;
-    rec_size = ret_size = bind(this->sock, (struct sockaddr *) & saServer, sizeof (saServer));
+    ret_size = bind(this->sock, (struct sockaddr *) & saServer, sizeof (saServer));
 
     if (ret_size < 0) {
         perror("Can't bind to local address");
@@ -99,284 +88,148 @@ int cServer::run() {
     printf("\nFlowPing server on %s waiting on port %d\n", hostname, setup->getPort());
 
     //}
-
     int addr_len;
     addr_len = sizeof (sockaddr);
-    struct ping_pkt_t *ping_pkt;
-    struct ping_msg_t *ping_msg;
     unsigned char packet[MAX_PKT_SIZE + 60];
     struct sockaddr_in saClient;
-    int ip;
-    char client_ip[INET_ADDRSTRLEN];
 
-    // Wait for data
+    //Set socket timeout
+    struct timeval tv;
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+    setsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv));
+
+    // MAIN LOOP /////////////////////////////////
     while (!stop) {
-        rec_size = ret_size = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, (struct sockaddr *) &saClient, (socklen_t *) & addr_len);
-        ip = (saClient.sin_addr.s_addr);
-        conn_id = setup->getConnectionID(ip, saClient.sin_port);
-        if (connections.count(conn_id) == 1) {
-            connection = connections.at(conn_id);
-        } else {
-            connection = new t_conn;
-            connection->fp = setup->getFP();
-            connection->pkt_cnt = 0;
-            connection->refTv.tv_sec = 0;
-            connection->refTv.tv_nsec = 0;
-            connection->curTv.tv_sec = 0;
-            connection->curTv.tv_nsec = 0;
-            connection->C_par = false;
-            connection->D_par = false;
-            connection->e_par = false;
-            connection->E_par = false;
-            connection->F_par = false;          //ToDo not used anymore
-            connection->H_par = false;
-            connection->J_par = false;
-            connection->W_par = false;
-            connection->X_par = setup->isAsym();
-            connection->AX_par = false;
-            connections[conn_id] = connection;
+        ret_size = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, (struct sockaddr *) &saClient, (socklen_t *) & addr_len);
+        gen_msg_t *msg = nullptr;
+        gen_msg_t *tmsg = nullptr;
+        if (ret_size < 0) {
+            tmsg = new gen_msg_t;
+            tmsg->type = MSG_KEEP_ALIVE;
+            mbroker->push_lp(tmsg);
+            continue;
         }
+        connection = getConnection(saClient.sin_addr.s_addr, saClient.sin_port);
         connection->refTv = connection->curTv;
         clock_gettime(CLOCK_REALTIME, &connection->curTv);
-        ping_pkt = (struct ping_pkt_t*) (packet);
-        if (ping_pkt->type == PING) {
+        msg = (struct gen_msg_t*) (packet);
+        if (msg->type == PING) {
             if (setup->isAsym(connection->X_par)) ret_size = MIN_PKT_SIZE;
             if (setup->isAntiAsym(connection->AX_par)) {
                 if (setup->wholeFrame(connection->H_par)) {
-                    ret_size = ping_pkt->size - 42 + HEADER_LENGTH;
+                    ret_size = msg->size - 42 + HEADER_LENGTH;
                 } else {
-                    ret_size = ping_pkt->size + HEADER_LENGTH;
+                    ret_size = msg->size + HEADER_LENGTH;
                 }
-                //cout << ret_size << endl;
             }
             sendto(this->sock, packet, ret_size, 0, (struct sockaddr *) &saClient, addr_len);
-
-            //Update stats
-            //cout << ping_pkt->size<<endl;
-            inet_ntop(AF_INET, &ip, client_ip, INET_ADDRSTRLEN);
-#ifndef _NOSTATS
-            //stats->pktReceived(conn_id, connection->curTv, rec_size, ping_pkt->seq, string(client_ip), saClient.sin_port);
-            //stats->pktSent(conn_id, connection->curTv, ret_size, ping_pkt->seq, string(client_ip), saClient.sin_port);
-#endif            
-            if (show || connection->fp != stdout) {
-
-                double delta = ((double) (connection->curTv.tv_sec - connection->refTv.tv_sec)*1000.0 + (double) (connection->curTv.tv_nsec - connection->refTv.tv_nsec) / 1000000.0);
-                ss.str("");
-                if (setup->toJSON(connection->J_par)) {
-                    if (connection->pkt_cnt == 0){
-                        ss << "{\n\t\"server_data\": [\n\t\t{";
-                    }else{
-                        ss << ",\n\t\t{";
-                    }
-                }
-                if (setup->showTimeStamps(connection->D_par)) {
-                    if (setup->toCSV(connection->C_par)) {
-                        ss << connection->curTv.tv_sec << ".";
-                        ss.fill('0');
-                        ss.width(9);
-                        ss << connection->curTv.tv_nsec;
-                        ss << ";";
-                    }
-                    if (setup->toJSON(connection->J_par)) {
-                        ss << "\"ts\":" << connection->curTv.tv_sec << ".";
-                        ss.fill('0');
-                        ss.width(9);
-                        ss << connection->curTv.tv_nsec;
-                        ss << ",\n\t\t\t";
-                    }
-                    if (!setup->toCSV(connection->C_par)&&!setup->toJSON(connection->J_par)) {
-                        ss << "[" << connection->curTv.tv_sec << ".";
-                        ss.fill('0');
-                        ss.width(9);
-                        ss << connection->curTv.tv_nsec;
-                        ss << "] ";
-                    }
-                } else {
-                    if (setup->toCSV(connection->C_par)) {
-                        ss << ";";
-                    }
-                }
-                if (setup->wholeFrame(connection->H_par)) {
-                    rec_size += 42;
-                    ret_size += 42;
-                }
-
-                if (setup->toCSV(connection->C_par)) {
-                    ss << rec_size << ";" << client_ip << ";" << ping_pkt->seq << ";xx;";
-                    ss.setf(ios_base::right, ios_base::adjustfield);
-                    ss.setf(ios_base::fixed, ios_base::floatfield);
-                    ss.precision(3);
-                    ss << delta << ";";
-                }
-                if (setup->toJSON(connection->J_par)) {
-                    ss << "\"size\":" << rec_size << ",\n\t\t\t\"remote\":\"" << client_ip << "\",\n\t\t\t\"seq\":" << ping_pkt->seq << ",\n\t\t\t";
-                    ss.setf(ios_base::right, ios_base::adjustfield);
-                    ss.setf(ios_base::fixed, ios_base::floatfield);
-                    ss.precision(3);
-                    ss << "\"delta\":" << delta;
-                }
-                if (!setup->toCSV(connection->C_par)&&!setup->toJSON(connection->J_par)) {
-
-                    ss << rec_size << " bytes from " << client_ip << ": req=" << ping_pkt->seq << " ttl=xx ";
-                    ss.setf(ios_base::right, ios_base::adjustfield);
-                    ss.setf(ios_base::fixed, ios_base::floatfield);
-                    ss.precision(3);
-                    ss << "delta=" << delta << " ms";
-                }
-                if (setup->showBitrate(connection->e_par)) {
-                    if (setup->toCSV(connection->C_par)) {
-                        ss.setf(ios_base::right, ios_base::adjustfield);
-                        ss.setf(ios_base::fixed, ios_base::floatfield);
-                        ss.precision(2);
-                        ss << (1000 / delta) * rec_size * 8 / 1000 << ";";
-                    }
-                    if (setup->toJSON(connection->J_par)) {
-                        ss.setf(ios_base::right, ios_base::adjustfield);
-                        ss.setf(ios_base::fixed, ios_base::floatfield);
-                        ss.precision(2);
-                        ss << ",\n\t\t\t\"rx_bitrate\":" << (1000 / delta) * rec_size * 8 / 1000;
-                    }
-                    if (!setup->toCSV(connection->C_par)&&!setup->toJSON(connection->J_par)) {
-                        ss.setf(ios_base::right, ios_base::adjustfield);
-                        ss.setf(ios_base::fixed, ios_base::floatfield);
-                        ss.precision(2);
-                        ss << " rx_rate=" << (1000 / delta) * rec_size * 8 / 1000 << " kbps";
-                    }
-                } else {
-                    if (setup->toCSV(connection->C_par)) {
-                        ss << ";";
-                    }
-                }
-                if (setup->showSendBitrate(connection->E_par)) {
-                    if (setup->toCSV(connection->C_par)) {
-                        ss.setf(ios_base::right, ios_base::adjustfield);
-                        ss.setf(ios_base::fixed, ios_base::floatfield);
-                        ss.precision(2);
-                        ss << (1000 / delta) * ret_size * 8 / 1000 << ";";
-                    }
-                    if (setup->toJSON(connection->J_par)) {
-                        ss.setf(ios_base::right, ios_base::adjustfield);
-                        ss.setf(ios_base::fixed, ios_base::floatfield);
-                        ss.precision(2);
-                        ss << ",\n\t\t\t\"tx_bitrate\":" << (1000 / delta) * ret_size * 8 / 1000;
-                    }
-                    if (!setup->toCSV(connection->C_par)&&!setup->toJSON(connection->J_par)) {
-                        ss.setf(ios_base::right, ios_base::adjustfield);
-                        ss.setf(ios_base::fixed, ios_base::floatfield);
-                        ss.precision(2);
-                        ss << " tx_rate=" << (1000 / delta) * ret_size * 8 / 1000 << " kbit/s";
-                    }
-                    ss << msg;
-                } else {
-                    if (setup->toCSV(connection->C_par)) {
-                        ss << ";";
-                    }
-                }
-                if (setup->toJSON(connection->J_par)) {
-                    ss << "\n\t\t}";
-                }else{
-                    ss << endl;
-                }
-                if (setup->useTimedBuffer(connection->W_par)) {
-                    connection->msg_store.push_back(ss.str());
-                } else {
-                    fprintf(connection->fp, "%s", ss.str().c_str());
-
-                }
-            }
             connection->pkt_cnt++;
+            tmsg = new gen_msg_t;
+            memcpy(tmsg,packet, sizeof(gen_msg_t));
+            mbroker->push(connection, tmsg);
+        }else{
+            processCMessage(msg, connection);
+            ret_size = HEADER_LENGTH;
+            sendto(this->sock, msg, ret_size, 0, (struct sockaddr *) &saClient, addr_len);
+            clock_gettime(CLOCK_REALTIME, &connection->curTv);
         }
-        if (ping_pkt->type == CONTROL) {
+    }
+    return 1;
+}
 
-            inet_ntop(AF_INET, &ip, client_ip, INET_ADDRSTRLEN);
-            ping_msg = (struct ping_msg_t*) (packet);
-#ifdef DEBUG
-            if (setup->debug()) cerr << "Control packet received! code:" << (int) ping_msg->code << endl;
-#endif
-#ifndef _NOSTATS
-            stats->connInit(conn_id, string(client_ip), saClient.sin_port);
-#endif
-            if (ping_msg->code == CNT_FNAME) {
-                if (connection->fp != NULL) {
-                    if (connection->fp != stdout) {
-                        fclose(connection->fp);
-                    }
+void cServer::processCMessage(gen_msg_t *msg, t_conn * connection){
+
+    u_int64_t ts; 
+    u_int64_t conn = connection->conn_id;
+    //ToDo
+    //stats->connInit(conn_id, string(client_ip), saClient.sin_port);
+
+    if (msg->type == CONTROL) {
+        //std::cerr << "CNT MSG" << std::endl;
+        //Todo modify structure !!!! packet data not present - ONLY header was copied
+        ping_msg_t *ping_msg = (ping_msg_t *) msg;
+        switch (ping_msg->code) {
+            case CNT_FNAME:
+                //std::cerr << "CNT FNAME" << std::endl;
+                if (connection->fout.is_open()) {
+                    connection->fout.close();
                 }
-                connection->fp = fopen(ping_msg->msg, "w+"); //RW - overwrite file
-                //cerr << ping_msg->msg << endl;
+                connection->fout.open(setup->getFilename().c_str());
                 ping_msg->code = CNT_FNAME_OK;
-                if (connection->fp == NULL) {
-                    perror("Unable to open file, redirecting to STDOUT");
-                    connection->fp = stdout;
+                if (not connection->fout.is_open()) {
+                    //Todo wrong place for redirect
+                    std::cerr << "Unable to open file, redirecting to STDOUT" << std::endl;
                     ping_msg->code = CNT_OUTPUT_REDIR;
-                } else {
-                    //setup->setExtFilename((string) ping_msg->msg);
-                    connection->F_par = true;
-                    //print version to output file
-                    if (setup->self_check() == SETUP_CHCK_VER) fprintf(connection->fp, "%s", setup->get_version().c_str());
                 }
-            }
-            if (ping_msg->code == CNT_NOFNAME) {
-                message.str("");
+                processCMessage(msg,connection);
+                break;
+
+            case CNT_NOFNAME:
+                //std::cerr << "CNT NOFNAME" << std::endl;
                 if (setup->getFilename().length() && setup->outToFile()) {
-                    //                    if (connection->fp!= NULL) {
-                    //                        if (connection->fp != stdout) {
-                    //                            fclose(connection->fp);
-                    //                        }
-                    //                    }
-                    ss.str("");
-                    ss << setup->getFilename().c_str() << "_" << conn_id;
-                    sprintf(filename, "%s", ss.str().c_str());
-                    connection->fp = fopen(filename, "w+"); //RW - overwrite file
-                    if (connection->fp == NULL) {
-                        perror("Unable to open file, redirecting to STDOUT");
-                        connection->fp = stdout;
-                        ping_msg->code = CNT_OUTPUT_REDIR;
-                    } else {
-                        if (setup->self_check() == SETUP_CHCK_VER) fprintf(connection->fp, "%s", setup->get_version().c_str());
+                    connection->fout.open(setup->getFilename().c_str());
+                    if (not connection->fout.is_open()) {
+                        //Todo wrong place for redirect
+                        std::cerr << "Unable to open file, redirecting to STDOUT" << std::endl;
                     }
-                } else {
-                    connection->fp = setup->getFP();
                 }
                 ping_msg->code = CNT_FNAME_OK;
-            }
-            if (ping_msg->code == CNT_DONE) {
+                processCMessage(msg,connection);
+                break;
+
+            case CNT_DONE:
+                //std::cerr << "CNT DONE" << std::endl;
                 ping_msg->code = CNT_DONE_OK;
                 ping_msg->count = connection->pkt_cnt;
                 setup->setExtFilename(string());
-            }
-            if (ping_msg->code == CNT_FNAME_OK) {
-                message.str("");
-                message << endl << ".::. Test from " << client_ip << " started. \t\t[";
+                processCMessage(msg,connection);
+                break;
+
+            case CNT_DONE_OK:
+                //std::cerr << "CNT DONE_OK" << std::endl;
+                if (connection->fout.is_open()) {
+                    connection->fout.close();
+                }
+                cerr << ".::. Test from " << connection->client_ip << " finished.  ~  " << connection->pkt_cnt << " packets processed." << endl;
+                //cerr << connection << std::endl;
+                //delete connection;
+                connections.erase(conn);
+                break;
+
+            case CNT_FNAME_OK:
+                //std::cerr << "CNT FNAME_OK" << std::endl;
+                std::stringstream msg_out;
+                msg_out.str("");
+                msg_out << endl << ".::. Test from " << connection->client_ip << " started. \t\t[";
                 setup->setAntiAsym(false);
                 if (setup->extFilenameLen() || connection->F_par) {
-                    message << "F";
-                    connection->F_par = true;
+                    msg_out << "F";
                 }
                 if (ping_msg->params & CNT_HPAR) {
                     setup->setHPAR(true);
                     connection->H_par = true;
-                    message << "H";
+                    msg_out << "H";
 
                 } else {
                     setup->setHPAR(false);
                 }
                 if (ping_msg->params & CNT_DPAR) {
                     connection->D_par = true;
-                    message << "D";
+                    msg_out << "D";
                 } else {
                     connection->D_par = setup->showTimeStamps();
                 }
                 if (ping_msg->params & CNT_ePAR) {
                     connection->e_par = true;
-                    message << "e";
+                    msg_out << "e";
                 } else {
                     connection->e_par = setup->showBitrate();
                 }
 
                 if (ping_msg->params & CNT_EPAR) {
                     connection->E_par = true;
-                    message << "E";
+                    msg_out << "E";
                 } else {
                     connection->E_par = setup->showSendBitrate();
                 }
@@ -384,7 +237,7 @@ int cServer::run() {
                 if (ping_msg->params & CNT_WPAR) {
                     setup->setWPAR(true);
                     connection->W_par = true;
-                    message << "W";
+                    msg_out << "W";
                 } else {
                     setup->setWPAR(false);
                 }
@@ -392,7 +245,7 @@ int cServer::run() {
                     setup->setXPAR(false);
                     connection->X_par = false;
                     connection->AX_par = true;
-                    message << "X";
+                    msg_out << "X";
                     setup->setPayoadSize(ping_msg->size);
                     setup->setAntiAsym(true);
                 } else {
@@ -401,78 +254,58 @@ int cServer::run() {
                 if (ping_msg->params & CNT_CPAR) {
                     setup->setCPAR(true);
                     connection->C_par = true;
-                    message << "C";
+                    msg_out << "C";
                 } else {
                     setup->setCPAR(false);
                 }
                 if (ping_msg->params & CNT_JPAR) {
                     setup->setJPAR(true);
                     connection->J_par = true;
-                    message << "J";
+                    msg_out << "J";
                 } else {
                     setup->setJPAR(false);
                 }
-                message << "]";
-                cerr << message.str() << endl;
-                if (show) {
-                    ss.str("");
-                    if (setup->toCSV()) {
-                        sprintf(msg, "S_TimeStamp;S_PacketSize;S_From;S_Sequence;S_TTL;S_Delta;S_RX_Rate;S_TX_Rate;\n");
-                    }
-                    ss << msg;
-                    if (setup->useTimedBuffer()) {
-                        connection->msg_store.push_back(ss.str());
-                    } else {
-                        fprintf(connection->fp, "%s", ss.str().c_str());
-                    }
-                }
-            }
+                msg_out << "]";
+                cerr << msg_out.str() << endl;
+                break;
 
-            ret_size = 64;
-            sendto(this->sock, packet, ret_size, 0, (struct sockaddr *) &saClient, addr_len);
-            connection->refTv = connection->curTv;
-            clock_gettime(CLOCK_REALTIME, &connection->curTv);
-
-            //Clean UP
-            if (ping_msg->code == CNT_DONE_OK) {
-                if (setup->useTimedBuffer(connection->W_par)) {
-                    if (setup->extFilenameLen()) {
-                        cerr << "     ~ Writeing data into file: " << setup->getExtFilename() << endl;
-                    } else {
-                        if (setup->outToFile()) {
-                            cerr << "     ~ Writeing data into file: " << setup->getFilename() << endl;
-                        }
-                    }
-                    string tmp_str;
-                    for (unsigned int i = 0; i < connection->msg_store.size(); i++) {
-                        tmp_str = connection->msg_store[i];
-                        fprintf(connection->fp, "%s", tmp_str.c_str());
-                    }
-                    connection->msg_store.clear();
-                }
-                if ((show || connection->fp != stdout) && setup->toJSON(connection->J_par)) {
-                    ss.str("");
-                    ss << "\n\t]\n}\n";
-                    fprintf(connection->fp, "%s", ss.str().c_str());
-                }
-                if (connection->fp != stdout) {
-                    fclose(connection->fp);
-                }
-                cerr << ".::. Test from " << client_ip << " finished.  ~  " << connection->pkt_cnt << " packets processed." << endl;
-                connection->fp = stdout;
-                delete connection;
-                connections.erase(conn_id);
-#ifndef _NOSTATS
-                if (stats->connStatRemove(conn_id)) {
-                    std::cerr << "cServerStats::connStatRemove FAILED - conn_id [" << conn_id << "]" << endl;
-                }
-#endif
-            }
         }
     }
-    return 1;
-}
+};
 
 void cServer::terminate() {
+    std::cerr << "Terminate called" << std::endl;
     this->stop = true;
+    setup->setDone(true);
+}
+
+t_conn *  cServer::getConnection(u_int32_t ip, uint16_t port) {
+    u_int64_t conn_id = (u_int64_t)ip * (u_int64_t)port;
+    if (this->connections.count(conn_id) == 1) {
+        connection = this->connections.at(conn_id);
+    } else {
+        char addr[INET_ADDRSTRLEN];
+        connection = new t_conn;
+        connection->ip = ip;
+        connection->port = port;
+        connection->conn_id = conn_id;
+        inet_ntop(AF_INET, &ip, addr, INET_ADDRSTRLEN);
+        connection->client_ip = string(addr);
+        connection->pkt_cnt = 0;
+        connection->refTv.tv_sec = 0;
+        connection->refTv.tv_nsec = 0;
+        connection->curTv.tv_sec = 0;
+        connection->curTv.tv_nsec = 0;
+        connection->C_par = false;
+        connection->D_par = false;
+        connection->e_par = false;
+        connection->E_par = false;
+        connection->H_par = false;
+        connection->J_par = false;
+        connection->W_par = false;
+        connection->X_par = setup->isAsym();
+        connection->AX_par = false;
+        this->connections[conn_id] = connection;
+    }
+    return connection;
 }

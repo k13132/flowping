@@ -35,29 +35,22 @@
 
 using namespace std;
 
-pthread_mutex_t * cSetup::getMutex() {
-    return &this->mutex;
-}
-
 cSetup::cSetup(int argc, char **argv, string version) {
-
-    pthread_mutex_init(&mutex, nullptr);
+    this->sample_len = 0;
     this->tp_ready = false;
     this->td_tmp.len = 0;
     this->td_tmp.bitrate = 0;
     this->td_tmp.ts = 0;
     this->version = "Not Defined";
-    this->debug_temp = LONG_MAX;
-    fp = stdout; //output to terminal
     output = &std::cout; //output to terminal
     this->vonly = true;
     this->a_par = false;
-    this->A_par = false;
     this->v_par = false;
     this->p_par = false;
     this->d_par = false;
     this->I_par = false;
     this->i_par = false;
+    this->L_par = false;
     this->t_par = false;
     this->T_par = false;
     this->b_par = false;
@@ -67,7 +60,6 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->h_par = false;
     this->H_par = false;
     this->u_par = false;
-    this->U_par = false;
     this->F_par = false;
     this->c_par = false;
     this->e_par = false;
@@ -75,15 +67,12 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->C_par = false;
     this->D_par = false;
     this->w_par = false;
-    this->n_par = false;
     this->s_par = false;
     this->S_par = false;
     this->X_par = false;
     this->XR_par = false;
-    this->P_par = false;
     this->R_par = false;
     this->r_par = false;
-    this->Q_par = false;
     this->W_par = false;
     this->_par = false;
     this->antiAsym = false;
@@ -108,24 +97,17 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->erate = 0;
     this->bts = 0;
     this->ets = 0;
-    this->tp_exhausted = false;
-    this->first_brate = true;
     this->fpsize = 64;
     this->fpsize_set = false;
-    this->cumulative_delay = 0;
 
     this->version = version;
-    while ((c = getopt(argc, argv, "JCXUWeEaAQSqDPH?w:d:p:c:h:s:i:nF:f:u:vI:t:T:b:B:r:R:")) != EOF) {
+    while ((c = getopt(argc, argv, "JCXeEaSqDH?w:d:p:c:h:s:i:F:f:u:vI:t:T:b:B:r:R:L:")) != EOF) {
         switch (c) {
             case 'v':
                 this->v_par = true;
                 break;
             case 'a':
                 this->a_par = true;
-                this->vonly = false;
-                break;
-            case 'A':
-                this->A_par = true;
                 this->vonly = false;
                 break;
             case 'C':
@@ -140,18 +122,10 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 this->q_par = true;
                 this->vonly = false;
                 break;
-            case 'Q':
-                this->Q_par = true;
-                this->vonly = false;
-                break;
             case 'p':
                 this->p_par = true;
                 this->vonly = false;
                 this->port = atoi(optarg);
-                break;
-            case 'P':
-                this->P_par = true;
-                this->vonly = false;
                 break;
             case 'd':
                 this->d_par = true;
@@ -171,6 +145,11 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 this->interval_i = atof(optarg)*1000000000;
                 if (this->interval_i > MAX_INTERVAL) this->interval_i = MAX_INTERVAL;
                 if (this->interval_i < MIN_INTERVAL) this->interval_i = MIN_INTERVAL;
+                break;
+            case 'L':
+                this->L_par = true;
+                this->vonly = false;
+                this->sample_len = (u_int64_t)(atof(optarg)*1000000000); //in ns
                 break;
             case 't': //T1
                 this->vonly = false;
@@ -232,10 +211,6 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 this->XR_par = true;
                 this->antiAsym = true;
                 break;
-            case 'U':
-                this->vonly = false;
-                this->U_par = true;
-                break;
             case 'e':
                 this->vonly = false;
                 this->e_par = true;
@@ -265,10 +240,6 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 this->vonly = false;
                 this->w_par = true;
                 this->deadline = atoi(optarg);
-                break;
-            case 'n':
-                this->vonly = false;
-                //nedala nic;
                 break;
             case 's':
                 this->s_par = true;
@@ -307,7 +278,6 @@ cSetup::cSetup(int argc, char **argv, string version) {
         this->interval_i = (((this->getPacketSize())*8.0)*1000000000.0) / (this->rate_b * 1000.0);
         this->interval_I = (((this->getPacketSize())*8.0)*1000000000.0) / (this->rate_B * 1000.0);
     }
-    if (this->P_par) this->size = MIN_PKT_SIZE;
     if (H_par) {
         //minimu size of FP frame;
         if (this->size < HEADER_LENGTH + 42) {
@@ -338,17 +308,18 @@ u_int8_t cSetup::self_check(void) {
     if (_par) { //show usage
         return SETUP_CHCK_SHOW;
     }
+    if (v_par) { //show version
+        return SETUP_CHCK_VER;
+    }
     if (isServer()) {
-        if (a_par || Q_par || b_par || B_par || c_par || F_par || J_par || h_par || H_par || i_par || I_par || s_par || t_par || T_par || R_par || P_par || W_par || U_par || w_par) {
+        if (a_par || b_par || B_par || c_par || F_par || J_par || h_par || H_par || i_par || I_par || s_par || t_par || T_par || R_par || w_par) {
             return SETUP_CHCK_ERR;
         }
     } else {
-        if (W_par and not u_par) {
+        //ToDo Remove in other than F-Tester edition of FlowPing
+        if (not J_par) {
             return SETUP_CHCK_ERR;
         }
-    }
-    if (v_par) { //show version
-        return SETUP_CHCK_VER;
     }
     return SETUP_CHCK_OK;
 }
@@ -383,13 +354,12 @@ void cSetup::usage() {
     cout << " -----------------------------------------------------------------------------------------------" << endl;
     cout << "| Common:                                                                                       |" << endl;
     cout << "|         [-?]                       Usage (Print this table)                                   |" << endl;
-    cout << "|         [-A]                       Raise priority to maximum in passive mode (RT if possible) |" << endl;
     cout << "|         [-D]                       Print timestamps in ping output                            |" << endl;
     cout << "|         [-e]                       Print current RX Bitrate                                   |" << endl;
     cout << "|         [-E]                       Print current TX Bitrate                                   |" << endl;
     cout << "|         [-f filename]              Store ping output in specified file                        |" << endl;
     cout << "|         [-p port]     [2424]       Port number                                                |" << endl;
-    cout << "|         [-q]                       Silent (suppress ping output to STDOUT)                    |" << endl;
+    cout << "|         [-q]                       Silent (suppress ping output)                              |" << endl;
     cout << "|         [-v]                       Print version                                              |" << endl;
     cout << "|         [-X]                       Asymetric mode (TX Payload  is limited to 32B)             |" << endl;
     cout << "| Server:                                                                                       |" << endl;
@@ -399,24 +369,21 @@ void cSetup::usage() {
     cout << "|         [-b kbit/s]                BitRate (first limit)                                      |" << endl;
     cout << "|         [-B kbit/s]                BitRate (second limit)                                     |" << endl;
     cout << "|         [-c count]    [unlimited]  Send specified number of packets                           |" << endl;
-    cout << "|         [-C ]                      CSV output format [;;;;]                                   |" << endl;
-    cout << "|         [-J ]                      JSON output format                                         |" << endl;
+    cout << "|         [-C]                       CSV output format [;;;;]                                   |" << endl;
+    cout << "|         [-J]                       JSON output format                                         |" << endl;
     cout << "|         [-d]                       Set source interface                                       |" << endl;
     cout << "|         [-F filename]              Send FileName to server (overide server settings)          |" << endl;
     cout << "|         [-h hostname] [localhost]  Server hostname or IP address                              |" << endl;
     cout << "|         [-H]                       Consider headers (Use frame size instead payload size)     |" << endl;
-    cout << "|         [-i seconds]  [1]          Interval between packets (Upper limit)                     |" << endl;
-    cout << "|         [-I seconds]  [1]          Interval between packets (Lower limit)                     |" << endl;
-    cout << "|         [-P]                       Packet size change from 22B to 1472B                       |" << endl;
-    cout << "|         [-Q]                       linux ping output compatibility                            |" << endl;
+    cout << "|         [-i seconds]  [1]          Interval between packets (first limit)                     |" << endl;
+    cout << "|         [-I seconds]  [1]          Interval between packets (second limit)                    |" << endl;
+    cout << "|         [-L seconds]  [per packet] Data sample interval                                       |" << endl;
     cout << "|         [-s size]     [64]         Payload size in Bytes                                      |" << endl;
-    cout << "|         [-t seconds]  [10]         T1 interval specification  (for i,I,b,B,P params)          |" << endl;
-    cout << "|         [-T seconds]  [10]         T2 interval specification  (for i,I,b,B,P params)          |" << endl;
-    cout << "|         [-R seconds]  [T3=T2]      T3 interval specification  (for i,I,b,B,P params)          |" << endl;
+    cout << "|         [-t seconds]  [10]         T1 interval specification  (for i,I,b,B params)            |" << endl;
+    cout << "|         [-T seconds]  [10]         T2 interval specification  (for i,I,b,B params)            |" << endl;
+    cout << "|         [-R seconds]  [T3=T2]      T3 interval specification  (for i,I,b,B params)            |" << endl;
     cout << "|         [-u filename]              Read Interval and BitRate definitions from file            |" << endl;
-    cout << "|         [-U]                       Fill packets with data from named pipe at /tmp/uping       |" << endl;
     cout << "|         [-w seconds]  [unlimited]  Run test for specified time                                |" << endl;
-    cout << "|         [-W]                       Precompute packet intervals, Busy-loop mode                |" << endl;
     cout << " -----------------------------------------------------------------------------------------------" << endl;
 }
 
@@ -568,11 +535,7 @@ double cSetup::getSchange() {
 }
 
 u_int16_t cSetup::getPacketSize() {
-    //if (this->H_par) {
-    //    return this->size - 42;
-    //} else {
     return this->size;
-    //}
 }
 
 u_int64_t cSetup::getBaseRate() {
@@ -582,57 +545,20 @@ u_int64_t cSetup::getBaseRate() {
         return (u_int64_t) (this->getPacketSize()*8 * 1000000000 / this->interval_i);
     }
 }
-
-bool cSetup::pkSizeChange() {
-    return this->P_par;
-}
-
 bool cSetup::frameSize() {
     return this->H_par;
-}
-
-bool cSetup::compat() {
-    return this->Q_par;
 }
 
 bool cSetup::showBitrate() {
     return this->e_par;
 }
 
-bool cSetup::showBitrate(bool val) {
-    return val;
-}
-
 bool cSetup::showSendBitrate() {
     return this->E_par;
 }
 
-bool cSetup::showSendBitrate(bool val) {
-    return val;
-}
-
-bool cSetup::speedUP() {
-    if (u_par) return false;
-    if (interval_I == interval_i) return true;
-    if (i_par != I_par) {
-        if (not(b_par || B_par)) return true;
-    }
-    if (b_par != B_par) {
-        if (not(i_par || I_par)) return true;
-    }
-    return false;
-}
-
 bool cSetup::actWaiting() {
     return this->a_par;
-}
-
-bool cSetup::raisePriority() {
-    return this->A_par;
-}
-
-bool cSetup::npipe() {
-    return this->U_par;
 }
 
 bool cSetup::descFileInUse() {
@@ -758,6 +684,9 @@ int cSetup::parseSrcFile() {
                 fpsize_set = true;
             }
             tmp.len = atoi(xstr);
+            if (this->frameSize()) {
+                tmp.len -= 42; //todo check negative size of payload.
+            }
             if (tmp.len < MIN_PKT_SIZE) tmp.len = MIN_PKT_SIZE;
             if (tmp.len > MAX_PKT_SIZE) tmp.len = MAX_PKT_SIZE;
             if (tmp.ts < check.ts) {
@@ -793,6 +722,7 @@ void cSetup::refactorTPoints() {
     vector<tpoint_def_t> tmp_tpoints;
     while (!tpoints.empty()) {
         tmp_tpoints.push_back(tpoints.front());
+        //cout << tpoints.front() << endl;
         tpoints.pop();
     }
     unsigned int index = 0;
@@ -839,36 +769,23 @@ void cSetup::setWPAR(bool value) {
     this->W_par = value;
 }
 
-bool cSetup::useTimedBuffer() {
-    return this->W_par;
-}
-
-bool cSetup::useTimedBuffer(bool val) {
-    return val;
-}
-
-//in case of -W 
-
-struct ts_t cSetup::getNextPacketTS(struct ts_t ts, struct ts_t sts, struct ts_t ets, u_int32_t srate, u_int32_t erate, u_int16_t len) {
+u_int64_t cSetup::getNextPacketTS(u_int64_t ts, u_int64_t sts, u_int64_t ets, u_int32_t srate, u_int32_t erate, u_int16_t len) {
     if ((srate == 0)&&(erate == 0)) {
         return ets;
     }
-    interval = doubleFromTS(ets) - doubleFromTS(sts);
-    delta_rate = (int) (erate - srate);
-    nsec_delta = longFromTS(ts) - longFromTS(sts);
-    delta = doubleFromTS(ts) - doubleFromTS(sts);
+    delta_rate = ((long)erate - (long)srate);
     if (delta_rate == 0) {
         delay = (u_int64_t)8*1000000000 * len / erate;
     } else {
-        if (nsec_delta == 0) {
-	    delay = (u_int64_t) 1000000000 * sqrt((16.0 * len * interval) / (abs(delta_rate)));
-        } else {
-            delay = (u_int64_t) 8*1000000000 * (len / (srate + (delta_rate / interval * delta))); //interval [nsec];
+        nsec_delta = ts - sts;
+        tp_diff = (ets - sts);
+        if (nsec_delta == 0){
+            delay = (u_int64_t)8*1000000000 * len / srate;
+        }else{
+            delay = (u_int64_t) 8*1000000000 * (len / (srate + (delta_rate *  (nsec_delta / (double)tp_diff)))); //interval [tv_nsec];
         }
     }
-    ts.sec = ts.sec + (ts.nsec + delay) / 1000000000;
-    ts.nsec = (ts.nsec + delay) % 1000000000;
-    return ts;
+    return ts + delay;
 }
 
 
@@ -878,8 +795,7 @@ bool cSetup::prepNextPacket() {
         if (td_tmp.len == 0) {
             td_tmp = (tpoint_def_t) tpoints.front();
             s_tmp_rate = td_tmp.bitrate * 1000;
-            s_tmp_ts.sec = (u_int64_t) floor(td_tmp.ts);
-            s_tmp_ts.nsec = (u_int64_t) (fmod(td_tmp.ts, 1)*1000000000);
+            s_tmp_ts = (u_int64_t) td_tmp.ts * 1000000000L;
             tmp_len = td_tmp.len;
             tmp_ts = s_tmp_ts;
             tpoints.pop();
@@ -888,25 +804,24 @@ bool cSetup::prepNextPacket() {
     //prepare and store packet in buffer
     if (!tpoints.empty()) {
         td_tmp = (tpoint_def_t) tpoints.front();
-        e_tmp_ts.sec = (u_int64_t) floor(td_tmp.ts);
-        e_tmp_ts.nsec = (u_int64_t) (fmod(td_tmp.ts, 1)*1000000000);
+        e_tmp_ts = (u_int64_t) td_tmp.ts * 1000000000L;
         e_tmp_rate = td_tmp.bitrate * 1000;
-        if (!((e_tmp_ts.sec == s_tmp_ts.sec)&&(s_tmp_ts.nsec == e_tmp_ts.nsec))) {
-            if (longFromTS(tmp_ts) < longFromTS(e_tmp_ts)) {
+        if (e_tmp_ts != s_tmp_ts) {
+            if (tmp_ts < e_tmp_ts) {
                 tmp_ts = this->getNextPacketTS(tmp_ts, s_tmp_ts, e_tmp_ts, s_tmp_rate, e_tmp_rate, tmp_len);
                 if ((s_tmp_rate != 0) || (e_tmp_rate != 0)) {
-                    if (longFromTS(tmp_ts) < (this->deadline * 1000000000)) {
-                        tpacket.sec = tmp_ts.sec;
-                        tpacket.nsec = tmp_ts.nsec;
+                    if (tmp_ts < (this->deadline * 1000000000)) {
+                        tpacket.ts = tmp_ts;
                         tpacket.len = tmp_len;
                         if (tmp_len < 32 || tmp_len > 1500) {
                             cerr << "Packet size mismatch!\t" << tmp_len << endl;
                         }
-                        pthread_mutex_lock(&mutex);
+                        //pthread_mutex_lock(&mutex);
                         pbuffer.push(tpacket);
-                        pthread_mutex_unlock(&mutex);
+                        //pthread_mutex_unlock(&mutex);
                     } else {
                         return false;
+
                     }
                 }
             } else {
@@ -927,31 +842,9 @@ bool cSetup::prepNextPacket() {
     return true;
 }
 
-u_int64_t cSetup::getTimedBufferDelay() {
-    u_int64_t delay;
-    if (not pbuffer.empty()) {
-        delay = (pbuffer.back().sec * 1000000000L + pbuffer.back().nsec)-(pbuffer.front().sec * 1000000000L + pbuffer.front().nsec);
-        return delay;
-    } else {
-        return 0;
-    }
-}
-
-//in case of -W 
-
-uint64_t cSetup::longFromTS(ts_t ts) {
-    return ts.sec * 1000000000 + ts.nsec;
-}
-
-double cSetup::doubleFromTS(ts_t ts) {
-    return double(ts.sec * 1000000000 + ts.nsec) / 1000000000.0;
-}
-
 timed_packet_t cSetup::getNextPacket() {
-    tmp_tpck = pbuffer.front();
-    pthread_mutex_lock(&mutex);
+    tmp_tpck = *pbuffer.front();
     pbuffer.pop();
-    pthread_mutex_unlock(&mutex);
     return tmp_tpck;
 }
 
@@ -983,16 +876,8 @@ bool cSetup::toCSV(void) {
     return C_par;
 }
 
-bool cSetup::toCSV(bool val) {
-    return val;
-}
-
 bool cSetup::toJSON(void) {
     return J_par;
-}
-
-bool cSetup::toJSON(bool val) {
-    return val;
 }
 
 void cSetup::setCPAR(bool val) {
@@ -1027,10 +912,6 @@ u_int16_t cSetup::getFirstPacketSize() {
     return fpsize;
 }
 
-u_int64_t cSetup::getConnectionID(u_int32_t ip, uint16_t port) {
-    return (u_int64_t) ip * (u_int64_t) port;
-}
-
 bool cSetup::isStarted() const {
     return started;
 }
@@ -1053,4 +934,8 @@ void cSetup::setStop(bool stop) {
 
 void cSetup::setDone(bool done) {
     cSetup::done = done;
+}
+
+u_int32_t cSetup::getSampleLen() const {
+    return sample_len;
 }
