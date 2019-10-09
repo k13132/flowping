@@ -50,7 +50,8 @@ private:
     std::string prepHeader();
 private:
     bool json_first;
-    std::string prepDataRec(const u_int64_t ts, const u_int8_t, const uint16_t size, const uint64_t seq, const float rtt);
+    std::string prepDataRec(const u_int64_t ts, const u_int8_t dir, const uint16_t size, const uint64_t seq, const float rtt);
+    std::string prepFinalDataRec(const u_int8_t dir);
 private:
     std::ofstream fout;
     std::ostream* output;

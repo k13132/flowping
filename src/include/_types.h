@@ -190,6 +190,7 @@ struct sampled_int_t{
     bool first;
     double rtt_sum;
     u_int64_t first_seq;
+    uint_fast64_t last_seen_seq;
     u_int64_t pkt_cnt;
     u_int64_t bytes;
     u_int64_t ts_limit;

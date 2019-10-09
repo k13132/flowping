@@ -128,7 +128,7 @@ public:
     void setStarted(bool started);
     void setStop(bool stop);
     void setDone(bool done);
-    u_int32_t getSampleLen(void) const;
+    u_int64_t getSampleLen(void) const;
 
 private:
     u_int64_t sample_len; //in ms ... 0 means no sampling

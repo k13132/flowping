@@ -311,6 +311,14 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
         case MSG_OUTPUT_CLOSE:
             //std::cout << "MSG_OUTPUT_CLOSE" << std::endl;
             //*output << c_stats->getReport();
+            ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den));
+            //Flush buffered data
+            if (not setup->silent()) {
+                if (setup->getSampleLen()){
+                    *output << prepFinalDataRec(TX);
+                    *output << prepFinalDataRec(RX);
+                }
+            }
             if (setup->toJSON()) {
                 *output << "\n\t],";
                 *output << "\n\t\"client_stats\": {";
@@ -370,14 +378,13 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
             sampled_int[RX].ts_limit = sampled_int[TX].ts_limit = setup->getSampleLen() + ts;
             ss << "\n\t\t{";
         }
-
-        //std::cout << ts << " .::. " << sampled_int[dir].ts_limit << std::endl;
         if (ts < sampled_int[dir].ts_limit){
             if (dir == RX){
                 sampled_int[dir].rtt_sum += rtt;
             }
             sampled_int[dir].pkt_cnt++;
             sampled_int[dir].bytes += size;
+            sampled_int[dir].last_seen_seq = seq;
             return ss.str();
         }else{
             sampled_int[dir].seq++;
@@ -395,7 +402,7 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                 }
                 if (dir == RX){
                     ss << "\n\t\t\t\"dir\":\"rx\",";
-                    ss << "\n\t\t\t\"loss\":\"" << std::setprecision(3) << 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((seq-1)-sampled_int[dir].first_seq) << "\","; //in ms
+                    ss << "\n\t\t\t\"loss\":\"" << 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((seq)-sampled_int[dir].first_seq) << "\","; //in ms
                     ss << "\n\t\t\t\"rtt\":\"" << std::setprecision(3) << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << "\","; //in ms
                 }
                 ss << "\n\t\t\t\"pkts\":\"" << sampled_int[dir].pkt_cnt << "\",";
@@ -413,10 +420,13 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                 ss << "\n\t\t\t\"pkts\":\"" << 0 << "\",";
                 ss << "\n\t\t\t\"bytes\":" << 0 << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";
             }
-            sampled_int[dir].bytes = 0;
-            sampled_int[dir].rtt_sum = 0;
-            sampled_int[dir].pkt_cnt = 0;
+            sampled_int[dir].bytes = size;
+            if (dir == RX) {
+                sampled_int[dir].rtt_sum = rtt;
+            }
+            sampled_int[dir].pkt_cnt = 1;
             sampled_int[dir].first_seq = seq;
+            sampled_int[dir].last_seen_seq = seq;
             return ss.str();
         }
     } else{
@@ -437,8 +447,35 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
         ss << "\n\t\t\t\"size\":" << size << ",\n\t\t\t\"seq\":" << seq << "\n\t\t}";
         return ss.str();
     }
+    return ss.str();
 }
 
+std::string cMessageBroker::prepFinalDataRec(const u_int8_t dir){
+    stringstream ss;
+
+    if (sampled_int[dir].pkt_cnt){
+        sampled_int[dir].seq++;
+        //sampled_int[dir].ts_limit += setup->getSampleLen();
+        if (sampled_int[dir].first == false){
+            ss << ",\n\t\t{";
+        }else{
+            sampled_int[TX].first = false;
+            sampled_int[RX].first = false;
+        }
+        ss << "\n\t\t\t\"ts\":"  << std::setprecision(6) << std::fixed << (double)(sampled_int[dir].ts_limit/1000000000.0) << ",";
+        if (dir == TX){
+            ss << "\n\t\t\t\"dir\":\"tx\",";
+        }
+        if (dir == RX){
+            ss << "\n\t\t\t\"dir\":\"rx\",";
+            ss << "\n\t\t\t\"loss\":\"" << 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((sampled_int[dir].last_seen_seq+1)-sampled_int[dir].first_seq) << "\","; //in ms
+            ss << "\n\t\t\t\"rtt\":\"" << std::setprecision(3) << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << "\","; //in ms
+        }
+        ss << "\n\t\t\t\"pkts\":\"" << sampled_int[dir].pkt_cnt << "\",";
+        ss << "\n\t\t\t\"bytes\":" << sampled_int[dir].bytes << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";
+    }
+    return ss.str();
+}
 
 /*
 

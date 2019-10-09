@@ -936,6 +936,6 @@ void cSetup::setDone(bool done) {
     cSetup::done = done;
 }
 
-u_int32_t cSetup::getSampleLen() const {
+u_int64_t cSetup::getSampleLen() const {
     return sample_len;
 }
