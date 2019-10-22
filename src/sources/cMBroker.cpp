@@ -284,7 +284,7 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
             break;
 
         case MSG_TIMER_ONE:
-            //std::cout << "MSG_TIMER_ONE" << std::endl;
+            //
             break;
 
         case MSG_OUTPUT_INIT:

@@ -273,6 +273,7 @@ int cClient::run_sender() {
         usleep(200000);
     }
     u_int64_t start_time = NS_TIME(start_ts);
+    u_int64_t deadline = setup->getDeadline() * 1000000000L + start_time;
     for (unsigned int i = 1; (i <= setup->getCount() && not setup->isStop()); i++) {
         refTv = sentTv;
         clock_gettime(CLOCK_REALTIME, &sentTv);
@@ -297,6 +298,11 @@ int cClient::run_sender() {
             ping_pkt->nsec = curTv.tv_nsec;
             ping_pkt->size = payload_size; //info for server side in AntiAsym mode; //Real size should be obtained as ret size of send and receive
             ping_pkt->seq = i;
+
+            //check deadline
+            if (deadline < (curTv.tv_sec * 1000000000L + curTv.tv_nsec)){
+                setup->setStop(true);
+            }
         } else {
             setup->setStop(true);
             break;
