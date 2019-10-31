@@ -59,8 +59,8 @@
 #include <cmath>
 #include <map>
 
-#define MAX_PKT_SIZE 1476
-#define MIN_PKT_SIZE 64  //equal to packet header + FP header size
+#define MAX_PKT_SIZE 1472
+#define MIN_PKT_SIZE 32  //eq to minimum payload size - limited FP header size
 #define HEADER_LENGTH 32
 
 #define CONTROL 0
@@ -127,8 +127,8 @@ struct ping_pkt_t {         //Min PK SIZE 32B
 struct ping_msg_t {         //Min MSG SIZE 18B
     u_int8_t type;
     u_int8_t code;
-    u_int64_t count;
     u_int16_t size;
+    u_int64_t count;
     u_int8_t params;        // 00000001 - H_PAR //Bit encoded
     u_int8_t id;
     u_int16_t check;

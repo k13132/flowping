@@ -249,7 +249,7 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 } else {
                     this->size = atoi(optarg);
                 }
-                if (this->size < 32){
+                if (this->size < MIN_PKT_SIZE){
                     cerr << "Wrong packet length!" << endl;
                     exit(1);
                 }
@@ -361,7 +361,7 @@ void cSetup::usage() {
     cout << "|         [-p port]     [2424]       Port number                                                |" << endl;
     cout << "|         [-q]                       Silent (suppress ping output)                              |" << endl;
     cout << "|         [-v]                       Print version                                              |" << endl;
-    cout << "|         [-X]                       Asymetric mode (TX Payload  is limited to 32B)             |" << endl;
+    cout << "|         [-X]                       Asymmetric mode (TX Payload  is limited to 32B)             |" << endl;
     cout << "| Server:                                                                                       |" << endl;
     cout << "|         [-S]                       Run as server                                              |" << endl;
     cout << "| Client:                                                                                       |" << endl;

@@ -266,7 +266,7 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
             ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den));
             pkt_rtt = ((tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den)) - (ping_pkt->sec * 1000000000L) - (ping_pkt->nsec))/1000000.0; //ms
             if (not setup->silent()) {
-                *output << prepDataRec(ts, RX, ping_pkt->size + HEADER_LENGTH, ping_pkt->seq, pkt_rtt);
+                *output << prepDataRec(ts, RX, ping_pkt->size, ping_pkt->seq, pkt_rtt);
             }
             //c_stats->pktRecv(ts, ping_pkt->size, ping_pkt->seq, pkt_rtt);
             break;
@@ -275,7 +275,7 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
             ping_pkt = (struct ping_pkt_t*) (msg);
             ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den));
             if (not setup->silent()) {
-                *output << prepDataRec(ts, TX, ping_pkt->size + HEADER_LENGTH, ping_pkt->seq, 0);
+                *output << prepDataRec(ts, TX, ping_pkt->size, ping_pkt->seq, 0);
             }
             //c_stats->pktSent(ts, ping_pkt->size, ping_pkt->seq);
             break;

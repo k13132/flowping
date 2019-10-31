@@ -118,9 +118,9 @@ int cServer::run() {
             if (setup->isAsym(connection->X_par)) ret_size = MIN_PKT_SIZE;
             if (setup->isAntiAsym(connection->AX_par)) {
                 if (setup->wholeFrame(connection->H_par)) {
-                    ret_size = msg->size - 42 + HEADER_LENGTH;
+                    ret_size = msg->size - 42;
                 } else {
-                    ret_size = msg->size + HEADER_LENGTH;
+                    ret_size = msg->size;
                 }
             }
             sendto(this->sock, packet, ret_size, 0, (struct sockaddr *) &saClient, addr_len);
@@ -130,7 +130,7 @@ int cServer::run() {
             mbroker->push(connection, tmsg);
         }else{
             processCMessage(msg, connection);
-            ret_size = HEADER_LENGTH;
+            ret_size = msg->size;
             sendto(this->sock, msg, ret_size, 0, (struct sockaddr *) &saClient, addr_len);
             clock_gettime(CLOCK_REALTIME, &connection->curTv);
         }
@@ -149,6 +149,7 @@ void cServer::processCMessage(gen_msg_t *msg, t_conn * connection){
         //std::cerr << "CNT MSG" << std::endl;
         //Todo modify structure !!!! packet data not present - ONLY header was copied
         ping_msg_t *ping_msg = (ping_msg_t *) msg;
+        ping_msg->size = MIN_PKT_SIZE;
         switch (ping_msg->code) {
             case CNT_FNAME:
                 //std::cerr << "CNT FNAME" << std::endl;

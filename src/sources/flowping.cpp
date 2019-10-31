@@ -138,17 +138,17 @@ int main(int argc, char** argv) {
     version << " (" << DD << " "<< TT << ")";
 #endif    
 #ifdef __x86_64__
-    version << "x86_64 2.0.0 .::. F-Tester edition .::.";
+    version << "x86_64 2.0.1 .::. F-Tester edition .::.";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
 #ifdef __ARM_ARCH_7A__
-    version << "ARM_32 2.0.0-mb-dev";
+    version << "ARM_32 2.0.1 .::. F-Tester edition .::.";
     version << " (" << DD << " "<< TT << ")";
 #endif    
     
 #ifdef __MIPS_ISA32__
-    version << "MIPS_32 2.0.0-mb-dev";
+    version << "MIPS_32 2.0.1 .::. F-Tester edition .::.";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 

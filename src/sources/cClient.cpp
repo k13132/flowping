@@ -167,6 +167,7 @@ int cClient::run_receiver() {
         }
         msg = new gen_msg_t;
         memcpy(msg,packet, HEADER_LENGTH);
+        msg->size = nRet;
         mbroker->push_rx(msg);
     }
     this->r_running = false;
@@ -200,6 +201,7 @@ int cClient::run_sender() {
     ping_msg->params = 0;
     ping_pkt->type = CONTROL; //prepare the first packet
     ping_msg->code = CNT_NONE;
+    ping_msg->size = MIN_PKT_SIZE;
     if (setup->showTimeStamps()) {
         ping_msg->params = (ping_msg->params | CNT_DPAR);
     }
@@ -229,7 +231,7 @@ int cClient::run_sender() {
     } else {
         ping_msg->code = CNT_NOFNAME;
     }
-    unsigned int pk_len = HEADER_LENGTH + strlen(ping_msg->msg);
+    ping_msg->size = HEADER_LENGTH + strlen(ping_msg->msg);
     int timeout = 0;
     // Synchronization point
     this->senderReady = true;
@@ -239,8 +241,8 @@ int cClient::run_sender() {
     while (!setup->isStarted()) {
 #ifdef DEBUG        
         cerr << "Sending CONTROL Packet - code:" << ping_msg->code << endl;
-#endif        
-        nRet = sendto(this->sock, packet, pk_len, 0, (struct sockaddr *) &saServer, sizeof (struct sockaddr));
+#endif
+        nRet = sendto(this->sock, packet, ping_msg->size, 0, (struct sockaddr *) &saServer, sizeof (struct sockaddr));
         if (nRet < 0) {
             cerr << "Send ERROR\n";
             close(this->sock);
@@ -293,7 +295,7 @@ int cClient::run_sender() {
                 delay(ts);
                 clock_gettime(CLOCK_REALTIME, &curTv);
             }
-            payload_size = tinfo.len - HEADER_LENGTH;
+            payload_size = tinfo.len;
             ping_pkt->sec = curTv.tv_sec;
             ping_pkt->nsec = curTv.tv_nsec;
             ping_pkt->size = payload_size; //info for server side in AntiAsym mode; //Real size should be obtained as ret size of send and receive
@@ -309,14 +311,15 @@ int cClient::run_sender() {
         }
 
         if (setup->isAntiAsym()) {
-            payload_size = 0;
+            payload_size = MIN_PKT_SIZE;
         }
         //SEND PKT ************************
-        nRet = sendto(this->sock, packet, HEADER_LENGTH + payload_size, 0 , (struct sockaddr *) &saServer, sizeof (struct sockaddr));
+        nRet = sendto(this->sock, packet, payload_size, 0 , (struct sockaddr *) &saServer, sizeof (struct sockaddr));
         msg = new(gen_msg_t);
         //Todo May not be safe / nRet (packet) size can be lower than gen_msg_t -> but only in case of corrupted packet / socket reading failure
         memcpy(msg,packet, sizeof(gen_msg_t));
         msg->type = MSG_TX_PKT;
+        msg->size = nRet;
         mbroker->push_tx(msg);
     }
 
@@ -325,11 +328,12 @@ int cClient::run_sender() {
     t->type = MSG_TIMER_END;
     mbroker->push_lp(t);
     ping_msg->code = CNT_DONE;
+    ping_msg->size = MIN_PKT_SIZE;
     timeout = 0;
     sleep(1); //wait for network congestion "partialy" disapear.
     while (!setup->isDone()) {
         //std::cout << "Get server stats..." << std::endl;
-        nRet = sendto(this->sock, packet, pk_len, 0, (struct sockaddr *) &saServer, sizeof (struct sockaddr));
+        nRet = sendto(this->sock, packet, ping_msg->size, 0, (struct sockaddr *) &saServer, sizeof (struct sockaddr));
         if (nRet < 0) {
             cerr << "Send ERRROR\n";
             close(this->sock);
