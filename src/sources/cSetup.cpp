@@ -361,7 +361,7 @@ void cSetup::usage() {
     cout << "|         [-p port]     [2424]       Port number                                                |" << endl;
     cout << "|         [-q]                       Silent (suppress ping output)                              |" << endl;
     cout << "|         [-v]                       Print version                                              |" << endl;
-    cout << "|         [-X]                       Asymmetric mode (TX Payload  is limited to 32B)             |" << endl;
+    cout << "|         [-X]                       Asymmetric mode (TX Payload  is limited to 32 B)           |" << endl;
     cout << "| Server:                                                                                       |" << endl;
     cout << "|         [-S]                       Run as server                                              |" << endl;
     cout << "| Client:                                                                                       |" << endl;
@@ -769,18 +769,18 @@ void cSetup::setWPAR(bool value) {
     this->W_par = value;
 }
 
-u_int64_t cSetup::getNextPacketTS(u_int64_t ts, u_int64_t sts, u_int64_t ets, u_int32_t srate, u_int32_t erate, u_int16_t len) {
+u_int64_t cSetup::getNextPacketTS(u_int64_t ts, u_int64_t sts, u_int64_t ets, u_int64_t srate, u_int64_t erate, u_int16_t len) {
     if ((srate == 0)&&(erate == 0)) {
         return ets;
     }
-    delta_rate = ((long)erate - (long)srate);
+    delta_rate = ((u_int64_t)erate - (u_int64_t)srate);
     if (delta_rate == 0) {
         delay = (u_int64_t)8*1000000000 * len / erate;
     } else {
         nsec_delta = ts - sts;
         tp_diff = (ets - sts);
         if (nsec_delta == 0){
-            delay = (u_int64_t)8*1000000000 * len / srate;
+            delay = (u_int64_t) 8*1000000000 * len / srate;
         }else{
             delay = (u_int64_t) 8*1000000000 * (len / (srate + (delta_rate *  (nsec_delta / (double)tp_diff)))); //interval [tv_nsec];
         }

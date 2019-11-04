@@ -192,12 +192,12 @@ private:
     struct tpoint_def_t td_tmp;
     queue<tpoint_def_t> tpoints;
     SPSCQueue<timed_packet_t> pbuffer {128000};
-    u_int64_t getNextPacketTS(u_int64_t ts, u_int64_t sts, u_int64_t ets, u_int32_t srate, u_int32_t erate, u_int16_t len);
+    u_int64_t getNextPacketTS(u_int64_t ts, u_int64_t sts, u_int64_t ets, u_int64_t srate, u_int64_t erate, u_int16_t len);
     timed_packet_t tmp_tpck;
     timespec last_delay;
     
     //prepNextPacket
-    u_int32_t s_tmp_rate, e_tmp_rate;
+    u_int64_t s_tmp_rate, e_tmp_rate;
     u_int16_t tmp_len;
     u_int64_t tmp_ts, s_tmp_ts, e_tmp_ts;
     timed_packet_t tpacket;
