@@ -322,7 +322,9 @@ int cClient::run_sender() {
         msg->size = nRet;
         mbroker->push_tx(msg);
     }
-
+    if (setup->nextPacket()) {
+        std::cerr << "PBuffer not empty." << std::endl;
+    }
     ping_pkt->type = CONTROL;
     t = new gen_msg_t;
     t->type = MSG_TIMER_END;

@@ -79,9 +79,9 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->port = 2424;
     this->interval_i = 1000000000; // 1s
     this->interval_I = 1000000000; // 1s
-    this->time_t = 10; // 10s
+    this->time_t = 0; // 0s
     this->time_T = 10; // 10s
-    this->time_R = 0; // 0s
+    this->time_R = 10; // 10s
     this->size = 64; // 64B Payload
     this->rate_b = 1; // 1kbit/s
     this->rate_B = 1; // 1kbit/s
@@ -160,6 +160,9 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 this->vonly = false;
                 this->T_par = true;
                 this->time_T = atof(optarg);
+                if (!this->R_par){
+                    this->time_R = this->time_T;
+                }
                 break;
             case 'b':
                 this->vonly = false;
@@ -180,6 +183,9 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 this->vonly = false;
                 this->R_par = true;
                 this->time_R = atof(optarg);
+                if (!this->T_par){
+                    this->time_T = this->time_R;
+                }
                 break;
             case 'f':
                 this->vonly = false;
@@ -379,8 +385,8 @@ void cSetup::usage() {
     cout << "|         [-I seconds]  [1]          Interval between packets (second limit)                    |" << endl;
     cout << "|         [-L seconds]  [per packet] Data sample interval                                       |" << endl;
     cout << "|         [-s size]     [64]         Payload size in Bytes                                      |" << endl;
-    cout << "|         [-t seconds]  [10]         T1 interval specification  (for i,I,b,B params)            |" << endl;
-    cout << "|         [-T seconds]  [10]         T2 interval specification  (for i,I,b,B params)            |" << endl;
+    cout << "|         [-t seconds]  [0]          T1 interval specification  (for i,I,b,B params)            |" << endl;
+    cout << "|         [-T seconds]  [T2=T3]      T2 interval specification  (for i,I,b,B params)            |" << endl;
     cout << "|         [-R seconds]  [T3=T2]      T3 interval specification  (for i,I,b,B params)            |" << endl;
     cout << "|         [-u filename]              Read Interval and BitRate definitions from file            |" << endl;
     cout << "|         [-w seconds]  [unlimited]  Run test for specified time                                |" << endl;
@@ -588,8 +594,8 @@ int cSetup::parseCmdLine() {
     //Overit zda to funguje - pripadne zda to takto budeme delat?
     //cout << this->size << "\t" << this->interval_i << "\t" << this->interval_I << endl;
     tpoint_def_t tmp;
+    tmp.ts = 0;
     if (t_par) {
-        tmp.ts = 0;
         tmp.bitrate = 8000000.0 * this->size / this->interval_i;
         tmp.len = this->size;
         tpoints.push(tmp);
@@ -597,6 +603,7 @@ int cSetup::parseCmdLine() {
         tpoints.push(tmp);
         //cout << tmp.ts << "\t" << tmp.bitrate << "\t" << tmp.len << endl;
     } else {
+        this->time_t = 0;
         tmp.ts = 0;
         tmp.bitrate = 8000000.0 * this->size / this->interval_i;
         tmp.len = this->size;
@@ -773,7 +780,7 @@ u_int64_t cSetup::getNextPacketTS(u_int64_t ts, u_int64_t sts, u_int64_t ets, u_
     if ((srate == 0)&&(erate == 0)) {
         return ets;
     }
-    delta_rate = ((u_int64_t)erate - (u_int64_t)srate);
+    delta_rate = erate - srate;
     if (delta_rate == 0) {
         delay = (u_int64_t)8*1000000000 * len / erate;
     } else {
@@ -790,6 +797,7 @@ u_int64_t cSetup::getNextPacketTS(u_int64_t ts, u_int64_t sts, u_int64_t ets, u_
 
 
 bool cSetup::prepNextPacket() {
+    //prepare and store packet in buffer
     if (!tpoints.empty()) {
         //run only once at beggining
         if (td_tmp.len == 0) {
@@ -800,9 +808,6 @@ bool cSetup::prepNextPacket() {
             tmp_ts = s_tmp_ts;
             tpoints.pop();
         }
-    }
-    //prepare and store packet in buffer
-    if (!tpoints.empty()) {
         td_tmp = (tpoint_def_t) tpoints.front();
         e_tmp_ts = (u_int64_t) td_tmp.ts * 1000000000L;
         e_tmp_rate = td_tmp.bitrate * 1000;
