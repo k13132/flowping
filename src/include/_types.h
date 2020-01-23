@@ -195,6 +195,7 @@ struct sampled_int_t{
     u_int64_t bytes;
     u_int64_t ts_limit;
     u_int64_t seq;
+    float jitter_sum;
 };
 
 

@@ -377,10 +377,16 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
             json_first = false;
             sampled_int[RX].ts_limit = sampled_int[TX].ts_limit = setup->getSampleLen() + ts;
             ss << "\n\t\t{";
+            jt_rtt = rtt;
+            jt_rtt_prev = rtt;
         }
         if (ts < sampled_int[dir].ts_limit){
             if (dir == RX){
                 sampled_int[dir].rtt_sum += rtt;
+                jt_diff = rtt - jt_rtt_prev;
+                if (jt_diff < 0) jt_diff = -jt_diff;
+                jitter +=  (1.0/16.0) * (jt_diff - jitter);
+                sampled_int[dir].jitter_sum += jitter;
             }
             sampled_int[dir].pkt_cnt++;
             sampled_int[dir].bytes += size;
@@ -404,6 +410,7 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                     ss << "\n\t\t\t\"dir\":\"rx\",";
                     ss << "\n\t\t\t\"loss\":\"" << 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((seq)-sampled_int[dir].first_seq) << "\","; //in ms
                     ss << "\n\t\t\t\"rtt\":\"" << std::setprecision(3) << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << "\","; //in ms
+                    ss << "\n\t\t\t\"jitter\":\"" << std::setprecision(3) << sampled_int[dir].jitter_sum/sampled_int[dir].pkt_cnt << "\","; //in ms
                 }
                 ss << "\n\t\t\t\"pkts\":\"" << sampled_int[dir].pkt_cnt << "\",";
                 ss << "\n\t\t\t\"bytes\":" << sampled_int[dir].bytes << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";
@@ -416,6 +423,7 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                     ss << "\n\t\t\t\"dir\":\"rx\",";
                     ss << "\n\t\t\t\"loss\":\"" << 1 << "\",";
                     ss << "\n\t\t\t\"rtt\":\"" << 0 << "\","; //in ms
+                    ss << "\n\t\t\t\"jitter\":\"" << 0 << "\","; //in ms
                 }
                 ss << "\n\t\t\t\"pkts\":\"" << 0 << "\",";
                 ss << "\n\t\t\t\"bytes\":" << 0 << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";
@@ -423,6 +431,11 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
             sampled_int[dir].bytes = size;
             if (dir == RX) {
                 sampled_int[dir].rtt_sum = rtt;
+                jt_diff = rtt - jt_rtt_prev;
+                jt_rtt_prev = rtt;
+                if (jt_diff < 0) jt_diff = -jt_diff;
+                jitter +=  (1.0/16.0) * (jt_diff - jitter);
+                sampled_int[dir].jitter_sum  = jitter;
             }
             sampled_int[dir].pkt_cnt = 1;
             sampled_int[dir].first_seq = seq;
@@ -470,6 +483,7 @@ std::string cMessageBroker::prepFinalDataRec(const u_int8_t dir){
             ss << "\n\t\t\t\"dir\":\"rx\",";
             ss << "\n\t\t\t\"loss\":\"" << 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((sampled_int[dir].last_seen_seq+1)-sampled_int[dir].first_seq) << "\","; //in ms
             ss << "\n\t\t\t\"rtt\":\"" << std::setprecision(3) << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << "\","; //in ms
+            ss << "\n\t\t\t\"jitter\":\"" << std::setprecision(3) << sampled_int[dir].jitter_sum/sampled_int[dir].pkt_cnt << "\","; //in ms
         }
         ss << "\n\t\t\t\"pkts\":\"" << sampled_int[dir].pkt_cnt << "\",";
         ss << "\n\t\t\t\"bytes\":" << sampled_int[dir].bytes << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";
