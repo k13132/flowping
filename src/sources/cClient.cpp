@@ -285,7 +285,7 @@ int cClient::run_sender() {
             //Target time
             tgTime = start_time + tinfo.ts;
             // Drop delayed packets (+ 10 ms safe zone);
-            if (NS_TIME(curTv) > (tgTime + 10000)) continue;
+            if (NS_TIME(curTv) > (tgTime + 150000)) continue;
 
             if (setup->actWaiting()) {
                 while (NS_TIME(curTv) < tgTime) {
@@ -347,7 +347,12 @@ int cClient::run_sender() {
         usleep(250000); //  4pkt/s
         timeout++;
         if (timeout == 60) { //15s
+            //close JSON
+            t = new gen_msg_t;
+            t->type = MSG_OUTPUT_CLOSE;
+            mbroker->push_lp(t);
             cerr << "Can't get stats from server\n";
+            usleep(500000);
             exit(1);
         }
     }
