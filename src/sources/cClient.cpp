@@ -284,8 +284,8 @@ int cClient::run_sender() {
             tinfo = setup->getNextPacket();
             //Target time
             tgTime = start_time + tinfo.ts;
-            // Drop delayed packets (+ 10 ms safe zone);
-            if (NS_TIME(curTv) > (tgTime + 150000)) continue;
+            // Drop delayed packets (+ 250 ms safe zone);
+            if (NS_TIME(curTv) > (tgTime + 250000)) continue;
 
             if (setup->actWaiting()) {
                 while (NS_TIME(curTv) < tgTime) {

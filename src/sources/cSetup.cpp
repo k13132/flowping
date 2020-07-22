@@ -30,7 +30,7 @@
 
 #include "_types.h"
 #include "cSetup.h"
-
+#include <cmath>
 
 
 using namespace std;
@@ -777,6 +777,7 @@ void cSetup::setWPAR(bool value) {
 }
 
 u_int64_t cSetup::getNextPacketTS(u_int64_t ts, u_int64_t sts, u_int64_t ets, u_int64_t srate, u_int64_t erate, u_int16_t len) {
+    //std::cout << ts << ", " << sts << ", "<< ets << ", " << srate << ", " << erate << ", " << len << std::endl;
     if ((srate == 0)&&(erate == 0)) {
         return ets;
     }
@@ -787,7 +788,12 @@ u_int64_t cSetup::getNextPacketTS(u_int64_t ts, u_int64_t sts, u_int64_t ets, u_
         nsec_delta = ts - sts;
         tp_diff = (ets - sts);
         if (nsec_delta == 0){
-            delay = (u_int64_t) 8*1000000000 * len / srate;
+            //first packet delay
+            if (srate == 0){
+                delay = (u_int64_t) 1000000000 * std::sqrt( 16 * len / ((std::abs(delta_rate * 1000000000)) /(double)(tp_diff)));
+            }else{
+                delay = (u_int64_t) 8*1000000000 * len / srate;
+            }
         }else{
             delay = (u_int64_t) 8*1000000000 * (len / (srate + (delta_rate *  (nsec_delta / (double)tp_diff)))); //interval [tv_nsec];
         }
@@ -819,7 +825,7 @@ bool cSetup::prepNextPacket() {
                         tpacket.ts = tmp_ts;
                         tpacket.len = tmp_len;
                         if (tmp_len < 32 || tmp_len > 1500) {
-                            cerr << "Packet size mismatch!\t" << tmp_len << endl;
+                            std::cerr << "Packet size mismatch!\t" << tmp_len << std::endl;
                         }
                         //pthread_mutex_lock(&mutex);
                         pbuffer.push(tpacket);
