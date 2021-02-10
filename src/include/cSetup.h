@@ -125,6 +125,7 @@ public:
     bool isStarted() const;
     bool isStop() const;
     bool isDone() const;
+    bool isIPv6Prefered() const;
     void setStarted(bool started);
     void setStop(bool stop);
     void setDone(bool done);
@@ -207,7 +208,7 @@ private:
     u_int64_t delay, nsec_delta;
     double interval;
     u_int64_t tp_diff;
-
+    bool ipv6;
     //refactor tpoint to match duration of test / defined scenario is repeated
     void refactorTPoints(void);
 

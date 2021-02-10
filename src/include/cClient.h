@@ -34,7 +34,9 @@
 #include "cStats.h"
 #include "flowping.h"
 #include "queue"
-
+#include <netdb.h>
+#include <cstdlib>
+#include <sys/socket.h>
 
 using namespace std;
 
@@ -59,7 +61,7 @@ private:
 
     struct ping_pkt_t *ping_pkt;
     struct ping_msg_t *ping_msg;
-
+    char addrstr[32];
     cMessageBroker *mbroker;
     cSetup *setup;
     cClientStats *stats;
@@ -70,7 +72,8 @@ private:
 
 
     int sock;
-    struct sockaddr_in saServer;
+    struct in6_addr saServer6;
+    struct addrinfo hints, *resAddr=NULL, *tmpAddr = NULL;
     struct timeval my_ts, rrefTv, refTv2,  tmpTv;
     struct timespec req, rem, refTv, curTv, sentTv, r_curTv, r_refTv, start_ts;
     double r_delta, delta, delta2, delta3;

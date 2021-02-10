@@ -148,7 +148,7 @@ struct gen_msg_t{           //Min MSG SIZE 32B
 struct t_conn{
     timespec  curTv, refTv;
     u_int64_t pkt_cnt;
-    u_int32_t ip;
+    in6_addr ip;
     u_int16_t port;
     u_int64_t conn_id;
     string client_ip;
