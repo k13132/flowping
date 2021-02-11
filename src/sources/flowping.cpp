@@ -134,21 +134,21 @@ int main(int argc, char** argv) {
 
     version.str("");
 #ifdef __i386
-    version << "x86_32 2.0.7 .::. F-Tester edition .::.";
+    version << "x86_32 2.5.0alpha.::. F-Tester edition .::.";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 #ifdef __x86_64__
-    version << "x86_64 2.0.7 .::. F-Tester edition .::.";
+    version << "x86_64 2.5.0alpha .::. F-Tester edition .::.";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
 #ifdef __ARM_ARCH_7A__
-    version << "ARM_32 2.0.7 .::. F-Tester edition .::.";
+    version << "ARM_32 2.5.0alpha .::. F-Tester edition .::.";
     version << " (" << DD << " "<< TT << ")";
 #endif    
     
 #ifdef __MIPS_ISA32__
-    version << "MIPS_32 2.0.7 .::. F-Tester edition .::.";
+    version << "MIPS_32 2.5.0alpha .::. F-Tester edition .::.";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 

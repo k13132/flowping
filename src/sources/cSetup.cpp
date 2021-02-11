@@ -37,6 +37,7 @@ using namespace std;
 
 cSetup::cSetup(int argc, char **argv, string version) {
     this->sample_len = 0;
+    this->ipv6 = false;
     this->tp_ready = false;
     this->td_tmp.len = 0;
     this->td_tmp.bitrate = 0;
@@ -101,7 +102,7 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->fpsize_set = false;
 
     this->version = version;
-    while ((c = getopt(argc, argv, "JCXeEaSqDH?w:d:p:c:h:s:i:F:f:u:vI:t:T:b:B:r:R:L:")) != EOF) {
+    while ((c = getopt(argc, argv, "JCXeEaSqDH6?w:d:p:c:h:s:i:F:f:u:vI:t:T:b:B:r:R:L:")) != EOF) {
         switch (c) {
             case 'v':
                 this->v_par = true;
@@ -246,6 +247,10 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 this->vonly = false;
                 this->w_par = true;
                 this->deadline = atoi(optarg);
+                break;
+            case '6':
+                this->vonly = false;
+                this->ipv6 = true;
                 break;
             case 's':
                 this->s_par = true;
@@ -949,4 +954,8 @@ void cSetup::setDone(bool done) {
 
 u_int64_t cSetup::getSampleLen() const {
     return sample_len;
+}
+
+bool cSetup::isIPv6Prefered() const {
+    return ipv6;
 }

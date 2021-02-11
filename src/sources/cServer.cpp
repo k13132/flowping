@@ -54,25 +54,36 @@ cServer::~cServer() {
 }
 
 int cServer::run() {
-    struct sockaddr_in saServer;
+    struct sockaddr_in6 saServer6, saClient6;
+    int addr_len = sizeof saClient6;
     stringstream message;
     stringstream ss;
-
+    int on=1;
     // Create a UDP socket
-    if ((this->sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+    if ((this->sock = socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
         perror("Can't open stream socket");
         exit(1);
     }
+    //Set socket timeout
+    struct timeval tv;
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+    if (setsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0){
+        perror("setsockopt(SO_RCVTIMEO) failed");
+    }
+    if (setsockopt(this->sock, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(on)) < 0){
+        perror("setsockopt(SO_REUSEADDR) failed");
+    }
+
     // Fill in the address structure
-    bzero((char *) & saServer, sizeof (saServer));
-    saServer.sin_family = AF_INET;
-    saServer.sin_addr.s_addr = htonl(INADDR_ANY); // Auto asssign address
-    saServer.sin_port = htons(setup->getPort()); // Set listening port
+    bzero((char *) & saClient6, sizeof (saClient6));
+    bzero((char *) & saServer6, sizeof (saServer6));
+    saServer6.sin6_family = AF_INET6;
+    saServer6.sin6_addr = in6addr_any; // Auto asssign address and allow connection from IPv4 and IPv6
+    saServer6.sin6_port = htons(setup->getPort()); // Set listening port
 
     // bind to the socket
-    int ret_size;
-    ret_size = bind(this->sock, (struct sockaddr *) & saServer, sizeof (saServer));
-
+    int ret_size = bind(this->sock, (struct sockaddr *) & saServer6, sizeof (saServer6));
     if (ret_size < 0) {
         perror("Can't bind to local address");
         exit(1);
@@ -85,23 +96,15 @@ int cServer::run() {
         perror("gethostname");
         exit(1);
     }
+
     printf("\nFlowPing server on %s waiting on port %d\n", hostname, setup->getPort());
 
     //}
-    int addr_len;
-    addr_len = sizeof (sockaddr);
+
     unsigned char packet[MAX_PKT_SIZE + 60];
-    struct sockaddr_in saClient;
-
-    //Set socket timeout
-    struct timeval tv;
-    tv.tv_sec = 1;
-    tv.tv_usec = 0;
-    setsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv));
-
     // MAIN LOOP /////////////////////////////////
     while (!stop) {
-        ret_size = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, (struct sockaddr *) &saClient, (socklen_t *) & addr_len);
+        ret_size = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, (struct sockaddr *) &saClient6, (socklen_t *) & addr_len);
         gen_msg_t *msg = nullptr;
         gen_msg_t *tmsg = nullptr;
         if (ret_size < 0) {
@@ -110,7 +113,7 @@ int cServer::run() {
             mbroker->push_lp(tmsg);
             continue;
         }
-        connection = getConnection(saClient.sin_addr.s_addr, saClient.sin_port);
+        connection = getConnection6(saClient6.sin6_addr, saClient6.sin6_port);
         connection->refTv = connection->curTv;
         clock_gettime(CLOCK_REALTIME, &connection->curTv);
         msg = (struct gen_msg_t*) (packet);
@@ -123,7 +126,7 @@ int cServer::run() {
                     ret_size = msg->size;
                 }
             }
-            sendto(this->sock, packet, ret_size, 0, (struct sockaddr *) &saClient, addr_len);
+            sendto(this->sock, packet, ret_size, 0, (struct sockaddr *) &saClient6, addr_len);
             connection->pkt_cnt++;
             tmsg = new gen_msg_t;
             memcpy(tmsg,packet, sizeof(gen_msg_t));
@@ -131,7 +134,7 @@ int cServer::run() {
         }else{
             processCMessage(msg, connection);
             ret_size = msg->size;
-            sendto(this->sock, msg, ret_size, 0, (struct sockaddr *) &saClient, addr_len);
+            sendto(this->sock, msg, ret_size, 0, (struct sockaddr *) &saClient6, addr_len);
             clock_gettime(CLOCK_REALTIME, &connection->curTv);
         }
     }
@@ -287,10 +290,41 @@ t_conn *  cServer::getConnection(u_int32_t ip, uint16_t port) {
     } else {
         char addr[INET_ADDRSTRLEN];
         connection = new t_conn;
-        connection->ip = ip;
+        //connection->ip = ip;
         connection->port = port;
         connection->conn_id = conn_id;
         inet_ntop(AF_INET, &ip, addr, INET_ADDRSTRLEN);
+        connection->client_ip = string(addr);
+        connection->pkt_cnt = 0;
+        connection->refTv.tv_sec = 0;
+        connection->refTv.tv_nsec = 0;
+        connection->curTv.tv_sec = 0;
+        connection->curTv.tv_nsec = 0;
+        connection->C_par = false;
+        connection->D_par = false;
+        connection->e_par = false;
+        connection->E_par = false;
+        connection->H_par = false;
+        connection->J_par = false;
+        connection->W_par = false;
+        connection->X_par = setup->isAsym();
+        connection->AX_par = false;
+        this->connections[conn_id] = connection;
+    }
+    return connection;
+}
+
+t_conn *  cServer::getConnection6(in6_addr ip, uint16_t port) {
+    u_int64_t conn_id = ip.s6_addr[0] * (u_int64_t)port;
+    if (this->connections.count(conn_id) == 1) {
+        connection = this->connections.at(conn_id);
+    } else {
+        char addr[INET6_ADDRSTRLEN];
+        connection = new t_conn;
+        connection->ip = ip;
+        connection->port = port;
+        connection->conn_id = conn_id;
+        inet_ntop(AF_INET6, &ip, addr, INET6_ADDRSTRLEN);
         connection->client_ip = string(addr);
         connection->pkt_cnt = 0;
         connection->refTv.tv_sec = 0;

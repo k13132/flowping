@@ -25,9 +25,7 @@
  */
 
 
-#include <netdb.h>
-#include <cstdlib>
-#include <sys/socket.h>
+
 #include <ctime>
 #include <sstream>
 #include <vector>
@@ -107,33 +105,76 @@ int cClient::run_packetFactory() {
 }
 
 int cClient::run_receiver() {
-    struct hostent *hp;
-    this->r_running = true;
+    int rc;
 
-    // Convert the host name as a dotted-decimal number.
-    bzero((void *) &saServer, sizeof (saServer));
-    if ((hp = gethostbyname(setup->getHostname().c_str())) == nullptr) {
-        perror("host name error");
+    memset(&hints, 0x00, sizeof(hints));
+    memset(&saServer6, 0x00, sizeof(saServer6));
+    //= htons(setup->getPort());
+    //hints.ai_flags    = AI_CANONNAME;
+    hints.ai_flags    = AI_NUMERICSERV;
+    hints.ai_family   = AF_UNSPEC;
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_protocol = IPPROTO_UDP;
+
+    rc = inet_pton(AF_INET, setup->getHostname().c_str(), &saServer6);
+    if (rc == 1)    /* valid IPv4 text address? */
+    {
+        hints.ai_family = AF_INET;
+        hints.ai_flags |= AI_NUMERICHOST;
+    }
+    else
+    {
+        rc = inet_pton(AF_INET6, setup->getHostname().c_str(), &saServer6);
+        if (rc == 1) /* valid IPv6 text address? */
+        {
+            hints.ai_family = AF_INET6;
+            hints.ai_flags |= AI_NUMERICHOST;
+        }
+    }
+
+    rc = getaddrinfo(setup->getHostname().c_str(), std::to_string(setup->getPort()).c_str(), &hints, &resAddr);
+    if (rc != 0)
+    {
+        printf("Host not found --> %s\n", gai_strerror(rc));
+        if (rc == EAI_SYSTEM){
+            perror("getaddrinfo() failed");
+        }else{
+            perror("host name error");
+        }
         exit(1);
     }
 
-    bcopy(hp->h_addr, (char *) &saServer.sin_addr, hp->h_length);
+    //IPv4 vs. IPv6 preference if both types available.
+    while(resAddr){
+        if (resAddr->ai_family == AF_INET){
+            tmpAddr = resAddr;
+            //char str[INET6_ADDRSTRLEN];
+            //inet_ntop(AF_INET, (in_addr *)resAddr->ai_addr->sa_data, str, INET6_ADDRSTRLEN);
+            //inet_pton(AF_INET6, str, &saServer6);
+            if (!setup->isIPv6Prefered()){
+                break;
+            }
+        }
+        if (resAddr->ai_family == AF_INET6){
+            tmpAddr = resAddr;
+            if (setup->isIPv6Prefered()){
+                break;
+            }
+        }
+        resAddr = resAddr->ai_next;
+    }
+    resAddr = tmpAddr;
 
     // Create a UDP/IP datagram socket
-    this->sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    this->sock = socket(resAddr->ai_family, resAddr->ai_socktype, resAddr->ai_protocol);
+    //this->sock = socket(resAddr->ai_family, SOCK_DGRAM, IPPROTO_UDP);
     if (this->sock < 0) {
         perror("Failed in creating socket");
         exit(1);
     }
-
     if (setup->useInterface()) {
         setsockopt(this->sock, SOL_SOCKET, SO_BINDTODEVICE, setup->getInterface().c_str(), strlen(setup->getInterface().c_str()));
     }
-
-    // Fill in the address structure for the server
-    saServer.sin_family = AF_INET;
-    // Port number from command line
-    saServer.sin_port = htons(setup->getPort());
 
     // Synchronization point
     this->receiverReady = true;
@@ -157,8 +198,10 @@ int cClient::run_receiver() {
     tv.tv_usec = 0;
     setsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv));
 
+
+    this->r_running = true;
     while (!setup->isDone()) {
-        nRet = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, (struct sockaddr *) &saServer, (socklen_t *) & nFromLen);
+        nRet = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, resAddr->ai_addr, &resAddr->ai_addrlen);
         if (nRet < 0) {
             msg = new gen_msg_t;
             msg->type = MSG_KEEP_ALIVE;
@@ -179,7 +222,6 @@ int cClient::run_sender() {
     event_t event;
     struct ping_pkt_t *ping_pkt;
     struct ping_msg_t *ping_msg;
-    struct gen_msg_t *gen_msg;
     stringstream ss;
     //Todo RANDOM PACKET CONTENT
     unsigned char packet[MAX_PKT_SIZE + 60] = {0}; //Random FILL will be better
@@ -190,8 +232,6 @@ int cClient::run_sender() {
     gen_msg_t * t = new gen_msg_t;
     t->type = MSG_OUTPUT_INIT;
     mbroker->push_lp(t);
-
-
     delta = 0;
     clock_gettime(CLOCK_REALTIME, &sentTv); //FIX initial delta
 
@@ -238,11 +278,12 @@ int cClient::run_sender() {
     while (not isSenderReceiverReady()){
         usleep(200000);
     }
+
     while (!setup->isStarted()) {
 #ifdef DEBUG        
         cerr << "Sending CONTROL Packet - code:" << ping_msg->code << endl;
 #endif
-        nRet = sendto(this->sock, packet, ping_msg->size, 0, (struct sockaddr *) &saServer, sizeof (struct sockaddr));
+        nRet = sendto(this->sock, packet, ping_msg->size, 0, resAddr->ai_addr, resAddr->ai_addrlen);
         if (nRet < 0) {
             cerr << "Send ERROR\n";
             close(this->sock);
@@ -255,7 +296,6 @@ int cClient::run_sender() {
             exit(1);
         }
     }
-
     ping_pkt->type = PING; //prepare the first packet
     clock_gettime(CLOCK_REALTIME, &start_ts);
     my_ts.tv_sec += setup->getTime_t();
@@ -264,7 +304,6 @@ int cClient::run_sender() {
     u_int16_t payload_size;
 
     clock_gettime(CLOCK_REALTIME, &refTv);
-
 
     timespec ts;
     timed_packet_t tinfo;
@@ -317,8 +356,7 @@ int cClient::run_sender() {
             payload_size = MIN_PKT_SIZE;
         }
         //SEND PKT ************************
-        nRet = sendto(this->sock, packet, payload_size, 0 , (struct sockaddr *) &saServer, sizeof (struct sockaddr));
-        if (nRet < 0) continue;
+        nRet = sendto(this->sock, packet, payload_size, 0, resAddr->ai_addr, resAddr->ai_addrlen);
         msg = new(gen_msg_t);
         //Todo May not be safe / nRet (packet) size can be lower than gen_msg_t -> but only in case of corrupted packet / socket reading failure
         memcpy(msg,packet, sizeof(gen_msg_t));
@@ -327,7 +365,7 @@ int cClient::run_sender() {
         mbroker->push_tx(msg);
     }
     if (setup->nextPacket()) {
-        std::cerr << "PBuffer not empty." << std::endl;
+        //std::cerr << "PBuffer not empty." << std::endl;
     }
     ping_pkt->type = CONTROL;
     t = new gen_msg_t;
@@ -339,12 +377,13 @@ int cClient::run_sender() {
     sleep(1); //wait for network congestion "partialy" disapear.
     while (!setup->isDone()) {
         //std::cout << "Get server stats..." << std::endl;
-        nRet = sendto(this->sock, packet, ping_msg->size, 0, (struct sockaddr *) &saServer, sizeof (struct sockaddr));
+        nRet = sendto(this->sock, packet, ping_msg->size, 0, resAddr->ai_addr, resAddr->ai_addrlen);
         if (nRet < 0) {
             cerr << "Send ERRROR\n";
             close(this->sock);
             exit(1);
         }
+        //cerr << "send bytes: " << nRet << std::endl;
         usleep(250000); //  4pkt/s
         timeout++;
         if (timeout == 60) { //15s
