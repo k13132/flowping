@@ -113,7 +113,7 @@ int cServer::run() {
             mbroker->push_lp(tmsg);
             continue;
         }
-        connection = getConnection6(saClient6.sin6_addr, saClient6.sin6_port);
+        connection = getConnection6(saClient6);
         connection->refTv = connection->curTv;
         clock_gettime(CLOCK_REALTIME, &connection->curTv);
         msg = (struct gen_msg_t*) (packet);
@@ -283,49 +283,23 @@ void cServer::terminate() {
     setup->setDone(true);
 }
 
-t_conn *  cServer::getConnection(u_int32_t ip, uint16_t port) {
-    u_int64_t conn_id = (u_int64_t)ip * (u_int64_t)port;
-    if (this->connections.count(conn_id) == 1) {
-        connection = this->connections.at(conn_id);
-    } else {
-        char addr[INET_ADDRSTRLEN];
-        connection = new t_conn;
-        //connection->ip = ip;
-        connection->port = port;
-        connection->conn_id = conn_id;
-        inet_ntop(AF_INET, &ip, addr, INET_ADDRSTRLEN);
-        connection->client_ip = string(addr);
-        connection->pkt_cnt = 0;
-        connection->refTv.tv_sec = 0;
-        connection->refTv.tv_nsec = 0;
-        connection->curTv.tv_sec = 0;
-        connection->curTv.tv_nsec = 0;
-        connection->C_par = false;
-        connection->D_par = false;
-        connection->e_par = false;
-        connection->E_par = false;
-        connection->H_par = false;
-        connection->J_par = false;
-        connection->W_par = false;
-        connection->X_par = setup->isAsym();
-        connection->AX_par = false;
-        this->connections[conn_id] = connection;
-    }
-    return connection;
+string cServer::stripFFFF(string str) {
+    if (str.find("::ffff:",0,7) == 0) return str.substr(7);
+    return str;
 }
 
-t_conn *  cServer::getConnection6(in6_addr ip, uint16_t port) {
-    u_int64_t conn_id = ip.s6_addr[0] * (u_int64_t)port;
+t_conn *  cServer::getConnection6(sockaddr_in6 saddr) {
+    u_int64_t conn_id = saddr.sin6_addr.s6_addr[0] * (u_int64_t)saddr.sin6_port;
     if (this->connections.count(conn_id) == 1) {
         connection = this->connections.at(conn_id);
     } else {
         char addr[INET6_ADDRSTRLEN];
         connection = new t_conn;
-        connection->ip = ip;
-        connection->port = port;
+        connection->ip = saddr.sin6_addr;
+        connection->port = saddr.sin6_port;
         connection->conn_id = conn_id;
-        inet_ntop(AF_INET6, &ip, addr, INET6_ADDRSTRLEN);
-        connection->client_ip = string(addr);
+        inet_ntop(AF_INET6, &saddr.sin6_addr, addr, INET6_ADDRSTRLEN);
+        connection->client_ip = stripFFFF(string(addr));
         connection->pkt_cnt = 0;
         connection->refTv.tv_sec = 0;
         connection->refTv.tv_nsec = 0;

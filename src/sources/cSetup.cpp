@@ -359,6 +359,21 @@ string cSetup::get_version() {
     return ss.str();
 }
 
+string cSetup::getVersion() {
+    stringstream ss;
+    ss.str("");
+    ss << "FlowPing " << this->version;
+    return ss.str();
+}
+
+void cSetup::setAddrFamily(sa_family_t family){
+    if ((family == AF_INET)||(family == AF_INET6)) this->addr_family = family;
+}
+
+sa_family_t cSetup::getAddrFamily(void){
+    return this->addr_family;
+}
+
 void cSetup::usage() {
     cout << " -----------------------------------------------------------------------------------------------" << endl;
     cout << "| Section| Parameter  | Def. value | Meaning                                                    |" << endl;

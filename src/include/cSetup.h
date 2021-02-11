@@ -83,6 +83,9 @@ public:
     bool showSendBitrate(void);
     bool is_vonly(void);
     string get_version(void);
+    string getVersion(void);
+    void setAddrFamily(sa_family_t family);
+    sa_family_t getAddrFamily(void);
     u_int64_t getTime_t();
     u_int64_t getTime_T();
     double getTime_R();
@@ -133,6 +136,7 @@ public:
 
 private:
     u_int64_t sample_len; //in ms ... 0 means no sampling
+    sa_family_t addr_family = AF_INET;
     bool started, stop, done;
     bool v_par;
     bool a_par;
