@@ -164,7 +164,7 @@ int cClient::run_receiver() {
         resAddr = resAddr->ai_next;
     }
     resAddr = tmpAddr;
-
+    setup->setAddrFamily(resAddr->ai_family);
     // Create a UDP/IP datagram socket
     this->sock = socket(resAddr->ai_family, resAddr->ai_socktype, resAddr->ai_protocol);
     //this->sock = socket(resAddr->ai_family, SOCK_DGRAM, IPPROTO_UDP);
@@ -228,10 +228,6 @@ int cClient::run_sender() {
     int nRet;
     //bool show = not setup->silent();
 
-    //initiate output
-    gen_msg_t * t = new gen_msg_t;
-    t->type = MSG_OUTPUT_INIT;
-    mbroker->push_lp(t);
     delta = 0;
     clock_gettime(CLOCK_REALTIME, &sentTv); //FIX initial delta
 
@@ -278,6 +274,11 @@ int cClient::run_sender() {
     while (not isSenderReceiverReady()){
         usleep(200000);
     }
+
+    //initiate output
+    gen_msg_t * t = new gen_msg_t;
+    t->type = MSG_OUTPUT_INIT;
+    mbroker->push_lp(t);
 
     while (!setup->isStarted()) {
 #ifdef DEBUG        

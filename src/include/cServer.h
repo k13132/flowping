@@ -52,8 +52,8 @@ private:
     int sock;
     bool stop;
 private:
-    t_conn * getConnection(u_int32_t ip, uint16_t port);
-    t_conn * getConnection6(in6_addr ip, uint16_t port);
+    t_conn * getConnection6(sockaddr_in6 addr);
+    string stripFFFF(string str);
     void processCMessage(gen_msg_t *msg, t_conn * connection);
 };
 

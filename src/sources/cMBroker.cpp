@@ -349,6 +349,9 @@ std::string cMessageBroker::prepHeader() {
         auto in_time_t = std::chrono::system_clock::to_time_t(now);
         header << "{\n\t\"info\": {";
         header << "\n\t\t\"start\":\"" << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X") << "\",";
+        header << "\n\t\t\"version\":\"" << setup->getVersion() << "\",";
+        if (setup->getAddrFamily() == AF_INET) header << "\n\t\t\"ip_family\":\"IPv4\",";
+        if (setup->getAddrFamily() == AF_INET6) header << "\n\t\t\"ip_family\":\"IPv6\",";
         header << "\n\t\t\"remote\":\"" << setup->getHostname().c_str() << "\",";
         header << "\n\t\t\"slot_duration\":" << setup->getSampleLen()/1000000000.0;
         header << "\n\t},";
