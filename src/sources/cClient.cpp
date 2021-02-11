@@ -318,6 +318,7 @@ int cClient::run_sender() {
         }
         //SEND PKT ************************
         nRet = sendto(this->sock, packet, payload_size, 0 , (struct sockaddr *) &saServer, sizeof (struct sockaddr));
+        if (nRet < 0) continue;
         msg = new(gen_msg_t);
         //Todo May not be safe / nRet (packet) size can be lower than gen_msg_t -> but only in case of corrupted packet / socket reading failure
         memcpy(msg,packet, sizeof(gen_msg_t));
