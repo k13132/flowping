@@ -198,7 +198,5 @@ struct sampled_int_t{
     float jitter_sum;
 };
 
-
-
 #endif	/* _TYPES_H */
 

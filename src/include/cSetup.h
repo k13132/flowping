@@ -132,6 +132,7 @@ public:
     void setStarted(bool started);
     void setStop(bool stop);
     void setDone(bool done);
+    bool isSingleCientMode();
     u_int64_t getSampleLen(void) const;
 
 private:
@@ -172,6 +173,7 @@ private:
     bool vonly;
     bool _par;
     bool antiAsym;
+    bool single_client_mode;
     int port;
     double interval_i; // 1s
     double interval_I; // 1s

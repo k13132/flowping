@@ -112,10 +112,10 @@ void signalHandler(int sig) {
     }
 }
 
-int main(int argc, char** argv) {
-    // CPUs
-    unsigned int cpus = std::thread::hardware_concurrency();
 
+#include <time.h>
+
+int main(int argc, char** argv) {
     // Osetreni reakci na signaly
     struct sigaction act;
     act.sa_handler = signalHandler;

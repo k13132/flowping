@@ -62,7 +62,6 @@ cMessageBroker::cMessageBroker(cSetup *setup, cStats *stats){
         this->sampled_int[i].rtt_sum = 0;
         this->sampled_int[i].bytes = 0;
     }
-
     json_first = true;
 }
 
@@ -130,7 +129,7 @@ void cMessageBroker::run(){
             //HI priority message queue
             while (msg_buf_hp.front()){
                 processAndDeleteClientMessage(*msg_buf_hp.front());
-                delete *msg_buf_hp.front();
+                //delete *msg_buf_hp.front();
                 msg_buf_hp.pop();
             }
             while ((msg_buf_rx.front())||(msg_buf_tx.front())){
@@ -151,12 +150,12 @@ void cMessageBroker::run(){
                     if (first==0) first = tx_ts;
                     last = tx_ts;
                     processAndDeleteClientMessage(*msg_buf_tx.front());
-                    delete *msg_buf_tx.front();
+                    //delete *msg_buf_tx.front();
                     msg_buf_tx.pop();
                 }
                 if ((rx_ts >= tx_ts) || ((tx_ts == 0)&&(rx_ts))){
                     processAndDeleteClientMessage(*msg_buf_rx.front());
-                    delete *msg_buf_rx.front();
+                    //delete *msg_buf_rx.front();
                     msg_buf_rx.pop();
                 }
                 //usleep(1);
@@ -164,7 +163,7 @@ void cMessageBroker::run(){
             //LOW priority message queue
             while (msg_buf_lp.front()){
                 processAndDeleteClientMessage(*msg_buf_lp.front());
-                delete *msg_buf_lp.front();
+                //delete *msg_buf_lp.front();
                 msg_buf_lp.pop();
             }
         }
@@ -172,7 +171,7 @@ void cMessageBroker::run(){
         //std::cout << "Done." << std::endl;
         while (msg_buf_lp.front()){
             processAndDeleteClientMessage(*msg_buf_lp.front());
-            delete *msg_buf_lp.front();
+            //delete *msg_buf_lp.front();
             msg_buf_lp.pop();
         }
         //std::cerr << "MSG processed TX/RX: " << dcnt_tx << "/" << dcnt_rx << std::endl;
@@ -211,6 +210,12 @@ void cMessageBroker::processAndDeleteServerMessage(t_msg_t *tmsg) {
     u_int64_t ts;
     switch(msg->type){
         case MSG_RX_PKT:
+            ping_pkt = (struct ping_pkt_t*) (msg);
+            ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den));
+            //pkt_rtt = ((tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den)) - (ping_pkt->sec * 1000000000L) - (ping_pkt->nsec))/1000000.0; //ms
+            if (not setup->silent()) {
+                //*output << prepServerDataRec(ts, RX, ping_pkt->size, ping_pkt->seq, pkt_ts_diff);
+            }
             break;
         case MSG_TX_PKT:
             break;
@@ -337,9 +342,9 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
     }
     //std::cout << "MSG delete at: " << msg << std::endl;
     delete(msg);
+    delete(tmsg);
     msg = nullptr;
 };
-
 
 
 std::string cMessageBroker::prepHeader() {

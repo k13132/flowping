@@ -35,6 +35,13 @@
 
 using namespace std;
 
+uint64_t rdtsc(){
+    unsigned int lo,hi;
+    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+    return ((uint64_t)hi << 32) | lo;
+}
+
+
 cClient::cClient(cSetup *setup, cStats *stats, cMessageBroker *mbroker) {
     first = true;
     this->setup = setup;
@@ -218,6 +225,7 @@ int cClient::run_receiver() {
 }
 
 int cClient::run_sender() {
+    int nRet;
     this->s_running = true;
     event_t event;
     struct ping_pkt_t *ping_pkt;
@@ -225,8 +233,11 @@ int cClient::run_sender() {
     stringstream ss;
     //Todo RANDOM PACKET CONTENT
     unsigned char packet[MAX_PKT_SIZE + 60] = {0}; //Random FILL will be better
-    int nRet;
-    //bool show = not setup->silent();
+
+    for (int i = 0; i< sizeof packet; i++){
+        packet[i] = (uint8_t)(rand() % 256);
+        std::cout << packet[i];
+    }
 
     delta = 0;
     clock_gettime(CLOCK_REALTIME, &sentTv); //FIX initial delta

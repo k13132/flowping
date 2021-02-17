@@ -103,10 +103,10 @@ int cServer::run() {
 
     unsigned char packet[MAX_PKT_SIZE + 60];
     // MAIN LOOP /////////////////////////////////
+    gen_msg_t *msg = nullptr;
+    gen_msg_t *tmsg = nullptr;
     while (!stop) {
         ret_size = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, (struct sockaddr *) &saClient6, (socklen_t *) & addr_len);
-        gen_msg_t *msg = nullptr;
-        gen_msg_t *tmsg = nullptr;
         if (ret_size < 0) {
             tmsg = new gen_msg_t;
             tmsg->type = MSG_KEEP_ALIVE;

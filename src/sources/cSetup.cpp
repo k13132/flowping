@@ -75,6 +75,7 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->R_par = false;
     this->r_par = false;
     this->W_par = false;
+    this->single_client_mode = false;
     this->_par = false;
     this->antiAsym = false;
     this->port = 2424;
@@ -102,7 +103,7 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->fpsize_set = false;
 
     this->version = version;
-    while ((c = getopt(argc, argv, "JCXeEaSqDH6?w:d:p:c:h:s:i:F:f:u:vI:t:T:b:B:r:R:L:")) != EOF) {
+    while ((c = getopt(argc, argv, "JCXeEaSqDH16?w:d:p:c:h:s:i:F:f:u:vI:t:T:b:B:r:R:L:")) != EOF) {
         switch (c) {
             case 'v':
                 this->v_par = true;
@@ -252,6 +253,10 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 this->vonly = false;
                 this->ipv6 = true;
                 break;
+            case '1':
+                this->vonly = false;
+                this->single_client_mode = true;
+                break;
             case 's':
                 this->s_par = true;
                 this->vonly = false;
@@ -390,7 +395,9 @@ void cSetup::usage() {
     cout << "|         [-X]                       Asymmetric mode (TX Payload  is limited to 32 B)           |" << endl;
     cout << "| Server:                                                                                       |" << endl;
     cout << "|         [-S]                       Run as server                                              |" << endl;
+    cout << "|         [-1]                       Single client mode                                         |" << endl;
     cout << "| Client:                                                                                       |" << endl;
+    cout << "|         [-6]                       IPv6 (preferred if available, IPv4 is preferred otherwise) |" << endl;
     cout << "|         [-a]                       Busy-loop mode! (100% CPU usage), more accurate bitrate    |" << endl;
     cout << "|         [-b kbit/s]                BitRate (first limit)                                      |" << endl;
     cout << "|         [-B kbit/s]                BitRate (second limit)                                     |" << endl;
