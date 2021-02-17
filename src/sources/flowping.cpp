@@ -112,9 +112,6 @@ void signalHandler(int sig) {
     }
 }
 
-
-#include <time.h>
-
 int main(int argc, char** argv) {
     // Osetreni reakci na signaly
     struct sigaction act;
@@ -131,24 +128,10 @@ int main(int argc, char** argv) {
 #define TT __TIME__    
 
     stringstream version;
-
     version.str("");
-#ifdef __i386
-    version << "x86_32 2.5.0.::. F-Tester edition .::.";
-    version << " (" << DD << " "<< TT << ")";
-#endif    
-#ifdef __x86_64__
-    version << "x86_64 2.5.0 .::. F-Tester edition .::.";
-    version << " (" << DD << " "<< TT << ")";
-#endif    
 
-#ifdef __ARM_ARCH_7A__
-    version << "ARM_32 2.5.0 .::. F-Tester edition .::.";
-    version << " (" << DD << " "<< TT << ")";
-#endif    
-    
-#ifdef __MIPS_ISA32__
-    version << "MIPS_32 2.5.0 .::. F-Tester edition .::.";
+#ifdef __x86_64__
+    version << "x86_64 2.5.99 .::. F-Tester edition .::.";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 

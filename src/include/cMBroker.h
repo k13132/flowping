@@ -27,8 +27,8 @@ private:
     u_int64_t dup;
     u_int64_t dcnt, dcnt_rx, dcnt_tx;
     struct timespec curTv;
-    std::chrono::system_clock::time_point start;
-    std::chrono::system_clock::time_point end;
+    uint64_t start;
+    uint64_t end;
 
     cSetup *setup;
     cClientStats *c_stats;

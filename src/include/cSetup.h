@@ -134,7 +134,7 @@ public:
     void setDone(bool done);
     bool isSingleCientMode();
     u_int64_t getSampleLen(void) const;
-
+    uint64_t rdtsc();
 private:
     u_int64_t sample_len; //in ms ... 0 means no sampling
     sa_family_t addr_family = AF_INET;

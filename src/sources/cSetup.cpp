@@ -35,6 +35,12 @@
 
 using namespace std;
 
+uint64_t cSetup::rdtsc(){
+    unsigned int lo,hi;
+    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+    return ((uint64_t)hi << 32) | lo;
+}
+
 cSetup::cSetup(int argc, char **argv, string version) {
     this->sample_len = 0;
     this->ipv6 = false;

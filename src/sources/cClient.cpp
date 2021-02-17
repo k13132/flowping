@@ -35,13 +35,6 @@
 
 using namespace std;
 
-uint64_t rdtsc(){
-    unsigned int lo,hi;
-    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-    return ((uint64_t)hi << 32) | lo;
-}
-
-
 cClient::cClient(cSetup *setup, cStats *stats, cMessageBroker *mbroker) {
     first = true;
     this->setup = setup;
@@ -236,7 +229,6 @@ int cClient::run_sender() {
 
     for (int i = 0; i< sizeof packet; i++){
         packet[i] = (uint8_t)(rand() % 256);
-        std::cout << packet[i];
     }
 
     delta = 0;
@@ -325,38 +317,44 @@ int cClient::run_sender() {
     while (!pktBufferReady) {
         usleep(200000);
     }
+
     u_int64_t start_time = NS_TIME(start_ts);
     u_int64_t deadline = setup->getDeadline() * 1000000000L + start_time;
+    uint64_t refT, curT, sentT;
+    sentT = setup->rdtsc()*1000000/2199998;
     for (unsigned int i = 1; (i <= setup->getCount() && not setup->isStop()); i++) {
-        refTv = sentTv;
-        clock_gettime(CLOCK_REALTIME, &sentTv);
-        curTv = sentTv;
+        //refTv = sentTv;
+        refT = sentT;
+        //clock_gettime(CLOCK_REALTIME, &sentTv);
+        sentT = setup->rdtsc()*1000000/2199998;
+        //curTv = sentTv;
+        curT = sentT;
         if (setup->nextPacket()) {
             tinfo = setup->getNextPacket();
             //Target time
             tgTime = start_time + tinfo.ts;
             // Drop delayed packets (+ 250 ms safe zone);
-            if (NS_TIME(curTv) > (tgTime + 250000)) continue;
+            if (curT > (tgTime + 250000)) continue;
 
             if (setup->actWaiting()) {
-                while (NS_TIME(curTv) < tgTime) {
-                    clock_gettime(CLOCK_REALTIME, &curTv);
+                while (curT < tgTime) {
+                    curT = setup->rdtsc()*1000000/2199998;
                 }
             } else {
                 ts.tv_sec = tgTime / 1000000000L;
                 ts.tv_nsec = tgTime % 1000000000L;
                 setup->recordLastDelay(ts);
                 delay(ts);
-                clock_gettime(CLOCK_REALTIME, &curTv);
+                curT = setup->rdtsc()*1000000/2199998;
             }
             payload_size = tinfo.len;
-            ping_pkt->sec = curTv.tv_sec;
-            ping_pkt->nsec = curTv.tv_nsec;
+            ping_pkt->sec = curT;
+            ping_pkt->nsec = curT;
             ping_pkt->size = payload_size; //info for server side in AntiAsym mode; //Real size should be obtained as ret size of send and receive
             ping_pkt->seq = i;
 
             //check deadline
-            if (deadline < (curTv.tv_sec * 1000000000L + curTv.tv_nsec)){
+            if (deadline < curT){
                 setup->setStop(true);
             }
         } else {

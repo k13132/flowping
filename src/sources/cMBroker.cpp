@@ -7,6 +7,7 @@
 #include <chrono>
 #include <iomanip>
 
+
 std::ostream& operator<<(std::ostream& os, const ping_pkt_t& obj)
 {
     os << obj.size + HEADER_LENGTH << " bytes, req=" << obj.seq;
@@ -73,7 +74,7 @@ cMessageBroker::~cMessageBroker(){
 void cMessageBroker::push(t_conn *conn, gen_msg_t *msg){
     struct t_msg_t *t_msg;
     t_msg = new t_msg_t;
-    t_msg->tp = std::chrono::system_clock::now();
+    t_msg->tp = setup->rdtsc()*1000000/2199998;
     t_msg->msg = msg;
     t_msg->conn = conn;
     msg_buf.push(t_msg);
@@ -83,7 +84,7 @@ void cMessageBroker::push(t_conn *conn, gen_msg_t *msg){
 void cMessageBroker::push_rx(gen_msg_t *msg){
     struct t_msg_t *t_msg;
     t_msg = new t_msg_t;
-    t_msg->tp = std::chrono::system_clock::now();
+    t_msg->tp = setup->rdtsc()*1000000/2199998;
     t_msg->msg = msg;
     msg_buf_rx.push(t_msg);
     dcnt_rx++;
@@ -92,7 +93,7 @@ void cMessageBroker::push_rx(gen_msg_t *msg){
 void cMessageBroker::push_tx(gen_msg_t *msg){
     struct t_msg_t *t_msg;
     t_msg = new t_msg_t;
-    t_msg->tp = std::chrono::system_clock::now();
+    t_msg->tp = setup->rdtsc()*1000000/2199998;
     t_msg->msg = msg;
     msg_buf_tx.push(t_msg);
     dcnt_tx++;
@@ -101,7 +102,7 @@ void cMessageBroker::push_tx(gen_msg_t *msg){
 void cMessageBroker::push_lp(gen_msg_t *msg){
     struct t_msg_t *t_msg;
     t_msg = new t_msg_t;
-    t_msg->tp = std::chrono::system_clock::now();
+    t_msg->tp = setup->rdtsc()*1000000/2199998;
     t_msg->msg = msg;
     msg_buf_lp.push(t_msg);
 }
@@ -109,7 +110,7 @@ void cMessageBroker::push_lp(gen_msg_t *msg){
 void cMessageBroker::push_hp(gen_msg_t *msg){
     struct t_msg_t *t_msg;
     t_msg = new t_msg_t;
-    t_msg->tp = std::chrono::system_clock::now();
+    t_msg->tp = setup->rdtsc()*1000000/2199998;
     t_msg->msg = msg;
     msg_buf_hp.push(t_msg);
 }
@@ -138,11 +139,11 @@ void cMessageBroker::run(){
                 tx_ts = 0;
                 if (msg_buf_rx.front()){
                     rx_msg = *msg_buf_rx.front();
-                    rx_ts= rx_msg->tp.time_since_epoch().count();
+                    rx_ts= rx_msg->tp;
                 }
                 if (msg_buf_tx.front()){
                     tx_msg = *msg_buf_tx.front();
-                    tx_ts= tx_msg->tp.time_since_epoch().count();
+                    tx_ts= tx_msg->tp;
                 }
                 if (not rx_ts && not tx_ts ) continue;
 
@@ -205,13 +206,11 @@ void cMessageBroker::run(){
 
 
 void cMessageBroker::processAndDeleteServerMessage(t_msg_t *tmsg) {
-    std::chrono::system_clock::time_point tp = tmsg->tp;
     gen_msg_t *msg = tmsg->msg;
     u_int64_t ts;
     switch(msg->type){
         case MSG_RX_PKT:
             ping_pkt = (struct ping_pkt_t*) (msg);
-            ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den));
             //pkt_rtt = ((tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den)) - (ping_pkt->sec * 1000000000L) - (ping_pkt->nsec))/1000000.0; //ms
             if (not setup->silent()) {
                 //*output << prepServerDataRec(ts, RX, ping_pkt->size, ping_pkt->seq, pkt_ts_diff);
@@ -233,10 +232,7 @@ void cMessageBroker::processAndDeleteServerMessage(t_msg_t *tmsg) {
 }
 
 void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
-    std::chrono::system_clock::time_point tp = tmsg->tp;
     gen_msg_t *msg = tmsg->msg;
-    u_int64_t ts;
-
 //    if (msg == nullptr){
 //        std::cout << "MSG_NULL" << std::endl;
 //        return;
@@ -265,22 +261,19 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
 
         case MSG_RX_PKT:
             //Todo process stats
-            //std::cout << "MSG_RX_PKT" << std::endl;
             //Todo modify structure !!!! packet data not present - ONLY header was copied
             ping_pkt = (struct ping_pkt_t*) (msg);
-            ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den));
-            pkt_rtt = ((tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den)) - (ping_pkt->sec * 1000000000L) - (ping_pkt->nsec))/1000000.0; //ms
+            pkt_rtt = (tmsg->tp - ping_pkt->nsec)/1000000.0; //ms
             if (not setup->silent()) {
-                *output << prepDataRec(ts, RX, ping_pkt->size, ping_pkt->seq, pkt_rtt);
+                *output << prepDataRec(tmsg->tp-start, RX, ping_pkt->size, ping_pkt->seq, pkt_rtt);
             }
             //c_stats->pktRecv(ts, ping_pkt->size, ping_pkt->seq, pkt_rtt);
             break;
 
         case MSG_TX_PKT:
             ping_pkt = (struct ping_pkt_t*) (msg);
-            ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den));
             if (not setup->silent()) {
-                *output << prepDataRec(ts, TX, ping_pkt->size, ping_pkt->seq, 0);
+                *output << prepDataRec(tmsg->tp-start, TX, ping_pkt->size, ping_pkt->seq, 0);
             }
             //c_stats->pktSent(ts, ping_pkt->size, ping_pkt->seq);
             break;
@@ -294,7 +287,7 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
 
         case MSG_OUTPUT_INIT:
             //std::cout << "MSG_OUTPUT_INIT" << std::endl;
-            start = tp;
+            start = tmsg->tp;
             end = start;
             if (setup->getFilename().length() && setup->outToFile()) {
                 fout.open(setup->getFilename().c_str());
@@ -311,12 +304,11 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
             break;
 
         case MSG_TIMER_END:
-            end = tp;
+            end = tmsg->tp;
             break;
         case MSG_OUTPUT_CLOSE:
             //std::cout << "MSG_OUTPUT_CLOSE" << std::endl;
             //*output << c_stats->getReport();
-            ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den));
             //Flush buffered data
             if (not setup->silent()) {
                 if (setup->getSampleLen()){
@@ -327,7 +319,7 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
             if (setup->toJSON()) {
                 *output << "\n\t],";
                 *output << "\n\t\"client_stats\": {";
-                *output << "\n\t\t\"duration\" :"<< (std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count())/1000.0;
+                *output << "\n\t\t\"duration\" :"<< (end - start)/1000000000.0;
                 *output << "\n\t}";
                 *output << "\n}"<<std::endl;
             }

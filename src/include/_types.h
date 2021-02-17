@@ -167,7 +167,7 @@ struct t_conn{
 
 
 struct t_msg_t{
-    std::chrono::system_clock::time_point tp;
+    uint64_t tp;
     gen_msg_t* msg;
     t_conn* conn;
 };
