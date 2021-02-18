@@ -608,13 +608,13 @@ timed_packet_t cSetup::get_tmp_tpck(){
     return tmp_tpck;
 }
 
-timespec cSetup::getLastDelay() {
-    return last_delay;
-}
+//timespec cSetup::getLastDelay() {
+//    return last_delay;
+//}
 
-void cSetup::recordLastDelay(timespec last_delay) {
-    this->last_delay = last_delay;
-}
+//void cSetup::recordLastDelay(uint64_t last_delay) {
+//    this->last_delay = last_delay;
+//}
 
 std::ostream& operator<<(std::ostream& os, const tpoint_def_t& obj)
 {

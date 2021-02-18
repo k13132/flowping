@@ -122,7 +122,7 @@ public:
     u_int64_t getTimedBufferSize();
     virtual ~cSetup();
     timed_packet_t get_tmp_tpck();
-    void recordLastDelay(timespec last_delay);
+    void recordLastDelay(uint64_t last_delay);
     timespec getLastDelay();
 
     bool isStarted() const;
@@ -201,7 +201,7 @@ private:
     SPSCQueue<timed_packet_t> pbuffer {128000};
     u_int64_t getNextPacketTS(u_int64_t ts, u_int64_t sts, u_int64_t ets, u_int64_t srate, u_int64_t erate, u_int16_t len);
     timed_packet_t tmp_tpck;
-    timespec last_delay;
+    //uint64_t last_delay;
     
     //prepNextPacket
     u_int64_t s_tmp_rate, e_tmp_rate;

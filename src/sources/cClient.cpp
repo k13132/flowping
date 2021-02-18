@@ -318,10 +318,11 @@ int cClient::run_sender() {
         usleep(200000);
     }
 
-    u_int64_t start_time = NS_TIME(start_ts);
+    //u_int64_t start_time = NS_TIME(start_ts);
+    uint64_t start_time = setup->rdtsc()*1000000/2199998;
     u_int64_t deadline = setup->getDeadline() * 1000000000L + start_time;
     uint64_t refT, curT, sentT;
-    sentT = setup->rdtsc()*1000000/2199998;
+    sentT = start_time;
     for (unsigned int i = 1; (i <= setup->getCount() && not setup->isStop()); i++) {
         //refTv = sentTv;
         refT = sentT;
@@ -332,19 +333,19 @@ int cClient::run_sender() {
         if (setup->nextPacket()) {
             tinfo = setup->getNextPacket();
             //Target time
-            tgTime = start_time + tinfo.ts;
+            tgTime = tinfo.ts + start_time;
             // Drop delayed packets (+ 250 ms safe zone);
-            if (curT > (tgTime + 250000)) continue;
+            //std::cout << curT << " vs. " << tgTime << std::endl;
+            //if (curT > (tgTime + 250000)) continue;
 
             if (setup->actWaiting()) {
                 while (curT < tgTime) {
                     curT = setup->rdtsc()*1000000/2199998;
+                    //std::cout << curT << " vs. " << tgTime << std::endl;
                 }
             } else {
-                ts.tv_sec = tgTime / 1000000000L;
-                ts.tv_nsec = tgTime % 1000000000L;
-                setup->recordLastDelay(ts);
-                delay(ts);
+                //setup->recordLastDelay(ts);
+                if (tgTime>curT) usleep((tgTime-curT)/1000);
                 curT = setup->rdtsc()*1000000/2199998;
             }
             payload_size = tinfo.len;

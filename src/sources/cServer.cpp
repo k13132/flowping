@@ -115,7 +115,7 @@ int cServer::run() {
         }
         connection = getConnection6(saClient6);
         connection->refTv = connection->curTv;
-        clock_gettime(CLOCK_REALTIME, &connection->curTv);
+        //clock_gettime(CLOCK_REALTIME, &connection->curTv);
         msg = (struct gen_msg_t*) (packet);
         if (msg->type == PING) {
             if (setup->isAsym(connection->X_par)) ret_size = MIN_PKT_SIZE;

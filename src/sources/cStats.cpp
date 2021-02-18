@@ -229,7 +229,7 @@ void cClientStats::printRealTime(void) {
         ss << "\"duration\":" << duration << ",";
         ss << "\"pkt_buffer_fill\":" << setup->getTimedBufferSize() << ",";
         ss << "\"last_timed_pkt_info\":" << setup->get_tmp_tpck() << ",";
-        ss << "\"last_delay\":" << setup->getLastDelay() << ",";
+        //ss << "\"last_delay\":" << setup->getLastDelay() << ",";
         ss.precision(3);
         ss.fill('0');
         ss.width(6);
