@@ -131,26 +131,13 @@ int main(int argc, char** argv) {
 #define TT __TIME__    
 
     stringstream version;
-
     version.str("");
-#ifdef __i386
-    version << "x86_32 2.5.0.::. F-Tester edition .::.";
-    version << " (" << DD << " "<< TT << ")";
-#endif    
+
 #ifdef __x86_64__
     version << "x86_64 2.5.0 .::. F-Tester edition .::.";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
-#ifdef __ARM_ARCH_7A__
-    version << "ARM_32 2.5.0 .::. F-Tester edition .::.";
-    version << " (" << DD << " "<< TT << ")";
-#endif    
-    
-#ifdef __MIPS_ISA32__
-    version << "MIPS_32 2.5.0 .::. F-Tester edition .::.";
-    version << " (" << DD << " "<< TT << ")";
-#endif    
 
     setup = new cSetup(argc, argv, version.str());
     //Check cmd line parameters
@@ -173,67 +160,29 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-
-
-    //cpu_set_t cpuset;
     if (setup->isServer()) {
         stats = new cServerStats(setup);
         mbroker = new cMessageBroker(setup, stats);
         std::thread t_mBroker (t_helper_cMBroker, (void *) mbroker);
-        // CPU_ZERO(&cpuset);
-        //CPU_SET(0, &cpuset);
-        //pthread_setaffinity_np(t_mBroker.native_handle(), sizeof(cpu_set_t), &cpuset);
-
         server = new cServer(setup, stats, mbroker);
         std::thread t_sServer (t_helper_sServer, (void *) server);
-        //if (cpus > 1) {
-        //    CPU_ZERO(&cpuset);
-        //    CPU_SET(cpus-1, &cpuset);
-        //}
-        //pthread_setaffinity_np(t_sServer.native_handle(), sizeof(cpu_set_t), &cpuset);
-
         t_sServer.join();
         delete(server);
         t_mBroker.join();
-        //std::cout << "mBroker joined to main thread" << std::endl;
         delete(mbroker);
     } else {
         stats = new cClientStats(setup);
         mbroker = new cMessageBroker(setup, stats);
         client = new cClient(setup, stats, mbroker);
-        unsigned int cpu = 0;
-
         std::thread t_cPacketFactory (t_helper_cPacketFactory, (void *) client);
-        //CPU_ZERO(&cpuset);
-        //CPU_SET(cpu % cpus, &cpuset);
-        //pthread_setaffinity_np(t_cPacketFactory.native_handle(), sizeof(cpu_set_t), &cpuset);
-        //cpu++;
-
         std::thread t_mBroker (t_helper_cMBroker, (void *) mbroker);
-        //CPU_ZERO(&cpuset);
-        //CPU_SET(cpu % cpus, &cpuset);
-        //pthread_setaffinity_np(t_mBroker.native_handle(), sizeof(cpu_set_t), &cpuset);
-        cpu++;
-
         std::thread t_cReceiver (t_helper_cReceiver, (void *) client);
-        //CPU_ZERO(&cpuset);
-        //CPU_SET(cpu % cpus, &cpuset);
-        //pthread_setaffinity_np(t_cReceiver.native_handle(), sizeof(cpu_set_t), &cpuset);
-        //cpu++;
-
         std::thread t_cSender (t_helper_cSender, (void *) client);
-        //CPU_ZERO(&cpuset);
-        //CPU_SET(cpu % cpus, &cpuset);
-        //pthread_setaffinity_np(t_cSender.native_handle(), sizeof(cpu_set_t), &cpuset);
         t_cSender.join();
-        //std::cout << "sender joined to main thread" << std::endl;
         t_cPacketFactory.join();
-        //std::cout << "factory joined to main thread" << std::endl;
         t_cReceiver.join();
-        //std::cout << "receiver joined to main thread" << std::endl;
         delete(client);
         t_mBroker.join();
-        //std::cout << "mBroker joined to main thread" << std::endl;
         delete(mbroker);
     }
     delete(setup);

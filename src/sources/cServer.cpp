@@ -128,9 +128,10 @@ int cServer::run() {
             }
             sendto(this->sock, packet, ret_size, 0, (struct sockaddr *) &saClient6, addr_len);
             connection->pkt_cnt++;
-            tmsg = new gen_msg_t;
-            memcpy(tmsg,packet, sizeof(gen_msg_t));
-            mbroker->push(connection, tmsg);
+            //ToDo Nefunguje na OpenWrt, jinde OK //dojde k zaplnněí fronty - nějak nefunguje .pop
+            //tmsg = new gen_msg_t;
+            //memcpy(tmsg,packet, sizeof(gen_msg_t));
+            //mbroker->push(connection, tmsg);
         }else{
             processCMessage(msg, connection);
             ret_size = msg->size;

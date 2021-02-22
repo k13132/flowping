@@ -75,6 +75,7 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->R_par = false;
     this->r_par = false;
     this->W_par = false;
+    this->J_par = false;
     this->_par = false;
     this->antiAsym = false;
     this->port = 2424;
