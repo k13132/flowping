@@ -81,6 +81,7 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->R_par = false;
     this->r_par = false;
     this->W_par = false;
+    this->J_par = false;
     this->single_client_mode = false;
     this->_par = false;
     this->antiAsym = false;
@@ -325,6 +326,7 @@ cSetup::~cSetup() {
 
 u_int8_t cSetup::self_check(void) {
     if (C_par && J_par){
+            std::cerr << "C_par" << std::endl;
             return SETUP_CHCK_ERR;
     }
     if (_par) { //show usage

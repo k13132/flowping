@@ -319,7 +319,7 @@ int cClient::run_sender() {
     }
 
     //u_int64_t start_time = NS_TIME(start_ts);
-    uint64_t start_time = setup->rdtsc()*1000000/2199998;
+    uint64_t start_time = setup->rdtsc()*1000000/CLK_DIV1k;
     u_int64_t deadline = setup->getDeadline() * 1000000000L + start_time;
     uint64_t refT, curT, sentT;
     sentT = start_time;
@@ -327,7 +327,7 @@ int cClient::run_sender() {
         //refTv = sentTv;
         refT = sentT;
         //clock_gettime(CLOCK_REALTIME, &sentTv);
-        sentT = setup->rdtsc()*1000000/2199998;
+        sentT = setup->rdtsc()*1000000/CLK_DIV1k;
         //curTv = sentTv;
         curT = sentT;
         if (setup->nextPacket()) {
@@ -340,13 +340,13 @@ int cClient::run_sender() {
 
             if (setup->actWaiting()) {
                 while (curT < tgTime) {
-                    curT = setup->rdtsc()*1000000/2199998;
+                    curT = setup->rdtsc()*1000000/CLK_DIV1k;
                     //std::cout << curT << " vs. " << tgTime << std::endl;
                 }
             } else {
                 //setup->recordLastDelay(ts);
                 if (tgTime>curT) usleep((tgTime-curT)/1000);
-                curT = setup->rdtsc()*1000000/2199998;
+                curT = setup->rdtsc()*1000000/CLK_DIV1k;
             }
             payload_size = tinfo.len;
             ping_pkt->sec = curT;

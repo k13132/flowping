@@ -59,6 +59,8 @@
 #include <cmath>
 #include <map>
 
+//#define CLK_DIV1k 1000000
+#define CLK_DIV1k 2199998
 #define MAX_PKT_SIZE 1472
 #define MIN_PKT_SIZE 32  //eq to minimum payload size - limited FP header size
 #define HEADER_LENGTH 32
