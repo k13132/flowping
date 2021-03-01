@@ -39,11 +39,11 @@ private:
 
     struct ping_pkt_t *ping_pkt;
     struct ping_msg_t *ping_msg;
-    SPSCQueue<t_msg_t*> msg_buf {128000};
-    SPSCQueue<t_msg_t*> msg_buf_rx {128000};
-    SPSCQueue<t_msg_t*> msg_buf_tx {128000};
-    SPSCQueue<t_msg_t*> msg_buf_lp {64};
-    SPSCQueue<t_msg_t*> msg_buf_hp {64};
+    rigtorp::SPSCQueue<t_msg_t*> msg_buf {128000};
+    rigtorp::SPSCQueue<t_msg_t*> msg_buf_rx {128000};
+    rigtorp::SPSCQueue<t_msg_t*> msg_buf_tx {128000};
+    rigtorp::SPSCQueue<t_msg_t*> msg_buf_lp {64};
+    rigtorp::SPSCQueue<t_msg_t*> msg_buf_hp {64};
     void processAndDeleteClientMessage(t_msg_t *tmsg);
     void processAndDeleteServerMessage(t_msg_t *tmsg);
     std::string prepHeader();
