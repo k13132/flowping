@@ -107,6 +107,7 @@ int cServer::run() {
         ret_size = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, (struct sockaddr *) &saClient6, (socklen_t *) & addr_len);
         gen_msg_t *msg = nullptr;
         gen_msg_t *tmsg = nullptr;
+        std::cout << "ret_size: " << (int64_t)ret_size << std::endl;
         if (ret_size < 0) {
             tmsg = new gen_msg_t;
             tmsg->type = MSG_KEEP_ALIVE;
