@@ -168,8 +168,10 @@ int main(int argc, char** argv) {
         std::thread t_sServer (t_helper_sServer, (void *) server);
         t_sServer.join();
         delete(server);
+        std::cout << "Server is gone." << std::endl;
         t_mBroker.join();
         delete(mbroker);
+        std::cout << "mBroker is gone." << std::endl;
     } else {
         stats = new cClientStats(setup);
         mbroker = new cMessageBroker(setup, stats);

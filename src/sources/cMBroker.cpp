@@ -126,7 +126,7 @@ void cMessageBroker::run(){
     u_int64_t last=0;
     if (setup->isClient()){
         while (!setup->isDone()){
-            usleep(10);
+            usleep(1);
             //HI priority message queue
             while (msg_buf_hp.front()){
                 processAndDeleteClientMessage(*msg_buf_hp.front());
@@ -180,7 +180,7 @@ void cMessageBroker::run(){
     }
     if (setup->isServer()){
         while (!setup->isDone()){
-            usleep(10);
+            usleep(1);
             //HI priority message queue
             while (msg_buf_hp.front()){
                 processAndDeleteServerMessage(*msg_buf_hp.front());
@@ -215,7 +215,7 @@ void cMessageBroker::processAndDeleteServerMessage(t_msg_t *tmsg) {
         case MSG_TX_PKT:
             break;
         case MSG_KEEP_ALIVE:
-            //std::cout << "MSG_KEEP_ALIVE" << std::endl;
+            std::cout << "MSG_KEEP_ALIVE" << std::endl;
             break;
         case MSG_TIMER_ONE:
             //std::cout << "MSG_TIMER_ONE" << std::endl;

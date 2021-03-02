@@ -111,6 +111,7 @@ int cServer::run() {
             tmsg = new gen_msg_t;
             tmsg->type = MSG_KEEP_ALIVE;
             mbroker->push_lp(tmsg);
+            usleep(10000);
             continue;
         }
         connection = getConnection6(saClient6);
@@ -279,7 +280,7 @@ void cServer::processCMessage(gen_msg_t *msg, t_conn * connection){
 };
 
 void cServer::terminate() {
-    std::cerr << "Terminate called" << std::endl;
+    std::cerr << "Terminate called." << std::endl;
     this->stop = true;
     setup->setDone(true);
 }
