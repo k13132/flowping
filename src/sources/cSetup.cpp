@@ -44,6 +44,7 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->td_tmp.ts = 0;
     this->version = "Not Defined";
     output = &std::cout; //output to terminal
+    this->done = false;
     this->vonly = true;
     this->a_par = false;
     this->v_par = false;
