@@ -35,6 +35,19 @@
 
 using namespace std;
 
+
+unsigned short crc16(const unsigned char* data_p, unsigned char length){
+    unsigned char x;
+    unsigned short crc = 0xFFFF;
+
+    while (length--){
+        x = crc >> 8 ^ *data_p++;
+        x ^= x>>4;
+        crc = (crc << 8) ^ ((unsigned short)(x << 12)) ^ ((unsigned short)(x <<5)) ^ ((unsigned short)x);
+    }
+    return crc;
+}
+
 cClient::cClient(cSetup *setup, cStats *stats, cMessageBroker *mbroker) {
     first = true;
     this->setup = setup;
@@ -223,10 +236,17 @@ int cClient::run_sender() {
     struct ping_pkt_t *ping_pkt;
     struct ping_msg_t *ping_msg;
     stringstream ss;
-    //Todo RANDOM PACKET CONTENT
-    unsigned char packet[MAX_PKT_SIZE + 60] = {0}; //Random FILL will be better
     int nRet;
-    //bool show = not setup->silent();
+
+    unsigned char packet[MAX_PKT_SIZE + 60] = {0};
+
+    //initialize random number generator
+    uint64_t milliseconds_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    std::srand((unsigned)milliseconds_since_epoch);
+
+    for (int i = 0; i< sizeof packet; i++){
+        packet[i] = (uint8_t)(rand() % 256);
+    }
 
     delta = 0;
     clock_gettime(CLOCK_REALTIME, &sentTv); //FIX initial delta
@@ -298,6 +318,7 @@ int cClient::run_sender() {
         }
     }
     ping_pkt->type = PING; //prepare the first packet
+    ping_pkt->flow_id = (uint16_t)(rand() % 65536);
     clock_gettime(CLOCK_REALTIME, &start_ts);
     my_ts.tv_sec += setup->getTime_t();
     ping_pkt->sec = start_ts.tv_sec;

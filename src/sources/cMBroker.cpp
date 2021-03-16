@@ -59,10 +59,11 @@ cMessageBroker::cMessageBroker(cSetup *setup, cStats *stats){
         this->sampled_int[i].pkt_cnt = 0;
         this->sampled_int[i].ts_limit = 0;
         this->sampled_int[i].seq = 0;
+        this->sampled_int[i].ooo = 0;
+        this->sampled_int[i].dup = 0;
         this->sampled_int[i].rtt_sum = 0;
         this->sampled_int[i].bytes = 0;
     }
-
     json_first = true;
 }
 
@@ -322,6 +323,8 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
             if (setup->toJSON()) {
                 *output << "\n\t],";
                 *output << "\n\t\"client_stats\": {";
+                *output << "\n\t\t\"ooo\" :"<< ooo_cnt << ",";
+                *output << "\n\t\t\"dup\" :"<< ooo_cnt << ",";
                 *output << "\n\t\t\"duration\" :"<< (std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count())/1000.0;
                 *output << "\n\t}";
                 *output << "\n}"<<std::endl;
@@ -385,6 +388,16 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
         }
         if (ts < sampled_int[dir].ts_limit){
             if (dir == RX){
+                if (sampled_int[dir].last_seen_seq == seq){
+                    dup_cnt++;
+                    sampled_int[dir].dup++;
+                    return ss.str();
+                }
+                if (sampled_int[dir].last_seen_seq > seq){
+                    ooo_cnt++;
+                    sampled_int[dir].ooo++;
+                    return ss.str();
+                }
                 sampled_int[dir].rtt_sum += rtt;
                 jt_diff = rtt - jt_rtt_prev;
                 if (jt_diff < 0) jt_diff = -jt_diff;
@@ -414,6 +427,8 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                     ss << "\n\t\t\t\"loss\":\"" << 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((seq)-sampled_int[dir].first_seq) << "\","; //in ms
                     ss << "\n\t\t\t\"rtt\":\"" << std::setprecision(3) << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << "\","; //in ms
                     ss << "\n\t\t\t\"jitter\":\"" << std::setprecision(3) << sampled_int[dir].jitter_sum/sampled_int[dir].pkt_cnt << "\","; //in ms
+                    ss << "\n\t\t\t\"ooo\":\"" << sampled_int[dir].ooo << "\",";
+                    ss << "\n\t\t\t\"dup\":\"" << sampled_int[dir].dup << "\",";
                 }
                 ss << "\n\t\t\t\"pkts\":\"" << sampled_int[dir].pkt_cnt << "\",";
                 ss << "\n\t\t\t\"bytes\":" << sampled_int[dir].bytes << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";
@@ -425,6 +440,8 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                 if (dir == RX){
                     ss << "\n\t\t\t\"dir\":\"rx\",";
                     ss << "\n\t\t\t\"loss\":\"" << 1 << "\",";
+                    ss << "\n\t\t\t\"ooo\":\"" << 0 << "\",";
+                    ss << "\n\t\t\t\"dup\":\"" << 0 << "\",";
                     ss << "\n\t\t\t\"rtt\":\"" << 0 << "\","; //in ms
                     ss << "\n\t\t\t\"jitter\":\"" << 0 << "\","; //in ms
                 }
@@ -433,6 +450,16 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
             }
             sampled_int[dir].bytes = size;
             if (dir == RX) {
+                if (sampled_int[dir].last_seen_seq == seq){
+                    dup_cnt++;
+                    sampled_int[dir].dup++;
+                    return ss.str();
+                }
+                if (sampled_int[dir].last_seen_seq > seq){
+                    sampled_int[dir].ooo++;
+                    ooo_cnt++;
+                    return ss.str();
+                }
                 sampled_int[dir].rtt_sum = rtt;
                 jt_diff = rtt - jt_rtt_prev;
                 jt_rtt_prev = rtt;
@@ -457,10 +484,20 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
             ss << "\n\t\t\t\"dir\":\"tx\",";
         }
         if (dir == RX){
+            if (sampled_int[dir].last_seen_seq == seq){
+                dup_cnt++;
+                return ss.str();
+            }
+            if (sampled_int[dir].last_seen_seq > seq){
+                ooo_cnt++;
+                return ss.str();
+            }
+
             ss << "\n\t\t\t\"dir\":\"rx\",";
             ss << "\n\t\t\t\"rtt\":\"" << std::setprecision(3) << rtt << "\","; //in ms
         }
         ss << "\n\t\t\t\"size\":" << size << ",\n\t\t\t\"seq\":" << seq << "\n\t\t}";
+        sampled_int[dir].last_seen_seq = seq;
         return ss.str();
     }
     return ss.str();
@@ -487,6 +524,8 @@ std::string cMessageBroker::prepFinalDataRec(const u_int8_t dir){
             ss << "\n\t\t\t\"loss\":\"" << 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((sampled_int[dir].last_seen_seq+1)-sampled_int[dir].first_seq) << "\","; //in ms
             ss << "\n\t\t\t\"rtt\":\"" << std::setprecision(3) << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << "\","; //in ms
             ss << "\n\t\t\t\"jitter\":\"" << std::setprecision(3) << sampled_int[dir].jitter_sum/sampled_int[dir].pkt_cnt << "\","; //in ms
+            ss << "\n\t\t\t\"ooo\":\"" << sampled_int[dir].ooo << "\",";
+            ss << "\n\t\t\t\"dup\":\"" << sampled_int[dir].dup << "\",";
         }
         ss << "\n\t\t\t\"pkts\":\"" << sampled_int[dir].pkt_cnt << "\",";
         ss << "\n\t\t\t\"bytes\":" << sampled_int[dir].bytes << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";

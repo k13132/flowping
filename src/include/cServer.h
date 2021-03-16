@@ -52,7 +52,8 @@ private:
     int sock;
     bool stop;
 private:
-    t_conn * getConnection6(sockaddr_in6 addr);
+    t_conn *getConnection6(sockaddr_in6 addr);
+    t_conn *getConnectionFID(sockaddr_in6 addr, ping_pkt_t *pkt);
     string stripFFFF(string str);
     void processCMessage(gen_msg_t *msg, t_conn * connection);
 };

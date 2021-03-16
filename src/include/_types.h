@@ -116,12 +116,12 @@ struct ping_pkt_t {         //Min PK SIZE 32B
     u_int8_t type;
     u_int8_t id;
     u_int16_t size;         //payload_size
+    u_int16_t flow_id;
     u_int16_t padding1;
-    u_int16_t check;
     u_int64_t sec;
     u_int64_t nsec;
     u_int64_t seq;
-    char padding[MAX_PKT_SIZE];
+    char data[MAX_PKT_SIZE-HEADER_LENGTH];
 };
 
 struct ping_msg_t {         //Min MSG SIZE 18B
@@ -132,7 +132,7 @@ struct ping_msg_t {         //Min MSG SIZE 18B
     u_int8_t params;        // 00000001 - H_PAR //Bit encoded
     u_int8_t id;
     u_int16_t check;
-    char msg[MAX_PKT_SIZE];
+    char msg[MAX_PKT_SIZE-HEADER_LENGTH];
 };
 
 struct gen_msg_t{           //Min MSG SIZE 32B
@@ -142,7 +142,7 @@ struct gen_msg_t{           //Min MSG SIZE 32B
     u_int64_t padding_3;
     u_int64_t padding_4;
     u_int64_t padding_5;
-    char msg[MAX_PKT_SIZE];
+    char msg[MAX_PKT_SIZE-HEADER_LENGTH];
 };
 
 struct t_conn{
@@ -195,6 +195,8 @@ struct sampled_int_t{
     u_int64_t bytes;
     u_int64_t ts_limit;
     u_int64_t seq;
+    u_int64_t ooo;
+    u_int64_t dup;
     float jitter_sum;
 };
 
