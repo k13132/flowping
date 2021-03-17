@@ -323,8 +323,8 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
             if (setup->toJSON()) {
                 *output << "\n\t],";
                 *output << "\n\t\"client_stats\": {";
-                *output << "\n\t\t\"ooo\" :"<< ooo_cnt << ",";
-                *output << "\n\t\t\"dup\" :"<< dup_cnt << ",";
+                *output << "\n\t\t\"ooo_pkts\" :"<< ooo_cnt << ",";
+                *output << "\n\t\t\"dup_pkts\" :"<< dup_cnt << ",";
                 *output << "\n\t\t\"duration\" :"<< (std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count())/1000.0;
                 *output << "\n\t}";
                 *output << "\n}"<<std::endl;
@@ -427,8 +427,8 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                     ss << "\n\t\t\t\"loss\":\"" << 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((seq)-sampled_int[dir].first_seq) << "\","; //in ms
                     ss << "\n\t\t\t\"rtt\":\"" << std::setprecision(3) << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << "\","; //in ms
                     ss << "\n\t\t\t\"jitter\":\"" << std::setprecision(3) << sampled_int[dir].jitter_sum/sampled_int[dir].pkt_cnt << "\","; //in ms
-                    ss << "\n\t\t\t\"ooo\":\"" << sampled_int[dir].ooo << "\",";
-                    ss << "\n\t\t\t\"dup\":\"" << sampled_int[dir].dup << "\",";
+                    ss << "\n\t\t\t\"ooo_pkts\":\"" << sampled_int[dir].ooo << "\",";
+                    ss << "\n\t\t\t\"dup_pkts\":\"" << sampled_int[dir].dup << "\",";
                 }
                 ss << "\n\t\t\t\"pkts\":\"" << sampled_int[dir].pkt_cnt << "\",";
                 ss << "\n\t\t\t\"bytes\":" << sampled_int[dir].bytes << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";
@@ -440,8 +440,8 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                 if (dir == RX){
                     ss << "\n\t\t\t\"dir\":\"rx\",";
                     ss << "\n\t\t\t\"loss\":\"" << 1 << "\",";
-                    ss << "\n\t\t\t\"ooo\":\"" << 0 << "\",";
-                    ss << "\n\t\t\t\"dup\":\"" << 0 << "\",";
+                    ss << "\n\t\t\t\"ooo_pkts\":\"" << 0 << "\",";
+                    ss << "\n\t\t\t\"dup_pkts\":\"" << 0 << "\",";
                     ss << "\n\t\t\t\"rtt\":\"" << 0 << "\","; //in ms
                     ss << "\n\t\t\t\"jitter\":\"" << 0 << "\","; //in ms
                 }
@@ -527,8 +527,8 @@ std::string cMessageBroker::prepFinalDataRec(const u_int8_t dir){
             ss << "\n\t\t\t\"loss\":\"" << 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((sampled_int[dir].last_seen_seq+1)-sampled_int[dir].first_seq) << "\","; //in ms
             ss << "\n\t\t\t\"rtt\":\"" << std::setprecision(3) << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << "\","; //in ms
             ss << "\n\t\t\t\"jitter\":\"" << std::setprecision(3) << sampled_int[dir].jitter_sum/sampled_int[dir].pkt_cnt << "\","; //in ms
-            ss << "\n\t\t\t\"ooo\":\"" << sampled_int[dir].ooo << "\",";
-            ss << "\n\t\t\t\"dup\":\"" << sampled_int[dir].dup << "\",";
+            ss << "\n\t\t\t\"ooo_pkts\":\"" << sampled_int[dir].ooo << "\",";
+            ss << "\n\t\t\t\"dup_pkts\":\"" << sampled_int[dir].dup << "\",";
         }
         ss << "\n\t\t\t\"pkts\":\"" << sampled_int[dir].pkt_cnt << "\",";
         ss << "\n\t\t\t\"bytes\":" << sampled_int[dir].bytes << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";
