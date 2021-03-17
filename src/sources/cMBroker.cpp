@@ -324,7 +324,7 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
                 *output << "\n\t],";
                 *output << "\n\t\"client_stats\": {";
                 *output << "\n\t\t\"ooo\" :"<< ooo_cnt << ",";
-                *output << "\n\t\t\"dup\" :"<< ooo_cnt << ",";
+                *output << "\n\t\t\"dup\" :"<< dup_cnt << ",";
                 *output << "\n\t\t\"duration\" :"<< (std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count())/1000.0;
                 *output << "\n\t}";
                 *output << "\n}"<<std::endl;
@@ -449,7 +449,10 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                 ss << "\n\t\t\t\"bytes\":" << 0 << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";
             }
             sampled_int[dir].bytes = size;
+
             if (dir == RX) {
+                sampled_int[dir].ooo = 0;
+                sampled_int[dir].dup = 0;
                 if (sampled_int[dir].last_seen_seq == seq){
                     dup_cnt++;
                     sampled_int[dir].dup++;
