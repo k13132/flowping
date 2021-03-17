@@ -24,7 +24,7 @@ public:
     void run();
 private:
     // todo remove dup
-    u_int64_t dup;
+    u_int64_t pkt_cnt_tx, pkt_cnt_rx, bytes_cnt_tx, bytes_cnt_rx;
     u_int64_t dcnt, dcnt_rx, dcnt_tx;
     struct timespec curTv;
     std::chrono::system_clock::time_point start;

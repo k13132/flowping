@@ -22,7 +22,6 @@ std::ostream& operator<<(std::ostream& os, const ping_msg_t& obj)
 
 
 cMessageBroker::cMessageBroker(cSetup *setup, cStats *stats){
-    dup = 0;
     if (setup) {
         this->setup = setup;
     }else{
@@ -44,6 +43,10 @@ cMessageBroker::cMessageBroker(cSetup *setup, cStats *stats){
     }
     dcnt_rx = 0;
     dcnt_tx = 0;
+    bytes_cnt_rx = 0;
+    bytes_cnt_rx = 0;
+    pkt_cnt_rx = 0;
+    pkt_cnt_tx = 0;
 
     this->rtt_avg = -1;
     this->rtt_min = -1;
@@ -266,6 +269,7 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
             ping_pkt = (struct ping_pkt_t*) (msg);
             ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den));
             pkt_rtt = ((tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den)) - (ping_pkt->sec * 1000000000L) - (ping_pkt->nsec))/1000000.0; //ms
+            //ToDo A! packet counter in prepDataRec !
             if (not setup->silent()) {
                 *output << prepDataRec(ts, RX, ping_pkt->size, ping_pkt->seq, pkt_rtt);
             }
@@ -323,6 +327,10 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
             if (setup->toJSON()) {
                 *output << "\n\t],";
                 *output << "\n\t\"client_stats\": {";
+                *output << "\n\t\t\"tx_pkts\" :"<< pkt_cnt_tx << ",";
+                *output << "\n\t\t\"rx_pkts\" :"<< pkt_cnt_rx << ",";
+                *output << "\n\t\t\"tx_bytes\" :"<< bytes_cnt_tx << ",";
+                *output << "\n\t\t\"rx_bytes\" :"<< bytes_cnt_rx << ",";
                 *output << "\n\t\t\"ooo_pkts\" :"<< ooo_cnt << ",";
                 *output << "\n\t\t\"dup_pkts\" :"<< dup_cnt << ",";
                 *output << "\n\t\t\"duration\" :"<< (std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count())/1000.0;
@@ -398,12 +406,18 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                     sampled_int[dir].ooo++;
                     return ss.str();
                 }
+                pkt_cnt_rx++;
+                bytes_cnt_rx += size;
                 sampled_int[dir].rtt_sum += rtt;
                 jt_diff = rtt - jt_rtt_prev;
                 if (jt_diff < 0) jt_diff = -jt_diff;
                 jitter +=  (1.0/16.0) * (jt_diff - jitter);
                 sampled_int[dir].jitter_sum += jitter;
+            } else{
+                pkt_cnt_tx++;
+                bytes_cnt_tx += size;
             }
+
             sampled_int[dir].pkt_cnt++;
             sampled_int[dir].bytes += size;
             sampled_int[dir].last_seen_seq = seq;
@@ -463,12 +477,17 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                     ooo_cnt++;
                     return ss.str();
                 }
+                pkt_cnt_rx++;
+                bytes_cnt_rx += size;
                 sampled_int[dir].rtt_sum = rtt;
                 jt_diff = rtt - jt_rtt_prev;
                 jt_rtt_prev = rtt;
                 if (jt_diff < 0) jt_diff = -jt_diff;
                 jitter +=  (1.0/16.0) * (jt_diff - jitter);
                 sampled_int[dir].jitter_sum  = jitter;
+            }else{
+                pkt_cnt_tx++;
+                bytes_cnt_tx += size;
             }
             sampled_int[dir].pkt_cnt = 1;
             sampled_int[dir].first_seq = seq;
