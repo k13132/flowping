@@ -58,7 +58,7 @@ cMessageBroker::cMessageBroker(cSetup *setup, cStats *stats){
 
     for (int i = 0; i < 2; i++){
         this->sampled_int[i].first = true;
-        this->sampled_int[i].first_seq = 0;
+        this->sampled_int[i].first_seq = 1;
         this->sampled_int[i].pkt_cnt = 0;
         this->sampled_int[i].ts_limit = 0;
         this->sampled_int[i].seq = 0;
@@ -437,6 +437,7 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                     ss << "\n\t\t\t\"dir\":\"tx\",";
                 }
                 if (dir == RX){
+                    //std::cout << seq << " .:. " << sampled_int[dir].first_seq << " pkts:" << sampled_int[dir].pkt_cnt << std::endl;
                     ss << "\n\t\t\t\"dir\":\"rx\",";
                     ss << "\n\t\t\t\"loss\":\"" << 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((seq)-sampled_int[dir].first_seq) << "\","; //in ms
                     ss << "\n\t\t\t\"rtt\":\"" << std::setprecision(3) << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << "\","; //in ms
