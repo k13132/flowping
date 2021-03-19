@@ -337,7 +337,8 @@ int cClient::run_sender() {
     }
     u_int64_t start_time = NS_TIME(start_ts);
     u_int64_t deadline = setup->getDeadline() * 1000000000L + start_time;
-    for (unsigned int i = 1; (i <= setup->getCount() && not setup->isStop()); i++) {
+    unsigned int i;
+    for (i = 1; (i <= setup->getCount() && not setup->isStop());) {
         refTv = sentTv;
         clock_gettime(CLOCK_REALTIME, &sentTv);
         curTv = sentTv;
@@ -347,7 +348,6 @@ int cClient::run_sender() {
             tgTime = start_time + tinfo.ts;
             // Drop delayed packets (+ 250 ms safe zone);
             if (NS_TIME(curTv) > (tgTime + 250000)) continue;
-
             if (setup->actWaiting()) {
                 while (NS_TIME(curTv) < tgTime) {
                     clock_gettime(CLOCK_REALTIME, &curTv);
@@ -373,7 +373,6 @@ int cClient::run_sender() {
             setup->setStop(true);
             break;
         }
-
         if (setup->isAntiAsym()) {
             payload_size = MIN_PKT_SIZE;
         }
@@ -387,6 +386,8 @@ int cClient::run_sender() {
         msg->type = MSG_TX_PKT;
         msg->size = nRet;
         mbroker->push_tx(msg);
+        //Increment here - packet can be timeouted
+        i++;
     }
     if (setup->nextPacket()) {
         //std::cerr << "PBuffer not empty." << std::endl;

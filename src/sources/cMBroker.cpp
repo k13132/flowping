@@ -47,6 +47,7 @@ cMessageBroker::cMessageBroker(cSetup *setup, cStats *stats){
     bytes_cnt_rx = 0;
     pkt_cnt_rx = 0;
     pkt_cnt_tx = 0;
+    gcounter = 0;
 
     this->rtt_avg = -1;
     this->rtt_min = -1;
@@ -337,6 +338,7 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
                 *output << "\n\t}";
                 *output << "\n}"<<std::endl;
             }
+            std::cout << gcounter << std::endl;
             if (fout.is_open()){
                 fout.close();
                 output = &std::cout;
