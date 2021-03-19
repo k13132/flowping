@@ -76,13 +76,10 @@ cMessageBroker::cMessageBroker(cSetup *setup, cStats *stats){
 
 
 cMessageBroker::~cMessageBroker(){
-    if(this->t_msg != nullptr){
-        delete this->t_msg;
-        this->t_msg = nullptr;
-    }
 }
 
 void cMessageBroker::push(t_conn *conn, gen_msg_t *msg){
+    struct t_msg_t *t_msg;
     t_msg = new t_msg_t;
     t_msg->tp = std::chrono::system_clock::now();
     t_msg->msg = msg;
@@ -92,6 +89,7 @@ void cMessageBroker::push(t_conn *conn, gen_msg_t *msg){
 }
 
 void cMessageBroker::push_rx(gen_msg_t *msg){
+    struct t_msg_t *t_msg;
     t_msg = new t_msg_t;
     t_msg->tp = std::chrono::system_clock::now();
     t_msg->msg = msg;
@@ -100,6 +98,7 @@ void cMessageBroker::push_rx(gen_msg_t *msg){
 }
 
 void cMessageBroker::push_tx(gen_msg_t *msg){
+    struct t_msg_t *t_msg;
     t_msg = new t_msg_t;
     t_msg->tp = std::chrono::system_clock::now();
     t_msg->msg = msg;
@@ -108,6 +107,7 @@ void cMessageBroker::push_tx(gen_msg_t *msg){
 }
 
 void cMessageBroker::push_lp(gen_msg_t *msg){
+    struct t_msg_t *t_msg;
     t_msg = new t_msg_t;
     t_msg->tp = std::chrono::system_clock::now();
     t_msg->msg = msg;
@@ -115,6 +115,7 @@ void cMessageBroker::push_lp(gen_msg_t *msg){
 }
 
 void cMessageBroker::push_hp(gen_msg_t *msg){
+    struct t_msg_t *t_msg;
     t_msg = new t_msg_t;
     t_msg->tp = std::chrono::system_clock::now();
     t_msg->msg = msg;
@@ -182,19 +183,19 @@ void cMessageBroker::run(){
             //HI priority message queue
             while (msg_buf_hp.front()){
                 processAndDeleteServerMessage(*msg_buf_hp.front());
-                //delete *msg_buf_hp.front();
+                delete *msg_buf_hp.front();
                 msg_buf_hp.pop();
             }
             //MAIN queue
             while (msg_buf.front()){
                 processAndDeleteServerMessage(*msg_buf.front());
-                //delete *msg_buf.front();
+                delete *msg_buf.front();
                 msg_buf.pop();
             }
             //LOW priority message queue
             while (msg_buf_lp.front()){
                 processAndDeleteServerMessage(*msg_buf_lp.front());
-                //delete *msg_buf_lp.front();
+                delete *msg_buf_lp.front();
                 msg_buf_lp.pop();
             }
         }
@@ -204,7 +205,8 @@ void cMessageBroker::run(){
 
 
 void cMessageBroker::processAndDeleteServerMessage(t_msg_t *tmsg) {
-    switch(((gen_msg_t *) tmsg)->type){
+    gen_msg_t *msg = tmsg->msg;
+    switch(msg->type){
         case MSG_RX_PKT:
             break;
         case MSG_TX_PKT:
@@ -218,8 +220,8 @@ void cMessageBroker::processAndDeleteServerMessage(t_msg_t *tmsg) {
         default:
             std::cerr << "ERROR :: UNKNOWN MSG TYPE RECEIVED!";
     }
-    delete tmsg;
-    tmsg = nullptr;
+    delete msg;
+    msg = nullptr;
 }
 
 void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){

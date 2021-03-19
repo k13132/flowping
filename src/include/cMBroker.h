@@ -32,7 +32,6 @@ private:
     std::chrono::system_clock::time_point end;
 
     cSetup *setup;
-    struct t_msg_t *t_msg;
     cClientStats *c_stats;
     cServerStats *s_stats;
 
