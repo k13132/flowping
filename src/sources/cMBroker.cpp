@@ -124,11 +124,11 @@ void cMessageBroker::push_hp(gen_msg_t *msg){
 void cMessageBroker::run(){
     u_int64_t rx_ts;
     u_int64_t tx_ts;
-    t_msg_t * tmp_msg;
+    //t_msg_t * tmp_msg;
     t_msg_t * rx_msg;
     t_msg_t * tx_msg;
     u_int64_t first=0;
-    u_int64_t last=0;
+    //u_int64_t last=0;
     if (setup->isClient()){
         while (!setup->isDone()){
             usleep(10);
@@ -154,7 +154,7 @@ void cMessageBroker::run(){
 
                 if ((rx_ts < tx_ts) || ((tx_ts)&&(rx_ts == 0))){
                     if (first==0) first = tx_ts;
-                    last = tx_ts;
+                    //last = tx_ts;
                     processAndDeleteClientMessage(*msg_buf_tx.front());
                     delete *msg_buf_tx.front();
                     msg_buf_tx.pop();
@@ -211,9 +211,9 @@ void cMessageBroker::run(){
 
 
 void cMessageBroker::processAndDeleteServerMessage(t_msg_t *tmsg) {
-    std::chrono::system_clock::time_point tp = tmsg->tp;
+    //std::chrono::system_clock::time_point tp = tmsg->tp;
     gen_msg_t *msg = tmsg->msg;
-    u_int64_t ts;
+    //u_int64_t ts;
     switch(msg->type){
         case MSG_RX_PKT:
             break;

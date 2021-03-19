@@ -145,7 +145,7 @@ int cServer::run() {
 
 void cServer::processCMessage(gen_msg_t *msg, t_conn * connection){
 
-    u_int64_t ts; 
+    //u_int64_t ts;
     u_int64_t conn = connection->conn_id;
     //ToDo
     //stats->connInit(conn_id, string(client_ip), saClient.sin_port);

@@ -198,9 +198,9 @@ int cClient::run_receiver() {
     unsigned char packet[MAX_PKT_SIZE + 60];
     int nRet;
 
-    int nFromLen;
+    //int nFromLen;
+    //nFromLen = sizeof (struct sockaddr);
 
-    nFromLen = sizeof (struct sockaddr);
     clock_gettime(CLOCK_REALTIME, &r_curTv);
 
     //MAIN RX LOOP  *******************************************
@@ -244,7 +244,7 @@ int cClient::run_sender() {
     uint64_t milliseconds_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     std::srand((unsigned)milliseconds_since_epoch);
 
-    for (int i = 0; i< sizeof packet; i++){
+    for (unsigned i = 0; i< sizeof packet; i++){
         packet[i] = (uint8_t)(rand() % 256);
     }
 
@@ -347,9 +347,9 @@ int cClient::run_sender() {
             //Target time
             tgTime = start_time + tinfo.ts;
             // Drop delayed packets (+ 250 ms safe zone);
-            if (NS_TIME(curTv) > (tgTime + 250000)) continue;
+            if (uint64_t(NS_TIME(curTv)) > (tgTime + 250000)) continue;
             if (setup->actWaiting()) {
-                while (NS_TIME(curTv) < tgTime) {
+                while (uint64_t(NS_TIME(curTv)) < tgTime) {
                     clock_gettime(CLOCK_REALTIME, &curTv);
                 }
             } else {
@@ -366,7 +366,7 @@ int cClient::run_sender() {
             ping_pkt->seq = i;
 
             //check deadline
-            if (deadline < (curTv.tv_sec * 1000000000L + curTv.tv_nsec)){
+            if (deadline < (uint64_t)(curTv.tv_sec * 1000000000L + curTv.tv_nsec)){
                 setup->setStop(true);
             }
         } else {

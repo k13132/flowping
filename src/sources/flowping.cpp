@@ -114,7 +114,7 @@ void signalHandler(int sig) {
 
 int main(int argc, char** argv) {
     // CPUs
-    unsigned int cpus = std::thread::hardware_concurrency();
+    //unsigned int cpus = std::thread::hardware_concurrency();
 
     // Osetreni reakci na signaly
     struct sigaction act;
