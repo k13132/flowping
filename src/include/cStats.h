@@ -108,6 +108,7 @@ private:
 class cServerStats : public cStats {
 public:
     cServerStats(cSetup *setup);
+    ~cServerStats();
     virtual void printSummary(void);
     virtual void printRealTime(void);
     void pktSent(const u_int64_t conn_id, const timespec ts, const uint16_t len, const u_int64_t seq, const std::string src, const u_int32_t port); //increment tx_pkts & calculate bitrate;
@@ -122,6 +123,7 @@ private:
 class cClientStats : public cStats {
 public:
     cClientStats(cSetup *setup);
+    ~cClientStats();
     std::string getReport(void);
     void pktOoo(void); //increment OutOfOrder packet counter;
     void pktSent(const timespec ts, const uint16_t len, const u_int64_t seq); //increment tx_pkts  & calculate bitrate;

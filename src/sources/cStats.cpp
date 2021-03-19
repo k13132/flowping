@@ -176,6 +176,9 @@ cClientStats::cClientStats(cSetup *setup) {
     this->setup = setup;
 }
 
+cClientStats::~cClientStats(){
+    delete this->stats;
+}
 
 
 std::ostream& operator<<(std::ostream& os, const timed_packet_t& obj)
@@ -458,6 +461,11 @@ cServerStats::cServerStats(cSetup *setup) {
         this->setup = nullptr;
     }
 }
+
+cServerStats::~cServerStats(){
+    //delete this->stats;
+}
+
 
 void cServerStats::pktSent(const u_int64_t conn_id, const timespec ts, const uint16_t len, const u_int64_t seq, const std::string src, const u_int32_t port) {
     if (s_stats.count(conn_id) == 0) {

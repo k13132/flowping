@@ -43,11 +43,12 @@ cMessageBroker::cMessageBroker(cSetup *setup, cStats *stats){
     }
     dcnt_rx = 0;
     dcnt_tx = 0;
-    bytes_cnt_rx = 0;
+    bytes_cnt_tx = 0;
     bytes_cnt_rx = 0;
     pkt_cnt_rx = 0;
     pkt_cnt_tx = 0;
     gcounter = 0;
+    dup_cnt = 0;
 
     this->rtt_avg = -1;
     this->rtt_min = -1;
@@ -67,17 +68,21 @@ cMessageBroker::cMessageBroker(cSetup *setup, cStats *stats){
         this->sampled_int[i].dup = 0;
         this->sampled_int[i].rtt_sum = 0;
         this->sampled_int[i].bytes = 0;
+        this->sampled_int[i].jitter_sum = 0;
+        this->sampled_int[i].last_seen_seq = 0;
     }
     json_first = true;
 }
 
 
 cMessageBroker::~cMessageBroker(){
-
+    if(this->t_msg != nullptr){
+        delete this->t_msg;
+        this->t_msg = nullptr;
+    }
 }
 
 void cMessageBroker::push(t_conn *conn, gen_msg_t *msg){
-    struct t_msg_t *t_msg;
     t_msg = new t_msg_t;
     t_msg->tp = std::chrono::system_clock::now();
     t_msg->msg = msg;
@@ -87,7 +92,6 @@ void cMessageBroker::push(t_conn *conn, gen_msg_t *msg){
 }
 
 void cMessageBroker::push_rx(gen_msg_t *msg){
-    struct t_msg_t *t_msg;
     t_msg = new t_msg_t;
     t_msg->tp = std::chrono::system_clock::now();
     t_msg->msg = msg;
@@ -96,7 +100,6 @@ void cMessageBroker::push_rx(gen_msg_t *msg){
 }
 
 void cMessageBroker::push_tx(gen_msg_t *msg){
-    struct t_msg_t *t_msg;
     t_msg = new t_msg_t;
     t_msg->tp = std::chrono::system_clock::now();
     t_msg->msg = msg;
@@ -105,7 +108,6 @@ void cMessageBroker::push_tx(gen_msg_t *msg){
 }
 
 void cMessageBroker::push_lp(gen_msg_t *msg){
-    struct t_msg_t *t_msg;
     t_msg = new t_msg_t;
     t_msg->tp = std::chrono::system_clock::now();
     t_msg->msg = msg;
@@ -113,7 +115,6 @@ void cMessageBroker::push_lp(gen_msg_t *msg){
 }
 
 void cMessageBroker::push_hp(gen_msg_t *msg){
-    struct t_msg_t *t_msg;
     t_msg = new t_msg_t;
     t_msg->tp = std::chrono::system_clock::now();
     t_msg->msg = msg;
@@ -124,14 +125,12 @@ void cMessageBroker::push_hp(gen_msg_t *msg){
 void cMessageBroker::run(){
     u_int64_t rx_ts;
     u_int64_t tx_ts;
-    //t_msg_t * tmp_msg;
     t_msg_t * rx_msg;
     t_msg_t * tx_msg;
     u_int64_t first=0;
-    //u_int64_t last=0;
     if (setup->isClient()){
         while (!setup->isDone()){
-            usleep(10);
+            usleep(1);
             //HI priority message queue
             while (msg_buf_hp.front()){
                 processAndDeleteClientMessage(*msg_buf_hp.front());
@@ -139,7 +138,6 @@ void cMessageBroker::run(){
                 msg_buf_hp.pop();
             }
             while ((msg_buf_rx.front())||(msg_buf_tx.front())){
-                //std::cerr << msg_buf_rx.size() << std::endl;
                 rx_ts = 0;
                 tx_ts = 0;
                 if (msg_buf_rx.front()){
@@ -154,7 +152,6 @@ void cMessageBroker::run(){
 
                 if ((rx_ts < tx_ts) || ((tx_ts)&&(rx_ts == 0))){
                     if (first==0) first = tx_ts;
-                    //last = tx_ts;
                     processAndDeleteClientMessage(*msg_buf_tx.front());
                     delete *msg_buf_tx.front();
                     msg_buf_tx.pop();
@@ -164,9 +161,8 @@ void cMessageBroker::run(){
                     delete *msg_buf_rx.front();
                     msg_buf_rx.pop();
                 }
-                //usleep(1);
             }
-            //LOW priority message queue
+            // LOW priority message queue
             while (msg_buf_lp.front()){
                 processAndDeleteClientMessage(*msg_buf_lp.front());
                 delete *msg_buf_lp.front();
@@ -174,14 +170,11 @@ void cMessageBroker::run(){
             }
         }
         //Todo: better signaling needded (do not shutdown mbroker until everything is done)
-        //std::cout << "Done." << std::endl;
         while (msg_buf_lp.front()){
             processAndDeleteClientMessage(*msg_buf_lp.front());
             delete *msg_buf_lp.front();
             msg_buf_lp.pop();
         }
-        //std::cerr << "MSG processed TX/RX: " << dcnt_tx << "/" << dcnt_rx << std::endl;
-        //std::cerr << "Packet generator was active for [tv_sec]:  " << (last-first)/1000000000.0 << std::endl;
     }
     if (setup->isServer()){
         while (!setup->isDone()){
@@ -211,10 +204,7 @@ void cMessageBroker::run(){
 
 
 void cMessageBroker::processAndDeleteServerMessage(t_msg_t *tmsg) {
-    //std::chrono::system_clock::time_point tp = tmsg->tp;
-    gen_msg_t *msg = tmsg->msg;
-    //u_int64_t ts;
-    switch(msg->type){
+    switch(((gen_msg_t *) tmsg)->type){
         case MSG_RX_PKT:
             break;
         case MSG_TX_PKT:
@@ -228,20 +218,14 @@ void cMessageBroker::processAndDeleteServerMessage(t_msg_t *tmsg) {
         default:
             std::cerr << "ERROR :: UNKNOWN MSG TYPE RECEIVED!";
     }
-    delete msg;
     delete tmsg;
+    tmsg = nullptr;
 }
 
 void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
     std::chrono::system_clock::time_point tp = tmsg->tp;
     gen_msg_t *msg = tmsg->msg;
     u_int64_t ts;
-
-//    if (msg == nullptr){
-//        std::cout << "MSG_NULL" << std::endl;
-//        return;
-//    }
-
     switch(msg->type){
         case MSG_RX_CNT:
             //Todo modify structure !!!! packet data not present - ONLY header was copied
@@ -351,7 +335,7 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
             std::cerr << "ERROR :: UNKNOWN MSG TYPE RECEIVED!";
     }
     //std::cout << "MSG delete at: " << msg << std::endl;
-    delete(msg);
+    delete msg;
     msg = nullptr;
 };
 
