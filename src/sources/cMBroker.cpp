@@ -268,6 +268,7 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
             //std::cout << "MSG_RX_PKT" << std::endl;
             //Todo modify structure !!!! packet data not present - ONLY header was copied
             ping_pkt = (struct ping_pkt_t*) (msg);
+            if (ping_pkt->size < HEADER_LENGTH) std::cerr << "Invalid RX Packet Size: " << ping_pkt->size << std::endl;
             ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den));
             pkt_rtt = ((tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den)) - (ping_pkt->sec * 1000000000L) - (ping_pkt->nsec))/1000000.0; //ms
             //ToDo A! packet counter in prepDataRec !
@@ -279,6 +280,7 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
 
         case MSG_TX_PKT:
             ping_pkt = (struct ping_pkt_t*) (msg);
+            if (ping_pkt->size < HEADER_LENGTH) std::cerr << "Invalid TX Packet Size: " << ping_pkt->size << std::endl;
             ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den));
             if (not setup->silent()) {
                 *output << prepDataRec(ts, TX, ping_pkt->size, ping_pkt->seq, 0);
