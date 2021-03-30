@@ -47,7 +47,6 @@ cMessageBroker::cMessageBroker(cSetup *setup, cStats *stats){
     bytes_cnt_rx = 0;
     pkt_cnt_rx = 0;
     pkt_cnt_tx = 0;
-    gcounter = 0;
     dup_cnt = 0;
 
     this->rtt_avg = -1;
@@ -326,7 +325,6 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
                 *output << "\n\t}";
                 *output << "\n}"<<std::endl;
             }
-            std::cout << gcounter << std::endl;
             if (fout.is_open()){
                 fout.close();
                 output = &std::cout;
@@ -429,13 +427,13 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                 if (dir == RX){
                     //std::cout << seq << " .:. " << sampled_int[dir].first_seq << " pkts:" << sampled_int[dir].pkt_cnt << std::endl;
                     ss << "\n\t\t\t\"dir\":\"rx\",";
-                    ss << "\n\t\t\t\"loss\":\"" << 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((seq)-sampled_int[dir].first_seq) << "\","; //in ms
-                    ss << "\n\t\t\t\"rtt\":\"" << std::setprecision(3) << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << "\","; //in ms
-                    ss << "\n\t\t\t\"jitter\":\"" << std::setprecision(3) << sampled_int[dir].jitter_sum/sampled_int[dir].pkt_cnt << "\","; //in ms
-                    ss << "\n\t\t\t\"ooo_pkts\":\"" << sampled_int[dir].ooo << "\",";
-                    ss << "\n\t\t\t\"dup_pkts\":\"" << sampled_int[dir].dup << "\",";
+                    ss << "\n\t\t\t\"loss\":" << 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((seq)-sampled_int[dir].first_seq) << ","; //in ms
+                    ss << "\n\t\t\t\"rtt\":" << std::setprecision(3) << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << ","; //in ms
+                    ss << "\n\t\t\t\"jitter\":" << std::setprecision(3) << sampled_int[dir].jitter_sum/sampled_int[dir].pkt_cnt << ","; //in ms
+                    ss << "\n\t\t\t\"ooo_pkts\":" << sampled_int[dir].ooo << ",";
+                    ss << "\n\t\t\t\"dup_pkts\":" << sampled_int[dir].dup << ",";
                 }
-                ss << "\n\t\t\t\"pkts\":\"" << sampled_int[dir].pkt_cnt << "\",";
+                ss << "\n\t\t\t\"pkts\":" << sampled_int[dir].pkt_cnt << ",";
                 ss << "\n\t\t\t\"bytes\":" << sampled_int[dir].bytes << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";
             }else{
                 ss << "\n\t\t\t\"ts\":"  << std::setprecision(6) << std::fixed << (double)(ts/1000000000.0) << ",";
@@ -444,13 +442,13 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                 }
                 if (dir == RX){
                     ss << "\n\t\t\t\"dir\":\"rx\",";
-                    ss << "\n\t\t\t\"loss\":\"" << 1 << "\",";
-                    ss << "\n\t\t\t\"ooo_pkts\":\"" << 0 << "\",";
-                    ss << "\n\t\t\t\"dup_pkts\":\"" << 0 << "\",";
-                    ss << "\n\t\t\t\"rtt\":\"" << 0 << "\","; //in ms
-                    ss << "\n\t\t\t\"jitter\":\"" << 0 << "\","; //in ms
+                    ss << "\n\t\t\t\"loss\":" << 1 << ",";
+                    ss << "\n\t\t\t\"ooo_pkts\":" << 0 << ",";
+                    ss << "\n\t\t\t\"dup_pkts\":" << 0 << ",";
+                    ss << "\n\t\t\t\"rtt\":" << 0 << ","; //in ms
+                    ss << "\n\t\t\t\"jitter\":" << 0 << ","; //in ms
                 }
-                ss << "\n\t\t\t\"pkts\":\"" << 0 << "\",";
+                ss << "\n\t\t\t\"pkts\":" << 0 << ",";
                 ss << "\n\t\t\t\"bytes\":" << 0 << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";
             }
             sampled_int[dir].bytes = size;
@@ -507,7 +505,7 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
             }
 
             ss << "\n\t\t\t\"dir\":\"rx\",";
-            ss << "\n\t\t\t\"rtt\":\"" << std::setprecision(3) << rtt << "\","; //in ms
+            ss << "\n\t\t\t\"rtt\":" << std::setprecision(3) << rtt << ","; //in ms
         }
         ss << "\n\t\t\t\"size\":" << size << ",\n\t\t\t\"seq\":" << seq << "\n\t\t}";
         sampled_int[dir].last_seen_seq = seq;
@@ -534,13 +532,13 @@ std::string cMessageBroker::prepFinalDataRec(const u_int8_t dir){
         }
         if (dir == RX){
             ss << "\n\t\t\t\"dir\":\"rx\",";
-            ss << "\n\t\t\t\"loss\":\"" << 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((sampled_int[dir].last_seen_seq+1)-sampled_int[dir].first_seq) << "\","; //in ms
-            ss << "\n\t\t\t\"rtt\":\"" << std::setprecision(3) << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << "\","; //in ms
-            ss << "\n\t\t\t\"jitter\":\"" << std::setprecision(3) << sampled_int[dir].jitter_sum/sampled_int[dir].pkt_cnt << "\","; //in ms
-            ss << "\n\t\t\t\"ooo_pkts\":\"" << sampled_int[dir].ooo << "\",";
-            ss << "\n\t\t\t\"dup_pkts\":\"" << sampled_int[dir].dup << "\",";
+            ss << "\n\t\t\t\"loss\":" << 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((sampled_int[dir].last_seen_seq+1)-sampled_int[dir].first_seq) << ","; //in ms
+            ss << "\n\t\t\t\"rtt\":" << std::setprecision(3) << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << ","; //in ms
+            ss << "\n\t\t\t\"jitter\":" << std::setprecision(3) << sampled_int[dir].jitter_sum/sampled_int[dir].pkt_cnt << ","; //in ms
+            ss << "\n\t\t\t\"ooo_pkts\":" << sampled_int[dir].ooo << ",";
+            ss << "\n\t\t\t\"dup_pkts\":" << sampled_int[dir].dup << ",";
         }
-        ss << "\n\t\t\t\"pkts\":\"" << sampled_int[dir].pkt_cnt << "\",";
+        ss << "\n\t\t\t\"pkts\":" << sampled_int[dir].pkt_cnt << ",";
         ss << "\n\t\t\t\"bytes\":" << sampled_int[dir].bytes << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";
     }
     return ss.str();
