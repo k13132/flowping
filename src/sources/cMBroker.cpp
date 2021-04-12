@@ -492,6 +492,8 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
         }
         ss << "\n\t\t\t\"ts\":"  << std::setprecision(6) << std::fixed << (double)(ts/1000000000.0) << ",";
         if (dir == TX){
+            pkt_cnt_tx++;
+            bytes_cnt_tx += size;
             ss << "\n\t\t\t\"dir\":\"tx\",";
         }
         if (dir == RX){
@@ -503,7 +505,8 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                 ooo_cnt++;
                 return ss.str();
             }
-
+            pkt_cnt_rx++;
+            bytes_cnt_rx += size;
             ss << "\n\t\t\t\"dir\":\"rx\",";
             ss << "\n\t\t\t\"rtt\":" << std::setprecision(3) << rtt << ","; //in ms
         }

@@ -151,6 +151,7 @@ struct t_conn{
     in6_addr ip;
     u_int16_t port;
     u_int64_t conn_id;
+    u_int32_t ret_size;
     string client_ip;
     bool C_par;
     bool J_par;

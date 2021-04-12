@@ -402,7 +402,6 @@ void cSetup::usage() {
     cout << "|         [-d]                       Set source interface                                       |" << endl;
     cout << "|         [-F filename]              Send FileName to server (overide server settings)          |" << endl;
     cout << "|         [-h hostname] [localhost]  Server hostname or IP address                              |" << endl;
-    cout << "|         [-H]                       Consider headers (Use frame size instead payload size)     |" << endl;
     cout << "|         [-i seconds]  [1]          Interval between packets (first limit)                     |" << endl;
     cout << "|         [-I seconds]  [1]          Interval between packets (second limit)                    |" << endl;
     cout << "|         [-L seconds]  [per packet] Data sample interval                                       |" << endl;

@@ -119,15 +119,7 @@ int cServer::run() {
         clock_gettime(CLOCK_REALTIME, &connection->curTv);
         msg = (struct gen_msg_t*) (packet);
         if (msg->type == PING) {
-            if (setup->isAsym(connection->X_par)) ret_size = MIN_PKT_SIZE;
-            if (setup->isAntiAsym(connection->AX_par)) {
-                if (setup->wholeFrame(connection->H_par)) {
-                    ret_size = msg->size - 42;
-                } else {
-                    ret_size = msg->size;
-                }
-            }
-            sendto(this->sock, packet, ret_size, 0, (struct sockaddr *) &saClient6, addr_len);
+            sendto(this->sock, packet, connection->ret_size, 0, (struct sockaddr *) &saClient6, addr_len);
             connection->pkt_cnt++;
             //ToDo Nefunguje na OpenWrt, jinde OK //dojde k zaplnněí fronty - nějak nefunguje .pop
             //tmsg = new gen_msg_t;
@@ -135,8 +127,7 @@ int cServer::run() {
             //mbroker->push(connection, tmsg);
         }else{
             processCMessage(msg, connection);
-            ret_size = msg->size;
-            sendto(this->sock, msg, ret_size, 0, (struct sockaddr *) &saClient6, addr_len);
+            sendto(this->sock, msg, MIN_PKT_SIZE, 0, (struct sockaddr *) &saClient6, addr_len);
             clock_gettime(CLOCK_REALTIME, &connection->curTv);
         }
     }
@@ -290,38 +281,6 @@ string cServer::stripFFFF(string str) {
     return str;
 }
 
-
-t_conn *  cServer::getConnection6(sockaddr_in6 saddr) {
-    u_int64_t conn_id = saddr.sin6_addr.s6_addr[0] * (u_int64_t)saddr.sin6_port;
-    if (this->connections.count(conn_id) == 1) {
-        connection = this->connections.at(conn_id);
-    } else {
-        char addr[INET6_ADDRSTRLEN];
-        connection = new t_conn;
-        connection->ip = saddr.sin6_addr;
-        connection->port = saddr.sin6_port;
-        connection->conn_id = conn_id;
-        inet_ntop(AF_INET6, &saddr.sin6_addr, addr, INET6_ADDRSTRLEN);
-        connection->client_ip = stripFFFF(string(addr));
-        connection->pkt_cnt = 0;
-        connection->refTv.tv_sec = 0;
-        connection->refTv.tv_nsec = 0;
-        connection->curTv.tv_sec = 0;
-        connection->curTv.tv_nsec = 0;
-        connection->C_par = false;
-        connection->D_par = false;
-        connection->e_par = false;
-        connection->E_par = false;
-        connection->H_par = false;
-        connection->J_par = false;
-        connection->W_par = false;
-        connection->X_par = setup->isAsym();
-        connection->AX_par = false;
-        this->connections[conn_id] = connection;
-    }
-    return connection;
-}
-
 t_conn *  cServer::getConnectionFID(sockaddr_in6 saddr, ping_pkt_t *pkt) {
     //u_int64_t conn_id = saddr.sin6_addr.s6_addr[0] * (u_int64_t)saddr.sin6_port;
     u_int64_t conn_id = (uint64_t) pkt->flow_id;
@@ -349,6 +308,10 @@ t_conn *  cServer::getConnectionFID(sockaddr_in6 saddr, ping_pkt_t *pkt) {
         connection->W_par = false;
         connection->X_par = setup->isAsym();
         connection->AX_par = false;
+        connection->ret_size = pkt->size;
+        if (setup->isAsym(connection->X_par)){
+            connection->ret_size = MIN_PKT_SIZE;
+        }
         this->connections[conn_id] = connection;
     }
     return connection;
