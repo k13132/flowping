@@ -451,11 +451,12 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                 ss << "\n\t\t\t\"pkts\":" << 0 << ",";
                 ss << "\n\t\t\t\"bytes\":" << 0 << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";
             }
-            sampled_int[dir].bytes = size;
-
             if (dir == RX) {
                 sampled_int[dir].ooo = 0;
                 sampled_int[dir].dup = 0;
+                sampled_int[dir].pkt_cnt = 0;
+                sampled_int[dir].bytes = 0;
+                sampled_int[dir].first_seq = sampled_int[dir].last_seen_seq;
                 if (sampled_int[dir].last_seen_seq == seq){
                     dup_cnt++;
                     sampled_int[dir].dup++;
@@ -478,6 +479,7 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                 pkt_cnt_tx++;
                 bytes_cnt_tx += size;
             }
+            sampled_int[dir].bytes = size;
             sampled_int[dir].pkt_cnt = 1;
             sampled_int[dir].first_seq = seq;
             sampled_int[dir].last_seen_seq = seq;
