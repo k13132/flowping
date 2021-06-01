@@ -398,6 +398,7 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                 bytes_cnt_rx += size;
                 sampled_int[dir].rtt_sum += rtt;
                 jt_diff = rtt - jt_rtt_prev;
+                jt_rtt_prev = rtt;
                 if (jt_diff < 0) jt_diff = -jt_diff;
                 jitter +=  (1.0/16.0) * (jt_diff - jitter);
                 sampled_int[dir].jitter_sum += jitter;
@@ -419,7 +420,7 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                 sampled_int[TX].first = false;
                 sampled_int[RX].first = false;
             }
-            if (ts < sampled_int[dir].ts_limit){
+            if ((ts < sampled_int[dir].ts_limit)&&(sampled_int[dir].pkt_cnt)){
                 ss << "\n\t\t\t\"ts\":"  << std::setprecision(6) << std::fixed << (double)(ts/1000000000.0) << ",";
                 if (dir == TX){
                     ss << "\n\t\t\t\"dir\":\"tx\",";
