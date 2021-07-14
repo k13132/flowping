@@ -60,7 +60,7 @@
 #include <map>
 
 #define MAX_PKT_SIZE 1472
-#define MIN_PKT_SIZE 32  //eq to minimum payload size - limited FP header size
+#define MIN_PKT_SIZE 14  //eq to minimum payload size - limited FP header size
 #define HEADER_LENGTH 32
 
 #define CONTROL 0
@@ -112,19 +112,33 @@ struct event_t{
 };
 
 
-struct ping_pkt_t {         //Min PK SIZE 32B
+//struct ping_pkt_t {         //Min PK SIZE 32B
+//    u_int8_t type;
+//    u_int8_t id;
+//    u_int16_t size;         //payload_size
+//    u_int16_t flow_id;
+//    u_int16_t padding1;
+//    u_int64_t sec;
+//    u_int64_t nsec;
+//    u_int64_t seq;
+//    char data[MAX_PKT_SIZE-HEADER_LENGTH];
+//};
+
+struct ping_pkt_t {         //Header size 32B 1+1+2+2+4+4+4+4+8+2, Min. Payload size = 16B
     u_int8_t type;
     u_int8_t id;
     u_int16_t size;         //payload_size
     u_int16_t flow_id;
     u_int16_t padding1;
-    u_int64_t sec;
-    u_int64_t nsec;
+    u_int32_t sec;
+    u_int32_t nsec;
+    u_int32_t server_sec;
+    u_int32_t server_nsec;
     u_int64_t seq;
     char data[MAX_PKT_SIZE-HEADER_LENGTH];
 };
 
-struct ping_msg_t {         //Min MSG SIZE 18B
+struct ping_msg_t {         //Min MSG SIZE 16B
     u_int8_t type;
     u_int8_t code;
     u_int16_t size;
@@ -132,10 +146,12 @@ struct ping_msg_t {         //Min MSG SIZE 18B
     u_int8_t params;        // 00000001 - H_PAR //Bit encoded
     u_int8_t id;
     u_int16_t check;
+    uint64_t padding1;
+    uint64_t padding2;
     char msg[MAX_PKT_SIZE-HEADER_LENGTH];
 };
 
-struct gen_msg_t{           //Min MSG SIZE 32B
+struct gen_msg_t{           //Min MSG SIZE 4B
     u_int8_t type;
     u_int8_t id;
     u_int16_t size;
@@ -182,8 +198,8 @@ struct tpoint_def_t{
 
 struct timed_packet_t{
     u_int64_t ts;
-    u_int64_t sec;
-    u_int64_t nsec;
+    u_int32_t sec;
+    u_int32_t nsec;
     u_int16_t len;
 };
 

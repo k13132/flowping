@@ -119,6 +119,8 @@ int cServer::run() {
         clock_gettime(CLOCK_REALTIME, &connection->curTv);
         msg = (struct gen_msg_t*) (packet);
         if (msg->type == PING) {
+            ((ping_pkt_t *)packet)->server_sec = connection->curTv.tv_sec;
+            ((ping_pkt_t *)packet)->server_nsec = connection->curTv.tv_nsec;
             sendto(this->sock, packet, connection->ret_size, 0, (struct sockaddr *) &saClient6, addr_len);
             connection->pkt_cnt++;
             //ToDo Nefunguje na OpenWrt, jinde OK //dojde k zaplnněí fronty - nějak nefunguje .pop

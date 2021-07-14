@@ -195,7 +195,7 @@ int cClient::run_receiver() {
         usleep(200000);
     }
 
-    unsigned char packet[MAX_PKT_SIZE + 60];
+    unsigned char packet[MAX_PKT_SIZE + HEADER_LENGTH];
     int nRet;
 
     //int nFromLen;
@@ -223,6 +223,8 @@ int cClient::run_receiver() {
         }
         msg = new gen_msg_t;
         memcpy(msg,packet, HEADER_LENGTH);
+        //std::cout << "before: " << ((ping_pkt_t *)packet)->seq << std::endl;
+        //std::cout << "after:  " << ((ping_pkt_t *)msg)->seq << std::endl;
         msg->size = nRet;
         mbroker->push_rx(msg);
     }

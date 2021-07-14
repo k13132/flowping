@@ -227,6 +227,7 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
     std::chrono::system_clock::time_point tp = tmsg->tp;
     gen_msg_t *msg = tmsg->msg;
     u_int64_t ts;
+    u_int64_t pkt_server_ts;
     switch(msg->type){
         case MSG_RX_CNT:
             //Todo modify structure !!!! packet data not present - ONLY header was copied
@@ -256,9 +257,10 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
             if (ping_pkt->size < HEADER_LENGTH) std::cerr << "Invalid RX Packet Size: " << ping_pkt->size << std::endl;
             ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den));
             pkt_rtt = ((tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den)) - (ping_pkt->sec * 1000000000L) - (ping_pkt->nsec))/1000000.0; //ms
+            pkt_server_ts =  ping_pkt->server_sec * 1000000000L + ping_pkt->server_nsec  ;
             //ToDo A! packet counter in prepDataRec !
             if (not setup->silent()) {
-                *output << prepDataRec(ts, RX, ping_pkt->size, ping_pkt->seq, pkt_rtt);
+                *output << prepDataRec(ts, pkt_server_ts, RX, ping_pkt->size, ping_pkt->seq, pkt_rtt);
             }
             //c_stats->pktRecv(ts, ping_pkt->size, ping_pkt->seq, pkt_rtt);
             break;
@@ -268,7 +270,7 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
             if (ping_pkt->size < HEADER_LENGTH) std::cerr << "Invalid TX Packet Size: " << ping_pkt->size << std::endl;
             ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den));
             if (not setup->silent()) {
-                *output << prepDataRec(ts, TX, ping_pkt->size, ping_pkt->seq, 0);
+                *output << prepDataRec(ts, 0, TX, ping_pkt->size, ping_pkt->seq, 0);
             }
             //c_stats->pktSent(ts, ping_pkt->size, ping_pkt->seq);
             break;
@@ -371,7 +373,7 @@ std::string cMessageBroker::prepHeader() {
 // u_int64_t sample_seq_first, sample_pkt_cnt;
 // u_int64_t sample_ts_limit;
 
-std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, const uint16_t size, const uint64_t seq, const float rtt){
+std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int64_t pkt_server_ts, const u_int8_t dir, const uint16_t size, const uint64_t seq, const float rtt){
     stringstream ss;
     if (setup->getSampleLen()){
         if (json_first){
@@ -508,6 +510,7 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int8_t dir, 
                 ooo_cnt++;
                 return ss.str();
             }
+            ss << "\n\t\t\t\"sts\":"  << std::setprecision(6) << std::fixed << (double)(pkt_server_ts/1000000000.0) << ",";
             pkt_cnt_rx++;
             bytes_cnt_rx += size;
             ss << "\n\t\t\t\"dir\":\"rx\",";
