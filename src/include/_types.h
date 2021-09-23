@@ -60,7 +60,7 @@
 #include <map>
 
 #define MAX_PKT_SIZE 1472
-#define MIN_PKT_SIZE 14  //eq to minimum payload size - limited FP header size
+#define MIN_PKT_SIZE 32  //we need to transfer whole header.
 #define HEADER_LENGTH 32
 
 #define CONTROL 0
@@ -124,7 +124,7 @@ struct event_t{
 //    char data[MAX_PKT_SIZE-HEADER_LENGTH];
 //};
 
-struct ping_pkt_t {         //Header size 32B 1+1+2+2+4+4+4+4+8+2, Min. Payload size = 16B
+struct ping_pkt_t {         //Header size 32B 1+1+2+2+4+4+4+4+8+2, Min. Payload size = 0B
     u_int8_t type;
     u_int8_t id;
     u_int16_t size;         //payload_size

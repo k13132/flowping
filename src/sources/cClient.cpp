@@ -376,7 +376,7 @@ int cClient::run_sender() {
             break;
         }
         if (setup->isAntiAsym()) {
-            payload_size = MIN_PKT_SIZE;
+            payload_size = HEADER_LENGTH;
         }
         //SEND PKT ************************
         nRet = sendto(this->sock, packet, payload_size, 0, resAddr->ai_addr, resAddr->ai_addrlen);
