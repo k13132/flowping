@@ -399,11 +399,14 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int64_t pkt_
                 pkt_cnt_rx++;
                 bytes_cnt_rx += size;
                 sampled_int[dir].rtt_sum += rtt;
+                //J(i) = J(i-1) + (|D(i-1,i)| - J(i-1))/16   viz RFC3550 (RTP/RTCP)
                 jt_diff = rtt - jt_rtt_prev;
                 jt_rtt_prev = rtt;
                 if (jt_diff < 0) jt_diff = -jt_diff;
-                jitter +=  (1.0/16.0) * (jt_diff - jitter);
-                sampled_int[dir].jitter_sum += jitter;
+                jt_prev = jitter;
+                jitter = jt_prev + (1.0 / 16.0) * (jt_diff - jt_prev);
+                jitter_sum += jitter;
+                sampled_int[dir].jitter_sum += jitter_sum;
             } else{
                 pkt_cnt_tx++;
                 bytes_cnt_tx += size;
@@ -476,8 +479,10 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int64_t pkt_
                 jt_diff = rtt - jt_rtt_prev;
                 jt_rtt_prev = rtt;
                 if (jt_diff < 0) jt_diff = -jt_diff;
-                jitter +=  (1.0/16.0) * (jt_diff - jitter);
-                sampled_int[dir].jitter_sum  = jitter;
+                jt_prev = jitter;
+                jitter = jt_prev + (1.0 / 16.0) * (jt_diff - jt_prev);
+                jitter_sum = jitter;
+                sampled_int[dir].jitter_sum  = jitter_sum;
             }else{
                 pkt_cnt_tx++;
                 bytes_cnt_tx += size;
@@ -515,6 +520,14 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int64_t pkt_
             bytes_cnt_rx += size;
             ss << "\n\t\t\t\"dir\":\"rx\",";
             ss << "\n\t\t\t\"rtt\":" << std::setprecision(3) << rtt << ","; //in ms
+            //J(i) = J(i-1) + (|D(i-1,i)| - J(i-1))/16   viz RFC3550 (RTP/RTCP)
+            jt_diff = rtt - jt_rtt_prev;
+            jt_rtt_prev = rtt;
+            if (jt_diff < 0) jt_diff = -jt_diff;
+            jt_prev = jitter;
+            jitter = jt_prev + (1.0 / 16.0) * (jt_diff - jt_prev);
+            jitter_sum += jitter;
+            ss << "\n\t\t\t\"jitter\":" << std::setprecision(3) << jitter << ","; //in ms
         }
         ss << "\n\t\t\t\"size\":" << size << ",\n\t\t\t\"seq\":" << seq << "\n\t\t}";
         sampled_int[dir].last_seen_seq = seq;

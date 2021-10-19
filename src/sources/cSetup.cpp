@@ -404,7 +404,7 @@ void cSetup::usage() {
     cout << "|         [-h hostname] [localhost]  Server hostname or IP address                              |" << endl;
     cout << "|         [-i seconds]  [1]          Interval between packets (first limit)                     |" << endl;
     cout << "|         [-I seconds]  [1]          Interval between packets (second limit)                    |" << endl;
-    cout << "|         [-L seconds]  [per packet] Data sample interval                                       |" << endl;
+    cout << "|         [-L seconds]  [0]          Data sample interval (0 s - per packet mode)               |" << endl;
     cout << "|         [-s size]     [64]         Payload size in Bytes                                      |" << endl;
     cout << "|         [-t seconds]  [0]          T1 interval specification  (for i,I,b,B params)            |" << endl;
     cout << "|         [-T seconds]  [T2=T3]      T2 interval specification  (for i,I,b,B params)            |" << endl;

@@ -58,7 +58,9 @@ private:
     float jt_rtt = 0; //ms
     float jt_rtt_prev = 0; //ms
     float jitter = 0; //ms
+    float jitter_sum = 0; //ms
     float jt_diff = 0; //ms
+    float jt_prev = 0; //ms
     float pkt_rtt;
     float rtt_min, rtt_max, rtt_avg;
     u_int64_t time, pkt_sent, server_received, pkt_rcvd, last_seq_rcv, ooo_cnt, dup_cnt;
