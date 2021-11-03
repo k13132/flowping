@@ -405,8 +405,8 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int64_t pkt_
                 if (jt_diff < 0) jt_diff = -jt_diff;
                 jt_prev = jitter;
                 jitter = jt_prev + (1.0 / 16.0) * (jt_diff - jt_prev);
-                jitter_sum += jitter;
-                sampled_int[dir].jitter_sum += jitter_sum;
+                //jitter_sum += jitter;
+                sampled_int[dir].jitter_sum += jitter;
             } else{
                 pkt_cnt_tx++;
                 bytes_cnt_tx += size;
@@ -481,8 +481,8 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int64_t pkt_
                 if (jt_diff < 0) jt_diff = -jt_diff;
                 jt_prev = jitter;
                 jitter = jt_prev + (1.0 / 16.0) * (jt_diff - jt_prev);
-                jitter_sum = jitter;
-                sampled_int[dir].jitter_sum  = jitter_sum;
+                //jitter_sum = jitter;
+                sampled_int[dir].jitter_sum  = jitter;
             }else{
                 pkt_cnt_tx++;
                 bytes_cnt_tx += size;
@@ -526,7 +526,7 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int64_t pkt_
             if (jt_diff < 0) jt_diff = -jt_diff;
             jt_prev = jitter;
             jitter = jt_prev + (1.0 / 16.0) * (jt_diff - jt_prev);
-            jitter_sum += jitter;
+            //jitter_sum += jitter;
             ss << "\n\t\t\t\"jitter\":" << std::setprecision(3) << jitter << ","; //in ms
         }
         ss << "\n\t\t\t\"size\":" << size << ",\n\t\t\t\"seq\":" << seq << "\n\t\t}";
