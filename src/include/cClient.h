@@ -32,6 +32,7 @@
 #include "_types.h"
 #include "cSetup.h"
 #include "cStats.h"
+#include "cSlotTimer.h"
 #include "flowping.h"
 #include "queue"
 #include <netdb.h>
@@ -42,7 +43,7 @@ using namespace std;
 
 class cClient {
 public:
-    cClient(cSetup *setup, cStats *stats, cMessageBroker *mbroker);
+    cClient(cSetup *setup, cStats *stats, cMessageBroker *mbroker, cSlotTimer* stimer);
     bool status(void);
     int run_sender(void);
     int run_receiver(void);
@@ -64,6 +65,7 @@ private:
     char addrstr[32];
     cMessageBroker *mbroker;
     cSetup *setup;
+    cSlotTimer* stimer;
     cClientStats *stats;
     
     bool senderReady;

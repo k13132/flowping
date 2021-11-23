@@ -48,7 +48,7 @@ unsigned short crc16(const unsigned char* data_p, unsigned char length){
     return crc;
 }
 
-cClient::cClient(cSetup *setup, cStats *stats, cMessageBroker *mbroker) {
+cClient::cClient(cSetup *setup, cStats *stats, cMessageBroker *mbroker, cSlotTimer* stimer) {
     first = true;
     this->setup = setup;
     if (stats) {
@@ -61,6 +61,12 @@ cClient::cClient(cSetup *setup, cStats *stats, cMessageBroker *mbroker) {
         this->mbroker = mbroker;
     }else{
         this->mbroker = nullptr;
+    }
+
+    if (stimer) {
+        this->stimer = stimer;
+    }else{
+        this->stimer = nullptr;
     }
 
     this->s_running = false;
@@ -209,6 +215,10 @@ int cClient::run_receiver() {
     struct timeval tv;
     tv.tv_sec = 1;
     tv.tv_usec = 0;
+    if (setup->getSampleLen()){
+        tv.tv_sec = TV_SEC(setup->getSampleLen());
+        tv.tv_usec = TV_USEC(setup->getSampleLen());
+    }
     setsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv));
 
 
@@ -217,7 +227,7 @@ int cClient::run_receiver() {
         nRet = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, resAddr->ai_addr, &resAddr->ai_addrlen);
         if (nRet < 0) {
             msg = new gen_msg_t;
-            msg->type = MSG_KEEP_ALIVE;
+            msg->type = MSG_SOCK_TIMEOUT;
             mbroker->push_lp(msg);
             continue;
         }
@@ -337,6 +347,10 @@ int cClient::run_sender() {
     while (!pktBufferReady) {
         usleep(200000);
     }
+
+    if (setup->getSampleLen()){
+        stimer->start();
+    }
     u_int64_t start_time = NS_TIME(start_ts);
     u_int64_t deadline = setup->getDeadline() * 1000000000L + start_time;
     unsigned int i;
@@ -397,7 +411,11 @@ int cClient::run_sender() {
     ping_pkt->type = CONTROL;
     t = new gen_msg_t;
     t->type = MSG_TIMER_END;
-    mbroker->push_lp(t);
+    mbroker->push_hp(t);
+    if (setup->getSampleLen()){
+        stimer->stop();
+    }
+
     ping_msg->code = CNT_DONE;
     ping_msg->size = MIN_PKT_SIZE;
     timeout = 0;

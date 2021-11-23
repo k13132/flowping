@@ -33,6 +33,7 @@
 #include "cSetup.h"
 #include "cStats.h"
 #include "cMBroker.h"
+#include "cSlotTimer.h"
 #include <thread>
 
 #include <cstdlib>
@@ -45,6 +46,7 @@ cClient *client = nullptr;
 cServer *server = nullptr;
 cStats *stats = nullptr;
 cMessageBroker * mbroker = nullptr;
+cSlotTimer *stimer = nullptr;
 
 void * t_helper_sServer(void * arg) {
     server = (cServer *) arg;
@@ -77,6 +79,13 @@ void * t_helper_cReceiver(void * arg) {
 void * t_helper_cMBroker(void * arg) {
     mbroker = (cMessageBroker *) arg;
     mbroker->run();
+    return nullptr;
+}
+
+//Slot Timer
+void * t_helper_cSlotTimer(void * arg) {
+    stimer = (cSlotTimer *) arg;
+    stimer->run();
     return nullptr;
 }
 
@@ -134,7 +143,7 @@ int main(int argc, char** argv) {
     version.str("");
 
 #ifdef __x86_64__
-    version << "x86_64 2.7.3 .::. F-Tester edition .::.";
+    version << "x86_64 2.8.0-devel .::. F-Tester edition .::.";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
@@ -159,7 +168,7 @@ int main(int argc, char** argv) {
         setup->usage();
         return EXIT_FAILURE;
     }
-
+    //Todo integrate SlotTimer in server code
     if (setup->isServer()) {
         stats = new cServerStats(setup);
         mbroker = new cMessageBroker(setup, stats);
@@ -173,15 +182,19 @@ int main(int argc, char** argv) {
     } else {
         stats = new cClientStats(setup);
         mbroker = new cMessageBroker(setup, stats);
-        client = new cClient(setup, stats, mbroker);
+        stimer = new cSlotTimer(mbroker, setup);
+        client = new cClient(setup, stats, mbroker, stimer);
         std::thread t_cPacketFactory (t_helper_cPacketFactory, (void *) client);
         std::thread t_mBroker (t_helper_cMBroker, (void *) mbroker);
+        std::thread t_cSlotTimer (t_helper_cSlotTimer, (void *) stimer);
         std::thread t_cReceiver (t_helper_cReceiver, (void *) client);
         std::thread t_cSender (t_helper_cSender, (void *) client);
         t_cSender.join();
         t_cPacketFactory.join();
         t_cReceiver.join();
         delete(client);
+        t_cSlotTimer.join();
+        delete(stimer);
         t_mBroker.join();
         delete(mbroker);
     }

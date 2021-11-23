@@ -59,7 +59,7 @@ cMessageBroker::cMessageBroker(cSetup *setup, cStats *stats){
 
     for (int i = 0; i < 2; i++){
         this->sampled_int[i].first = true;
-        this->sampled_int[i].first_seq = 1;
+        this->sampled_int[i].first_seq = 0;
         this->sampled_int[i].pkt_cnt = 0;
         this->sampled_int[i].ts_limit = 0;
         this->sampled_int[i].seq = 0;
@@ -71,7 +71,9 @@ cMessageBroker::cMessageBroker(cSetup *setup, cStats *stats){
         this->sampled_int[i].last_seen_seq = 0;
     }
     json_first = true;
+    timer_slot_interval = setup->getSampleLen();
 }
+
 
 
 cMessageBroker::~cMessageBroker(){
@@ -213,6 +215,9 @@ void cMessageBroker::processAndDeleteServerMessage(t_msg_t *tmsg) {
         case MSG_KEEP_ALIVE:
             //std::cout << "MSG_KEEP_ALIVE" << std::endl;
             break;
+        case MSG_SOCK_TIMEOUT:
+            //std::cout << "MSG_SOCK_TIMEOUT" << std::endl;
+            break;
         case MSG_TIMER_ONE:
             //std::cout << "MSG_TIMER_ONE" << std::endl;
             break;
@@ -277,6 +282,25 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
         case MSG_KEEP_ALIVE:
             //std::cout << "MSG_KEEP_ALIVE" << std::endl;
             break;
+        case MSG_SOCK_TIMEOUT:
+            //std::cout << "MSG_SOCK_TIMEOUT" << std::endl;
+            break;
+
+        case MSG_SLOT_TIMER_START:
+            //std::cout << "MSG_SLOT_TIMER_START" << std::endl;
+            break;
+
+        case MSG_SLOT_TIMER_STOP:
+            //std::cout << "MSG_SLOT_TIMER_STOP" << std::endl;
+            break;
+
+        case MSG_SLOT_TIMER_TICK:
+            //std::cout << "MSG_SLOT_TIMER_TICK" << std::endl;
+            ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den));
+            for (int direction = 0; direction < 2; direction ++){
+                *output << closeDataRecSlot(ts, direction);
+            }
+            break;
 
         case MSG_TIMER_ONE:
             //
@@ -332,7 +356,6 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
                 output = &std::cout;
             }
             break;
-
         default:
             std::cerr << "ERROR :: UNKNOWN MSG TYPE RECEIVED!";
     }
@@ -368,6 +391,66 @@ std::string cMessageBroker::prepHeader() {
 }
 
 
+std::string cMessageBroker::closeDataRecSlot(const u_int64_t ts, const u_int8_t dir){
+    stringstream ss;
+    sampled_int[dir].seq++;
+    sampled_int[dir].ts_limit += setup->getSampleLen();
+    if (sampled_int[dir].first == false){
+        ss << ",\n\t\t{";
+    }else{
+        sampled_int[TX].first = false;
+        sampled_int[RX].first = false;
+    }
+    if (sampled_int[dir].pkt_cnt){
+        ss << "\n\t\t\t\"ts\":"  << std::setprecision(6) << std::fixed << (double)(ts/1000000000.0) << ",";
+        if (dir == TX){
+            ss << "\n\t\t\t\"dir\":\"tx\",";
+        }
+        if (dir == RX){
+            ss << "\n\t\t\t\"dir\":\"rx\",";
+            ss << "\n\t\t\t\"loss\":" << min(1.0, 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((sampled_int[dir].last_seen_seq)-sampled_int[dir].first_seq)) << ","; //in ms
+            ss << "\n\t\t\t\"rtt\":" << std::setprecision(3) << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << ","; //in ms
+            ss << "\n\t\t\t\"jitter\":" << std::setprecision(3) << sampled_int[dir].jitter_sum/sampled_int[dir].pkt_cnt << ","; //in ms
+            ss << "\n\t\t\t\"ooo_pkts\":" << sampled_int[dir].ooo << ",";
+            ss << "\n\t\t\t\"dup_pkts\":" << sampled_int[dir].dup << ",";
+        }
+        ss << "\n\t\t\t\"pkts\":" << sampled_int[dir].pkt_cnt << ",";
+        ss << "\n\t\t\t\"bytes\":" << sampled_int[dir].bytes << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";
+    }else{
+        ss << "\n\t\t\t\"ts\":"  << std::setprecision(6) << std::fixed << (double)(ts/1000000000.0) << ",";
+        if (dir == TX){
+            ss << "\n\t\t\t\"dir\":\"tx\",";
+        }
+        if (dir == RX){
+            ss << "\n\t\t\t\"dir\":\"rx\",";
+            ss << "\n\t\t\t\"loss\":" << 1 << ",";
+            ss << "\n\t\t\t\"ooo_pkts\":" << 0 << ",";
+            ss << "\n\t\t\t\"dup_pkts\":" << 0 << ",";
+            ss << "\n\t\t\t\"rtt\":" << 0 << ","; //in ms
+            ss << "\n\t\t\t\"jitter\":" << 0 << ","; //in ms
+        }
+        ss << "\n\t\t\t\"pkts\":" << 0 << ",";
+        ss << "\n\t\t\t\"bytes\":" << 0 << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";
+    }
+    if (dir == RX) {
+        sampled_int[dir].ooo = 0;
+        sampled_int[dir].dup = 0;
+        sampled_int[dir].pkt_cnt = 0;
+        sampled_int[dir].bytes = 0;
+        sampled_int[dir].first_seq = sampled_int[dir].last_seen_seq;
+        sampled_int[dir].rtt_sum = 0;
+        sampled_int[dir].jitter_sum  = 0;
+    }else{
+        //do nothing
+    }
+    sampled_int[dir].bytes = 0;
+    sampled_int[dir].pkt_cnt = 0;
+    //FIXME
+    //sampled_int[dir].first_seq = sampled_int[dir].last_seen_seq;
+    return ss.str();
+}
+
+
 
 // double pkt_rtt, sample_cum_rtt;
 // u_int64_t sample_seq_first, sample_pkt_cnt;
@@ -384,7 +467,7 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int64_t pkt_
             jt_rtt = rtt;
             jt_rtt_prev = rtt;
         }
-        if (ts < sampled_int[dir].ts_limit){
+       // if (ts < sampled_int[dir].ts_limit){
             if (dir == RX){
                 if (sampled_int[dir].last_seen_seq == seq){
                     dup_cnt++;
@@ -416,83 +499,7 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int64_t pkt_
             sampled_int[dir].bytes += size;
             sampled_int[dir].last_seen_seq = seq;
             return ss.str();
-        }else{
-            sampled_int[dir].seq++;
-            sampled_int[dir].ts_limit += setup->getSampleLen();
-            if (sampled_int[dir].first == false){
-                ss << ",\n\t\t{";
-            }else{
-                sampled_int[TX].first = false;
-                sampled_int[RX].first = false;
-            }
-            if ((ts < sampled_int[dir].ts_limit)&&(sampled_int[dir].pkt_cnt)){
-                ss << "\n\t\t\t\"ts\":"  << std::setprecision(6) << std::fixed << (double)(ts/1000000000.0) << ",";
-                if (dir == TX){
-                    ss << "\n\t\t\t\"dir\":\"tx\",";
-                }
-                if (dir == RX){
-                    //std::cout << seq << " .:. " << sampled_int[dir].first_seq << " pkts:" << sampled_int[dir].pkt_cnt << std::endl;
-                    ss << "\n\t\t\t\"dir\":\"rx\",";
-                    ss << "\n\t\t\t\"loss\":" << 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((seq)-sampled_int[dir].first_seq) << ","; //in ms
-                    ss << "\n\t\t\t\"rtt\":" << std::setprecision(3) << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << ","; //in ms
-                    ss << "\n\t\t\t\"jitter\":" << std::setprecision(3) << sampled_int[dir].jitter_sum/sampled_int[dir].pkt_cnt << ","; //in ms
-                    ss << "\n\t\t\t\"ooo_pkts\":" << sampled_int[dir].ooo << ",";
-                    ss << "\n\t\t\t\"dup_pkts\":" << sampled_int[dir].dup << ",";
-                }
-                ss << "\n\t\t\t\"pkts\":" << sampled_int[dir].pkt_cnt << ",";
-                ss << "\n\t\t\t\"bytes\":" << sampled_int[dir].bytes << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";
-            }else{
-                ss << "\n\t\t\t\"ts\":"  << std::setprecision(6) << std::fixed << (double)(ts/1000000000.0) << ",";
-                if (dir == TX){
-                    ss << "\n\t\t\t\"dir\":\"tx\",";
-                }
-                if (dir == RX){
-                    ss << "\n\t\t\t\"dir\":\"rx\",";
-                    ss << "\n\t\t\t\"loss\":" << 1 << ",";
-                    ss << "\n\t\t\t\"ooo_pkts\":" << 0 << ",";
-                    ss << "\n\t\t\t\"dup_pkts\":" << 0 << ",";
-                    ss << "\n\t\t\t\"rtt\":" << 0 << ","; //in ms
-                    ss << "\n\t\t\t\"jitter\":" << 0 << ","; //in ms
-                }
-                ss << "\n\t\t\t\"pkts\":" << 0 << ",";
-                ss << "\n\t\t\t\"bytes\":" << 0 << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";
-            }
-            if (dir == RX) {
-                sampled_int[dir].ooo = 0;
-                sampled_int[dir].dup = 0;
-                sampled_int[dir].pkt_cnt = 0;
-                sampled_int[dir].bytes = 0;
-                sampled_int[dir].first_seq = sampled_int[dir].last_seen_seq;
-                if (sampled_int[dir].last_seen_seq == seq){
-                    dup_cnt++;
-                    sampled_int[dir].dup++;
-                    return ss.str();
-                }
-                if (sampled_int[dir].last_seen_seq > seq){
-                    sampled_int[dir].ooo++;
-                    ooo_cnt++;
-                    return ss.str();
-                }
-                pkt_cnt_rx++;
-                bytes_cnt_rx += size;
-                sampled_int[dir].rtt_sum = rtt;
-                jt_diff = rtt - jt_rtt_prev;
-                jt_rtt_prev = rtt;
-                if (jt_diff < 0) jt_diff = -jt_diff;
-                jt_prev = jitter;
-                jitter = jt_prev + (1.0 / 16.0) * (jt_diff - jt_prev);
-                //jitter_sum = jitter;
-                sampled_int[dir].jitter_sum  = jitter;
-            }else{
-                pkt_cnt_tx++;
-                bytes_cnt_tx += size;
-            }
-            sampled_int[dir].bytes = size;
-            sampled_int[dir].pkt_cnt = 1;
-            sampled_int[dir].first_seq = seq;
-            sampled_int[dir].last_seen_seq = seq;
-            return ss.str();
-        }
+        //}else{}
     } else{
         if (json_first){
             json_first = false;

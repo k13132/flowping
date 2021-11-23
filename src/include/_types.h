@@ -90,8 +90,12 @@
 #define MSG_KEEP_ALIVE 64
 #define MSG_OUTPUT_INIT 65
 #define MSG_OUTPUT_CLOSE 66
+#define MSG_SLOT_TIMER_START 90
+#define MSG_SLOT_TIMER_STOP 91
+#define MSG_SLOT_TIMER_TICK 92
 #define MSG_TIMER_ONE 99
 #define MSG_TIMER_END 100
+#define MSG_SOCK_TIMEOUT 110
 
 
 #define TX 0
@@ -99,6 +103,7 @@
 
 #define TV_SEC(ts) ( ((ts) / 1000000000L) )
 #define TV_NSEC(ts) ( ((ts) % 1000000000L) )
+#define TV_USEC(ts) ( ((ts) % 1000000000L)/1000L )
 #define NS_TDIFF(tv1,tv2) ( ((tv1).tv_sec-(tv2).tv_sec)*1000000000 +  ((tv1).tv_nsec-(tv2).tv_nsec) )
 #define NS_TIME(tv1) ( (tv1).tv_sec*1000000000 +  (tv1).tv_nsec )
 #define max(a,b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
@@ -207,7 +212,7 @@ struct sampled_int_t{
     bool first;
     double rtt_sum;
     u_int64_t first_seq;
-    uint_fast64_t last_seen_seq;
+    u_int64_t last_seen_seq;
     u_int64_t pkt_cnt;
     u_int64_t bytes;
     u_int64_t ts_limit;

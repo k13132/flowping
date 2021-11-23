@@ -32,7 +32,7 @@ link_libraries(cServer)
 link_libraries(cClient)
 link_libraries(cMBroker)
 
-add_executable(flowping ./sources/flowping.cpp ./sources/cClient.cpp ./sources/cSetup.cpp ./sources/cServer.cpp ./sources/cStats.cpp sources/cMBroker.cpp include/cMBroker.h external/SPSCQueue.h)
+add_executable(flowping ./sources/flowping.cpp ./sources/cClient.cpp ./sources/cSetup.cpp ./sources/cServer.cpp ./sources/cStats.cpp sources/cMBroker.cpp include/cMBroker.h external/SPSCQueue.h sources/cSlotTimer.cpp include/cSlotTimer.h)
 target_link_libraries(flowping cSetup cStats cServer cClient cMBroker ${CMAKE_THREAD_LIBS_INIT})
 
 

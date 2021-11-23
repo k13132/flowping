@@ -36,7 +36,6 @@ private:
 
     sampled_int_t sampled_int[2];
 
-
     struct ping_pkt_t *ping_pkt;
     struct ping_msg_t *ping_msg;
     rigtorp::SPSCQueue<t_msg_t*> msg_buf {128000};
@@ -47,9 +46,11 @@ private:
     void processAndDeleteClientMessage(t_msg_t *tmsg);
     void processAndDeleteServerMessage(t_msg_t *tmsg);
     std::string prepHeader();
+
 private:
     bool json_first;
     std::string prepDataRec(const u_int64_t ts, const u_int64_t pkt_server_ts, const u_int8_t dir, const uint16_t size, const uint64_t seq, const float rtt);
+    std::string closeDataRecSlot(const u_int64_t ts, const u_int8_t dir);
     std::string prepFinalDataRec(const u_int8_t dir);
 private:
     std::ofstream fout;
@@ -64,7 +65,8 @@ private:
     float pkt_rtt;
     float rtt_min, rtt_max, rtt_avg;
     u_int64_t time, pkt_sent, server_received, pkt_rcvd, last_seq_rcv, ooo_cnt, dup_cnt;
-
+private:
+    u_int64_t timer_slot_interval;
 };
 
 
