@@ -50,7 +50,7 @@ LIBS_PATH=
 
 
 # Object files
-OBJS = cClient.o cServer.o cSetup.o cStats.o cMBroker.o flowping.o
+OBJS = cClient.o cServer.o cSetup.o cStats.o cSlotTimer.o cMBroker.o flowping.o
 
 all: $(TARGET)
 	
@@ -106,6 +106,9 @@ cSetup.o: $(SRC_DIR)/cSetup.cpp
 
 cStats.o: $(SRC_DIR)/cStats.cpp
 	$(CROSS_PREFIX)$(CXX) -c $(CXXFLAGS) $(CFLAGS_ARCH) $(INCLUDE_PATHS) -o cStats.o $(SRC_DIR)/cStats.cpp 
+
+cSlotTimer.o: $(SRC_DIR)/cSlotTimer.cpp
+	$(CROSS_PREFIX)$(CXX) -c $(CXXFLAGS) $(CFLAGS_ARCH) $(INCLUDE_PATHS) -o cSlotTimer.o $(SRC_DIR)/cSlotTimer.cpp
 
 cMBroker.o: $(SRC_DIR)/cMBroker.cpp
 	$(CROSS_PREFIX)$(CXX) -c $(CXXFLAGS) $(CFLAGS_ARCH) $(INCLUDE_PATHS) -o cMBroker.o $(SRC_DIR)/cMBroker.cpp 
