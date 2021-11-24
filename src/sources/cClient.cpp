@@ -431,7 +431,8 @@ int cClient::run_sender() {
         //cerr << "send bytes: " << nRet << std::endl;
         usleep(250000); //  4pkt/s
         timeout++;
-        if (timeout == 60) { //15s
+        //FixMe return back to 60 ->> 15sec
+        if (timeout == 20) { //15s
             //close JSON
             t = new gen_msg_t;
             t->type = MSG_OUTPUT_CLOSE;
