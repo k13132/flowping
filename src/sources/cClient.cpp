@@ -432,7 +432,7 @@ int cClient::run_sender() {
         usleep(250000); //  4pkt/s
         timeout++;
         //FixMe return back to 60 ->> 15sec
-        if (timeout == 20) { //15s
+        if (timeout == 60) { //15s
             //close JSON
             t = new gen_msg_t;
             t->type = MSG_OUTPUT_CLOSE;
