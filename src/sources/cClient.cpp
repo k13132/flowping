@@ -424,7 +424,12 @@ int cClient::run_sender() {
         //std::cout << "Get server stats..." << std::endl;
         nRet = sendto(this->sock, packet, ping_msg->size, 0, resAddr->ai_addr, resAddr->ai_addrlen);
         if (nRet < 0) {
+            //close JSON
+            t = new gen_msg_t;
+            t->type = MSG_OUTPUT_CLOSE;
+            mbroker->push_lp(t);
             cerr << "Send ERRROR\n";
+            usleep(500000);
             close(this->sock);
             exit(1);
         }

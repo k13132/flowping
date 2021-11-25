@@ -92,7 +92,7 @@ void * t_helper_cSlotTimer(void * arg) {
 
 //Handle some basic signals
 void signalHandler(int sig) {
-    if ((sig == SIGQUIT) || (sig == SIGTERM) || (sig == SIGINT)) { //SIG 3 //15 //2   QUIT
+    if ((sig == SIGHUP) || (sig == SIGQUIT) || (sig == SIGTERM) || (sig == SIGINT)) { //SIG 3 //15 //2   QUIT
         if (setup->isServer()) {
             server->terminate();
         } else {
@@ -130,6 +130,7 @@ int main(int argc, char** argv) {
     act.sa_handler = signalHandler;
     sigemptyset(&act.sa_mask);
     act.sa_flags = 0;
+    sigaction(SIGHUP, &act, nullptr);
     sigaction(SIGQUIT, &act, nullptr);
     sigaction(SIGTERM, &act, nullptr);
     sigaction(SIGINT, &act, nullptr);
@@ -143,7 +144,7 @@ int main(int argc, char** argv) {
     version.str("");
 
 #ifdef __x86_64__
-    version << "x86_64 2.8.0 .::. F-Tester edition .::.";
+    version << "x86_64 2.8.1 .::. F-Tester edition .::.";
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
