@@ -571,6 +571,12 @@ std::string cMessageBroker::prepFinalDataRec(const u_int8_t dir){
         ss << "\n\t\t\t\"bytes\":" << sampled_int[dir].bytes << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";
     }else{
         sampled_int[dir].seq++;
+        if (sampled_int[dir].first == false){
+            ss << ",\n\t\t{";
+        }else{
+            sampled_int[TX].first = false;
+            sampled_int[RX].first = false;
+        }
         ss << "\n\t\t\t\"ts\":"  << std::setprecision(6) << std::fixed << (double)(sampled_int[dir].ts_limit/1000000000.0) << ",";
         if (dir == TX){
             ss << "\n\t\t\t\"dir\":\"tx\",";
