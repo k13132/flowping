@@ -4,7 +4,7 @@ set (FlowPing_VERSION_MAJOR 2)
 
 
 set(CMAKE_CXX_STANDARD 17)
-SET(CMAKE_CXX_FLAGS "-Wall -Wextra -g -O3 -mssse3  -m64  -pthread -std=c++17")
+SET(CMAKE_CXX_FLAGS "-Wall -Wextra -g -O3 -mssse3  -m64  -pthread -faligned-new")
 
 find_package (Threads)
 
