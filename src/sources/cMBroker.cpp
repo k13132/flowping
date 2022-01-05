@@ -398,6 +398,7 @@ std::string cMessageBroker::closeDataRecSlot(const u_int64_t ts, const u_int8_t 
     if (sampled_int[dir].first == false){
         ss << ",\n\t\t{";
     }else{
+        ss << "\n\t\t{";
         sampled_int[TX].first = false;
         sampled_int[RX].first = false;
     }
@@ -459,14 +460,6 @@ std::string cMessageBroker::closeDataRecSlot(const u_int64_t ts, const u_int8_t 
 std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int64_t pkt_server_ts, const u_int8_t dir, const uint16_t size, const uint64_t seq, const float rtt){
     stringstream ss;
     if (setup->getSampleLen()){
-        if (json_first){
-            std::chrono::system_clock::time_point tp;
-            json_first = false;
-            sampled_int[RX].ts_limit = sampled_int[TX].ts_limit = setup->getSampleLen() + ts;
-            ss << "\n\t\t{";
-            jt_rtt = rtt;
-            jt_rtt_prev = rtt;
-        }
        // if (ts < sampled_int[dir].ts_limit){
             if (dir == RX){
                 if (sampled_int[dir].last_seen_seq == seq){
@@ -561,7 +554,7 @@ std::string cMessageBroker::prepFinalDataRec(const u_int8_t dir){
         }
         if (dir == RX){
             ss << "\n\t\t\t\"dir\":\"rx\",";
-            ss << "\n\t\t\t\"loss\":" << 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((sampled_int[dir].last_seen_seq+1)-sampled_int[dir].first_seq) << ","; //in ms
+            ss << "\n\t\t\t\"loss\":" <<  min(1.0, 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((sampled_int[dir].last_seen_seq)-sampled_int[dir].first_seq)) << ","; //in ms
             ss << "\n\t\t\t\"rtt\":" << std::setprecision(3) << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << ","; //in ms
             ss << "\n\t\t\t\"jitter\":" << std::setprecision(3) << sampled_int[dir].jitter_sum/sampled_int[dir].pkt_cnt << ","; //in ms
             ss << "\n\t\t\t\"ooo_pkts\":" << sampled_int[dir].ooo << ",";

@@ -219,8 +219,11 @@ int cClient::run_receiver() {
         tv.tv_sec = TV_SEC(setup->getSampleLen());
         tv.tv_usec = TV_USEC(setup->getSampleLen());
     }
-    setsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv));
 
+    int rcvBufferSize = 1500*128;
+    int sockOptSize = sizeof(rcvBufferSize);
+    setsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv));
+    setsockopt(this->sock, SOL_SOCKET, SO_RCVBUF,&rcvBufferSize,sockOptSize);
 
     this->r_running = true;
     while (!setup->isDone()) {
@@ -306,11 +309,11 @@ int cClient::run_sender() {
     while (not isSenderReceiverReady()){
         usleep(200000);
     }
+    int sndBufferSize = 1500*128;
+    int sockOptSize = sizeof(sndBufferSize);
+    setsockopt(this->sock, SOL_SOCKET, SO_SNDBUF,&sndBufferSize,sockOptSize);
 
-    //initiate output
-    gen_msg_t * t = new gen_msg_t;
-    t->type = MSG_OUTPUT_INIT;
-    mbroker->push_lp(t);
+
 
     while (!setup->isStarted()) {
 #ifdef DEBUG        
@@ -329,6 +332,12 @@ int cClient::run_sender() {
             exit(1);
         }
     }
+
+    //initiate output
+    gen_msg_t * t = new gen_msg_t;
+    t->type = MSG_OUTPUT_INIT;
+    mbroker->push_lp(t);
+
     ping_pkt->type = PING; //prepare the first packet
     ping_pkt->flow_id = (uint16_t)(rand() % 65536);
     clock_gettime(CLOCK_REALTIME, &start_ts);
@@ -405,9 +414,7 @@ int cClient::run_sender() {
         //Increment here - packet can be timeouted
         i++;
     }
-    if (setup->nextPacket()) {
-        //std::cerr << "PBuffer not empty." << std::endl;
-    }
+    usleep(250000);
     ping_pkt->type = CONTROL;
     t = new gen_msg_t;
     t->type = MSG_TIMER_END;
@@ -419,7 +426,7 @@ int cClient::run_sender() {
     ping_msg->code = CNT_DONE;
     ping_msg->size = MIN_PKT_SIZE;
     timeout = 0;
-    sleep(1); //wait for network congestion "partialy" disapear.
+    usleep(750000); //wait for network congestion "partialy" disapear.
     while (!setup->isDone()) {
         //std::cout << "Get server stats..." << std::endl;
         nRet = sendto(this->sock, packet, ping_msg->size, 0, resAddr->ai_addr, resAddr->ai_addrlen);

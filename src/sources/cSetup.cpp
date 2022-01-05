@@ -393,6 +393,7 @@ void cSetup::usage() {
     cout << "| Server:                                                                                       |" << endl;
     cout << "|         [-S]                       Run as server                                              |" << endl;
     cout << "| Client:                                                                                       |" << endl;
+    cout << "|         [-6]                       Prefer IPv6 over IPv4                                      |" << endl;
     cout << "|         [-a]                       Busy-loop mode! (100% CPU usage), more accurate bitrate    |" << endl;
     cout << "|         [-b kbit/s]                BitRate (first limit)                                      |" << endl;
     cout << "|         [-B kbit/s]                BitRate (second limit)                                     |" << endl;
@@ -614,50 +615,56 @@ std::ostream& operator<<(std::ostream& os, const tpoint_def_t& obj)
 int cSetup::parseCmdLine() {
     //Overit zda to funguje - pripadne zda to takto budeme delat?
     //cout << this->size << "\t" << this->interval_i << "\t" << this->interval_I << endl;
+    u_int32_t shift = 0;
     tpoint_def_t tmp;
     tmp.ts = 0;
-    if (t_par) {
-        tmp.bitrate = 8000000.0 * this->size / this->interval_i;
-        tmp.len = this->size;
-        tpoints.push(tmp);
-        tmp.ts = this->time_t;
-        tpoints.push(tmp);
-        //cout << tmp.ts << "\t" << tmp.bitrate << "\t" << tmp.len << endl;
-    } else {
-        this->time_t = 0;
-        tmp.ts = 0;
-        tmp.bitrate = 8000000.0 * this->size / this->interval_i;
-        tmp.len = this->size;
-        tpoints.push(tmp);
+    if (deadline == 0) {
+        deadline = 31536000; //~ 1 year
     }
-    if (R_par) {
-        tmp.ts = this->time_t + this->time_R;
-        tmp.bitrate = 8000000.0 * this->size / this->interval_I;
-        tmp.len = this->size;
-        tpoints.push(tmp);
-    }
-    if (T_par) {
-        tmp.ts = this->time_t + this->time_T;
-        tmp.bitrate = 8000000.0 * this->size / this->interval_I;
-        tmp.len = this->size;
-        tpoints.push(tmp);
-    }
-    if (!R_par && !T_par && !t_par) {
-        tmp.ts = 86400;
-        //ODcout << tmp.ts << endl;
-        tmp.bitrate = 8000000.0 * this->size / this->interval_i;
-        tmp.len = this->size;
-        tpoints.push(tmp);
-        if (deadline == 0) {
-            deadline = 31536000; //~ 1 year
+    while(shift < this->deadline){
+        if (t_par) {
+            tmp.bitrate = 8000000.0 * this->size / this->interval_i;
+            tmp.len = this->size;
+            tpoints.push(tmp);
+            tmp.ts = this->time_t + shift;
+            tpoints.push(tmp);
+            //cout << tmp.ts << "\t" << tmp.bitrate << "\t" << tmp.len << endl;
+        } else {
+            this->time_t = 0;
+            tmp.ts = shift;
+            tmp.bitrate = 8000000.0 * this->size / this->interval_i;
+            tmp.len = this->size;
+            tpoints.push(tmp);
+        }
+        if (R_par) {
+            tmp.ts = this->time_t + this->time_R + shift;
+            tmp.bitrate = 8000000.0 * this->size / this->interval_I;
+            tmp.len = this->size;
+            tpoints.push(tmp);
+        }
+        if (T_par) {
+            tmp.ts = this->time_t + this->time_T + shift;
+            tmp.bitrate = 8000000.0 * this->size / this->interval_I;
+            tmp.len = this->size;
+            tpoints.push(tmp);
+        }
+        if (!R_par && !T_par && !t_par) {
+            tmp.ts = 86400;
+            //ODcout << tmp.ts << endl;
+            tmp.bitrate = 8000000.0 * this->size / this->interval_i;
+            tmp.len = this->size;
+            tpoints.push(tmp);
+        }
+        shift += this->time_t + this->time_T;
+        if (this->time_t + this->time_T == 0){
+            shift += 86400;
         }
     }
     //last record expected to be doubled;
-    tpoints.push(tmp);
-
     if (deadline == 0) {
         deadline = tmp.ts;
     }
+    tpoints.push(tmp);
     refactorTPoints();
     this->tp_ready = true;
     return 0;
