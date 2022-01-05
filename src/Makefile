@@ -24,7 +24,7 @@ CROSS_PREFIX=
 CXXFLAGS_ARCH=
 
 # Common compiler choices
-CXXFLAGS += -pipe -O3 -Wall -D_REENTRANT -fPIC -W
+CXXFLAGS += -pipe -O3 -Wall -D_REENTRANT -fPIC -W -std=c++17
 
 # Linker choices
 #LXXFLAGS= -march=armv5te -pthread
