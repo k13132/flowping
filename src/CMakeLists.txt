@@ -4,7 +4,7 @@ set (FlowPing_VERSION_MAJOR 2)
 
 
 set(CMAKE_CXX_STANDARD 17)
-SET(CMAKE_CXX_FLAGS "-Wall -Wextra -g -O3 -mssse3  -m64  -pthread -faligned-new")
+SET(CMAKE_CXX_FLAGS "-Wall -Wextra -g -O3 -mssse3  -m64  -pthread -std=c++17")
 
 find_package (Threads)
 
@@ -35,7 +35,7 @@ link_libraries(cMBroker)
 add_executable(flowping ./sources/flowping.cpp ./sources/cClient.cpp ./sources/cSetup.cpp ./sources/cServer.cpp ./sources/cStats.cpp sources/cMBroker.cpp include/cMBroker.h external/SPSCQueue.h sources/cSlotTimer.cpp include/cSlotTimer.h)
 target_link_libraries(flowping cSetup cStats cServer cClient cMBroker ${CMAKE_THREAD_LIBS_INIT})
 
-
+install(TARGETS flowping RUNTIME DESTINATION /usr/bin)
 
 
 
