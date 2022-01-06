@@ -622,7 +622,7 @@ int cSetup::parseCmdLine() {
     if (deadline == 0) {
         deadline = 31536000; //~ 1 year
     }
-    while(shift < this->deadline){
+    //while(shift < this->deadline){
         if (t_par) {
             tmp.bitrate = 8000000.0 * this->size / this->interval_i;
             tmp.len = this->size;
@@ -660,7 +660,7 @@ int cSetup::parseCmdLine() {
         if (this->time_t + this->time_T == 0){
             shift += 86400;
         }
-    }
+    //}
     //last record expected to be doubled;
     if (deadline == 0) {
         deadline = tmp.ts;
