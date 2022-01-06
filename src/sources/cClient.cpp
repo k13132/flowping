@@ -224,7 +224,6 @@ int cClient::run_receiver() {
     int sockOptSize = sizeof(rcvBufferSize);
     setsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv));
     setsockopt(this->sock, SOL_SOCKET, SO_RCVBUF,&rcvBufferSize,sockOptSize);
-
     this->r_running = true;
     while (!setup->isDone()) {
         nRet = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, resAddr->ai_addr, &resAddr->ai_addrlen);

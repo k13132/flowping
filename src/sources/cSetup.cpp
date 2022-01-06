@@ -281,6 +281,7 @@ cSetup::cSetup(int argc, char **argv, string version) {
                 break;
         }
     }
+    if ((this->_par) || (this->vonly)) return;
     if ((this->i_par) && (not this->I_par)) this->interval_I = this->interval_i;
     if ((this->I_par) && (not this->i_par)) this->interval_i = this->interval_I;
     if (this->b_par && not (this->i_par or this->I_par)) {
