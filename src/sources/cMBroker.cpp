@@ -334,8 +334,8 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
             //Flush buffered data
             if (not setup->silent()) {
                 if (setup->getSampleLen()){
-                    *output << prepFinalDataRec(TX);
-                    *output << prepFinalDataRec(RX);
+                    *output << prepFinalDataRec(ts, TX);
+                    *output << prepFinalDataRec(ts, RX);
                 }
             }
             if (setup->toJSON()) {
@@ -536,9 +536,8 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int64_t pkt_
     return ss.str();
 }
 
-std::string cMessageBroker::prepFinalDataRec(const u_int8_t dir){
+std::string cMessageBroker::prepFinalDataRec(uint64_t ts, const u_int8_t dir){
     stringstream ss;
-
     if (sampled_int[dir].pkt_cnt){
         sampled_int[dir].seq++;
         //sampled_int[dir].ts_limit += setup->getSampleLen();
@@ -548,7 +547,7 @@ std::string cMessageBroker::prepFinalDataRec(const u_int8_t dir){
             sampled_int[TX].first = false;
             sampled_int[RX].first = false;
         }
-        ss << "\n\t\t\t\"ts\":"  << std::setprecision(6) << std::fixed << (double)(sampled_int[dir].ts_limit/1000000000.0) << ",";
+        ss << "\n\t\t\t\"ts\":"  << std::setprecision(6) << std::fixed << (double)(ts/1000000000.0) << ",";
         if (dir == TX){
             ss << "\n\t\t\t\"dir\":\"tx\",";
         }
@@ -570,7 +569,7 @@ std::string cMessageBroker::prepFinalDataRec(const u_int8_t dir){
             sampled_int[TX].first = false;
             sampled_int[RX].first = false;
         }
-        ss << "\n\t\t\t\"ts\":"  << std::setprecision(6) << std::fixed << (double)(sampled_int[dir].ts_limit/1000000000.0) << ",";
+        ss << "\n\t\t\t\"ts\":"  << std::setprecision(6)  << std::fixed << (double)(ts/1000000000.0) << ",";
         if (dir == TX){
             ss << "\n\t\t\t\"dir\":\"tx\",";
         }

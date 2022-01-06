@@ -108,7 +108,6 @@ int cClient::run_packetFactory() {
         //std::cout << "pbuffer size: " << setup->getTimedBufferSize()<<std::endl;
         while (pkt_created && setup->getTimedBufferSize() < 96000) {
             pkt_created = setup->prepNextPacket();
-
             if (setup->isStop()) {
                 return 0;
             }
@@ -337,6 +336,13 @@ int cClient::run_sender() {
     t->type = MSG_OUTPUT_INIT;
     mbroker->push_lp(t);
 
+
+
+    gen_msg_t *msg;
+    while (!pktBufferReady) {
+        usleep(200000);
+    }
+
     ping_pkt->type = PING; //prepare the first packet
     ping_pkt->flow_id = (uint16_t)(rand() % 65536);
     clock_gettime(CLOCK_REALTIME, &start_ts);
@@ -351,16 +357,12 @@ int cClient::run_sender() {
     timed_packet_t tinfo;
     u_int64_t tgTime = 0;
 
-    gen_msg_t *msg;
-    while (!pktBufferReady) {
-        usleep(200000);
-    }
-
     if (setup->getSampleLen()){
         stimer->start();
     }
     u_int64_t start_time = NS_TIME(start_ts);
     u_int64_t deadline = setup->getDeadline() * 1000000000L + start_time;
+    //std::cout << deadline - start_time << " / " << deadline << " / " << start_time <<std::endl;
     unsigned int i;
     for (i = 1; (i <= setup->getCount() && not setup->isStop());) {
         refTv = sentTv;
@@ -391,9 +393,11 @@ int cClient::run_sender() {
 
             //check deadline
             if (deadline < (uint64_t)(curTv.tv_sec * 1000000000L + curTv.tv_nsec)){
+                //std::cout << "deadline reached" << std::endl;
                 setup->setStop(true);
             }
         } else {
+            //std::cout << "no more packets to send" << std::endl;
             setup->setStop(true);
             break;
         }
