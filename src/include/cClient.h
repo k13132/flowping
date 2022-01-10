@@ -74,8 +74,8 @@ private:
 
 
     int sock;
-    struct in6_addr saServer6;
-    struct addrinfo hints, *resAddr=NULL, *tmpAddr = NULL;
+    struct sockaddr_in6 saServer6, saClient6;
+    struct addrinfo hints, *resAddr=NULL, *ipv4_Addr = NULL, *ipv6_Addr = NULL;
     struct timeval my_ts, rrefTv, refTv2,  tmpTv;
     struct timespec req, rem, refTv, curTv, sentTv, r_curTv, r_refTv, start_ts;
     double r_delta, delta, delta2, delta3;

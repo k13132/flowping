@@ -123,76 +123,31 @@ int cClient::run_packetFactory() {
 }
 
 int cClient::run_receiver() {
-    int rc;
-
-    memset(&hints, 0x00, sizeof(hints));
-    memset(&saServer6, 0x00, sizeof(saServer6));
-    //= htons(setup->getPort());
-    //hints.ai_flags    = AI_CANONNAME;
-    hints.ai_flags    = AI_NUMERICSERV;
-    hints.ai_family   = AF_UNSPEC;
-    hints.ai_socktype = SOCK_DGRAM;
-    hints.ai_protocol = IPPROTO_UDP;
-
-    rc = inet_pton(AF_INET, setup->getHostname().c_str(), &saServer6);
-    if (rc == 1)    /* valid IPv4 text address? */
-    {
-        hints.ai_family = AF_INET;
-        hints.ai_flags |= AI_NUMERICHOST;
-    }
-    else
-    {
-        rc = inet_pton(AF_INET6, setup->getHostname().c_str(), &saServer6);
-        if (rc == 1) /* valid IPv6 text address? */
-        {
-            hints.ai_family = AF_INET6;
-            hints.ai_flags |= AI_NUMERICHOST;
-        }
-    }
-
-    rc = getaddrinfo(setup->getHostname().c_str(), std::to_string(setup->getPort()).c_str(), &hints, &resAddr);
-    if (rc != 0)
-    {
-        printf("Host not found --> %s\n", gai_strerror(rc));
-        if (rc == EAI_SYSTEM){
-            perror("getaddrinfo() failed");
-        }else{
-            perror("host name error");
-        }
+    int addr_len = sizeof saClient6;
+    stringstream message;
+    stringstream ss;
+    // Create a UDP socket
+    if ((this->sock = socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
+        perror("Can't open stream socket");
         exit(1);
     }
+    //Set socket timeout
+    struct timeval tv;
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+    if (setsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0){
+        perror("setsockopt(SO_RCVTIMEO) failed");
+    }
 
-    //IPv4 vs. IPv6 preference if both types available.
-    while(resAddr){
-        if (resAddr->ai_family == AF_INET){
-            tmpAddr = resAddr;
-            //char str[INET6_ADDRSTRLEN];
-            //inet_ntop(AF_INET, (in_addr *)resAddr->ai_addr->sa_data, str, INET6_ADDRSTRLEN);
-            //inet_pton(AF_INET6, str, &saServer6);
-            if (!setup->isIPv6Prefered()){
-                break;
-            }
-        }
-        if (resAddr->ai_family == AF_INET6){
-            tmpAddr = resAddr;
-            if (setup->isIPv6Prefered()){
-                break;
-            }
-        }
-        resAddr = resAddr->ai_next;
-    }
-    resAddr = tmpAddr;
-    setup->setAddrFamily(resAddr->ai_family);
-    // Create a UDP/IP datagram socket
-    this->sock = socket(resAddr->ai_family, resAddr->ai_socktype, resAddr->ai_protocol);
-    //this->sock = socket(resAddr->ai_family, SOCK_DGRAM, IPPROTO_UDP);
-    if (this->sock < 0) {
-        perror("Failed in creating socket");
-        exit(1);
-    }
     if (setup->useInterface()) {
         setsockopt(this->sock, SOL_SOCKET, SO_BINDTODEVICE, setup->getInterface().c_str(), strlen(setup->getInterface().c_str()));
     }
+    // Fill in the address structure
+    bzero((char *) & saClient6, sizeof (saClient6));
+    bzero((char *) & saServer6, sizeof (saServer6));
+    saServer6.sin6_family = AF_INET6;
+    saServer6.sin6_addr = in6addr_any; // Auto asssign address and allow connection from IPv4 and IPv6
+    saServer6.sin6_port = htons(setup->getPort()); // Set listening port
 
     // Synchronization point
     this->receiverReady = true;
@@ -202,16 +157,10 @@ int cClient::run_receiver() {
 
     unsigned char packet[MAX_PKT_SIZE + HEADER_LENGTH];
     int nRet;
-
-    //int nFromLen;
-    //nFromLen = sizeof (struct sockaddr);
-
     clock_gettime(CLOCK_REALTIME, &r_curTv);
 
     //MAIN RX LOOP  *******************************************
     gen_msg_t * msg;
-
-    struct timeval tv;
     tv.tv_sec = 1;
     tv.tv_usec = 0;
     if (setup->getSampleLen()){
@@ -225,7 +174,7 @@ int cClient::run_receiver() {
     setsockopt(this->sock, SOL_SOCKET, SO_RCVBUF,&rcvBufferSize,sockOptSize);
     this->r_running = true;
     while (!setup->isDone()) {
-        nRet = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, resAddr->ai_addr, &resAddr->ai_addrlen);
+        nRet = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, (struct sockaddr *) &saClient6, (socklen_t *) & addr_len);
         if (nRet < 0) {
             msg = new gen_msg_t;
             msg->type = MSG_SOCK_TIMEOUT;
@@ -234,8 +183,6 @@ int cClient::run_receiver() {
         }
         msg = new gen_msg_t;
         memcpy(msg,packet, HEADER_LENGTH);
-        //std::cout << "before: " << ((ping_pkt_t *)packet)->seq << std::endl;
-        //std::cout << "after:  " << ((ping_pkt_t *)msg)->seq << std::endl;
         msg->size = nRet;
         mbroker->push_rx(msg);
     }
@@ -244,12 +191,18 @@ int cClient::run_receiver() {
 }
 
 int cClient::run_sender() {
+    int rc;
     this->s_running = true;
     event_t event;
     struct ping_pkt_t *ping_pkt;
     struct ping_msg_t *ping_msg;
     stringstream ss;
     int nRet;
+    memset(&hints, 0x00, sizeof(hints));
+    hints.ai_flags    = AI_NUMERICSERV;
+    hints.ai_family   = AF_UNSPEC;
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_protocol = IPPROTO_UDP;
 
     unsigned char packet[MAX_PKT_SIZE + 60] = {0};
 
@@ -311,37 +264,79 @@ int cClient::run_sender() {
     int sockOptSize = sizeof(sndBufferSize);
     setsockopt(this->sock, SOL_SOCKET, SO_SNDBUF,&sndBufferSize,sockOptSize);
 
-
-
-    while (!setup->isStarted()) {
-#ifdef DEBUG        
-        cerr << "Sending CONTROL Packet - code:" << ping_msg->code << endl;
-#endif
-        nRet = sendto(this->sock, packet, ping_msg->size, 0, resAddr->ai_addr, resAddr->ai_addrlen);
-        if (nRet < 0) {
-            cerr << "Send ERROR\n";
-            close(this->sock);
-            exit(1);
+    rc = getaddrinfo(setup->getHostname().c_str(), std::to_string(setup->getPort()).c_str(), &hints, &resAddr);
+    if (rc != 0)
+    {
+        printf("Host not found --> %s\n", gai_strerror(rc));
+        if (rc == EAI_SYSTEM){
+            perror("getaddrinfo() failed");
+        }else{
+            perror("host name error");
         }
-        usleep(200000); //  5pkt/s
-        timeout++;
+        exit(1);
+    }
+
+    //IPv4 vs. IPv6 preference if both types available.
+    while(resAddr){
+        if (resAddr->ai_family == AF_INET){
+            ipv4_Addr = resAddr;
+        }
+        if (resAddr->ai_family == AF_INET6){
+            ipv6_Addr = resAddr;
+        }
+        resAddr = resAddr->ai_next;
+    }
+    uint8_t first_family = 4;
+    if ((ipv6_Addr == NULL)&&(ipv4_Addr==NULL)) exit(1);
+    while (!setup->isStarted()) {
+        if ((setup->isIPv6Prefered())&&(ipv6_Addr != NULL)){
+            resAddr = ipv6_Addr;
+            first_family = 6;
+        }else{
+            if (ipv4_Addr!=NULL){
+                resAddr = ipv4_Addr;
+            }else{
+                resAddr = ipv6_Addr;
+                first_family = 6;
+            }
+        }
+        if (timeout < 25) {
+            nRet = sendto(this->sock, packet, ping_msg->size, 0, resAddr->ai_addr, resAddr->ai_addrlen);
+            if (nRet < 0) {
+                cerr << "Send ERROR\n";
+                close(this->sock);
+                exit(1);
+            }
+            usleep(200000); //  5pkt/s
+            timeout++;
+        }else{
+            if ((first_family == 4)&&(ipv6_Addr!=NULL)) resAddr = ipv6_Addr;
+            if ((first_family == 6)&&(ipv4_Addr!=NULL)) resAddr = ipv4_Addr;
+            nRet = sendto(this->sock, packet, ping_msg->size, 0, resAddr->ai_addr, resAddr->ai_addrlen);
+            if (nRet < 0) {
+                cerr << "Send ERROR\n";
+                close(this->sock);
+                exit(1);
+            }
+            usleep(200000); //  5pkt/s
+            timeout++;
+        }
         if (timeout == 50) { //try contact server fo 10s
             cerr << "Can't connect to server\n";
             exit(1);
         }
+    }
+    setup->setAddrFamily(resAddr->ai_family);
+
+    gen_msg_t *msg;
+    while (!pktBufferReady) {
+        usleep(200000);
     }
 
     //initiate output
     gen_msg_t * t = new gen_msg_t;
     t->type = MSG_OUTPUT_INIT;
     mbroker->push_lp(t);
-
-
-
-    gen_msg_t *msg;
-    while (!pktBufferReady) {
-        usleep(200000);
-    }
 
     ping_pkt->type = PING; //prepare the first packet
     ping_pkt->flow_id = (uint16_t)(rand() % 65536);
