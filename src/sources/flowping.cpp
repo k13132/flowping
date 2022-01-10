@@ -148,7 +148,6 @@ int main(int argc, char** argv) {
     version << " (" << DD << " "<< TT << ")";
 #endif    
 
-
     setup = new cSetup(argc, argv, version.str());
     //Check cmd line parameters
     if (setup->self_check() == SETUP_CHCK_SHOW) {
