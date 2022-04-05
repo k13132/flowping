@@ -77,6 +77,9 @@ cMessageBroker::cMessageBroker(cSetup *setup, cStats *stats){
 
 
 cMessageBroker::~cMessageBroker(){
+    if (setup->isServer()){
+        std::cout << this->pkt_cnt_rx << "/" << this->pkt_cnt_tx << std::endl;
+    }
 }
 
 void cMessageBroker::push(t_conn *conn, gen_msg_t *msg){
@@ -180,7 +183,7 @@ void cMessageBroker::run(){
     }
     if (setup->isServer()){
         while (!setup->isDone()){
-            usleep(10);
+            usleep(1);
             //HI priority message queue
             while (msg_buf_hp.front()){
                 processAndDeleteServerMessage(*msg_buf_hp.front());
@@ -209,8 +212,10 @@ void cMessageBroker::processAndDeleteServerMessage(t_msg_t *tmsg) {
     gen_msg_t *msg = tmsg->msg;
     switch(msg->type){
         case MSG_RX_PKT:
+            this->pkt_cnt_rx++;
             break;
         case MSG_TX_PKT:
+            this->pkt_cnt_tx++;
             break;
         case MSG_KEEP_ALIVE:
             //std::cout << "MSG_KEEP_ALIVE" << std::endl;
@@ -460,38 +465,38 @@ std::string cMessageBroker::closeDataRecSlot(const u_int64_t ts, const u_int8_t 
 std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int64_t pkt_server_ts, const u_int8_t dir, const uint16_t size, const uint64_t seq, const float rtt){
     stringstream ss;
     if (setup->getSampleLen()){
-       // if (ts < sampled_int[dir].ts_limit){
-            if (dir == RX){
-                if (sampled_int[dir].last_seen_seq == seq){
-                    dup_cnt++;
-                    sampled_int[dir].dup++;
-                    return ss.str();
-                }
-                if (sampled_int[dir].last_seen_seq > seq){
-                    ooo_cnt++;
-                    sampled_int[dir].ooo++;
-                    return ss.str();
-                }
-                pkt_cnt_rx++;
-                bytes_cnt_rx += size;
-                sampled_int[dir].rtt_sum += rtt;
-                //J(i) = J(i-1) + (|D(i-1,i)| - J(i-1))/16   viz RFC3550 (RTP/RTCP)
-                jt_diff = rtt - jt_rtt_prev;
-                jt_rtt_prev = rtt;
-                if (jt_diff < 0) jt_diff = -jt_diff;
-                jt_prev = jitter;
-                jitter = jt_prev + (1.0 / 16.0) * (jt_diff - jt_prev);
-                //jitter_sum += jitter;
-                sampled_int[dir].jitter_sum += jitter;
-            } else{
-                pkt_cnt_tx++;
-                bytes_cnt_tx += size;
+        // if (ts < sampled_int[dir].ts_limit){
+        if (dir == RX){
+            if (sampled_int[dir].last_seen_seq == seq){
+                dup_cnt++;
+                sampled_int[dir].dup++;
+                return ss.str();
             }
+            if (sampled_int[dir].last_seen_seq > seq){
+                ooo_cnt++;
+                sampled_int[dir].ooo++;
+                return ss.str();
+            }
+            pkt_cnt_rx++;
+            bytes_cnt_rx += size;
+            sampled_int[dir].rtt_sum += rtt;
+            //J(i) = J(i-1) + (|D(i-1,i)| - J(i-1))/16   viz RFC3550 (RTP/RTCP)
+            jt_diff = rtt - jt_rtt_prev;
+            jt_rtt_prev = rtt;
+            if (jt_diff < 0) jt_diff = -jt_diff;
+            jt_prev = jitter;
+            jitter = jt_prev + (1.0 / 16.0) * (jt_diff - jt_prev);
+            //jitter_sum += jitter;
+            sampled_int[dir].jitter_sum += jitter;
+        } else{
+            pkt_cnt_tx++;
+            bytes_cnt_tx += size;
+        }
 
-            sampled_int[dir].pkt_cnt++;
-            sampled_int[dir].bytes += size;
-            sampled_int[dir].last_seen_seq = seq;
-            return ss.str();
+        sampled_int[dir].pkt_cnt++;
+        sampled_int[dir].bytes += size;
+        sampled_int[dir].last_seen_seq = seq;
+        return ss.str();
         //}else{}
     } else{
         if (json_first){

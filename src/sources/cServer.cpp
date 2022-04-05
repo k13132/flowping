@@ -116,18 +116,32 @@ int cServer::run() {
         //connection = getConnection6(saClient6);
         connection = getConnectionFID(saClient6, (ping_pkt_t *)packet);
         connection->refTv = connection->curTv;
+
+        tmsg = new(gen_msg_t);
+        memcpy(tmsg,packet, sizeof(gen_msg_t));
+        tmsg->type = MSG_RX_PKT;
+        tmsg->size = ret_size;
+        mbroker->push(connection,tmsg);
         clock_gettime(CLOCK_REALTIME, &connection->curTv);
         msg = (struct gen_msg_t*) (packet);
         if (msg->type == PING) {
             ((ping_pkt_t *)packet)->server_sec = connection->curTv.tv_sec;
             ((ping_pkt_t *)packet)->server_nsec = connection->curTv.tv_nsec;
-            sendto(this->sock, packet, connection->ret_size, 0, (struct sockaddr *) &saClient6, addr_len);
+            ret_size = sendto(this->sock, packet, connection->ret_size, 0, (struct sockaddr *) &saClient6, addr_len);
             connection->pkt_cnt++;
             //ToDo Nefunguje na OpenWrt, jinde OK //dojde k zaplnněí fronty - nějak nefunguje .pop
             //tmsg = new gen_msg_t;
             //memcpy(tmsg,packet, sizeof(gen_msg_t));
             //mbroker->push(connection, tmsg);
-        }else{
+            if (ret_size < 0) {
+                continue;
+            }
+            tmsg = new(gen_msg_t);
+            memcpy(tmsg,packet, sizeof(gen_msg_t));
+            tmsg->type = MSG_TX_PKT;
+            tmsg->size = ret_size;
+            mbroker->push(connection, tmsg);
+       }else{
             processCMessage(msg, connection);
             sendto(this->sock, msg, MIN_PKT_SIZE, 0, (struct sockaddr *) &saClient6, addr_len);
             clock_gettime(CLOCK_REALTIME, &connection->curTv);
