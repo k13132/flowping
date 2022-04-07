@@ -169,19 +169,28 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
     //Todo integrate SlotTimer in server code
+    cpu_set_t cpuset;
+    unsigned int cpu = 0;
     if (setup->isServer()) {
         stats = new cServerStats(setup);
         mbroker = new cMessageBroker(setup, stats);
         std::thread t_mBroker (t_helper_cMBroker, (void *) mbroker);
+        CPU_ZERO(&cpuset);
+        CPU_SET(cpu % cpus, &cpuset);
+        pthread_setaffinity_np(t_mBroker.native_handle(), sizeof(cpu_set_t), &cpuset);
+        cpu++;
         server = new cServer(setup, stats, mbroker);
         std::thread t_sServer (t_helper_sServer, (void *) server);
+        CPU_ZERO(&cpuset);
+        CPU_SET(cpu % cpus, &cpuset);
+        pthread_setaffinity_np(t_sServer.native_handle(), sizeof(cpu_set_t), &cpuset);
+        cpu++;
         t_sServer.join();
         delete(server);
         t_mBroker.join();
         delete(mbroker);
     } else {
-        cpu_set_t cpuset;
-        unsigned int cpu = 0;
+
         stats = new cClientStats(setup);
         mbroker = new cMessageBroker(setup, stats);
         stimer = new cSlotTimer(mbroker, setup);
