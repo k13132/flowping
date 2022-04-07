@@ -123,7 +123,7 @@ void signalHandler(int sig) {
 
 int main(int argc, char** argv) {
     // CPUs
-    //unsigned int cpus = std::thread::hardware_concurrency();
+    unsigned int cpus = std::thread::hardware_concurrency();
 
     // Osetreni reakci na signaly
     struct sigaction act;
@@ -180,15 +180,39 @@ int main(int argc, char** argv) {
         t_mBroker.join();
         delete(mbroker);
     } else {
+        cpu_set_t cpuset;
+        unsigned int cpu = 0;
         stats = new cClientStats(setup);
         mbroker = new cMessageBroker(setup, stats);
         stimer = new cSlotTimer(mbroker, setup);
         client = new cClient(setup, stats, mbroker, stimer);
         std::thread t_cPacketFactory (t_helper_cPacketFactory, (void *) client);
+        CPU_ZERO(&cpuset);
+        CPU_SET(cpu % cpus, &cpuset);
+        pthread_setaffinity_np(t_cPacketFactory.native_handle(), sizeof(cpu_set_t), &cpuset);
+        cpu++;
+
         std::thread t_mBroker (t_helper_cMBroker, (void *) mbroker);
+        CPU_ZERO(&cpuset);
+        CPU_SET(cpu % cpus, &cpuset);
+        pthread_setaffinity_np(t_mBroker.native_handle(), sizeof(cpu_set_t), &cpuset);
+        //cpu++;
+
         std::thread t_cSlotTimer (t_helper_cSlotTimer, (void *) stimer);
+        CPU_ZERO(&cpuset);
+        CPU_SET(cpu % cpus, &cpuset);
+        pthread_setaffinity_np(t_cSlotTimer.native_handle(), sizeof(cpu_set_t), &cpuset);
+        cpu++;
         std::thread t_cReceiver (t_helper_cReceiver, (void *) client);
+        CPU_ZERO(&cpuset);
+        CPU_SET(cpu % cpus, &cpuset);
+        pthread_setaffinity_np(t_cReceiver.native_handle(), sizeof(cpu_set_t), &cpuset);
+        cpu++;
         std::thread t_cSender (t_helper_cSender, (void *) client);
+        CPU_ZERO(&cpuset);
+        CPU_SET(cpu % cpus, &cpuset);
+        pthread_setaffinity_np(t_cSender.native_handle(), sizeof(cpu_set_t), &cpuset);
+        cpu++;
         t_cSender.join();
         t_cPacketFactory.join();
         t_cReceiver.join();

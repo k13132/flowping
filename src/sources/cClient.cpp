@@ -75,13 +75,13 @@ cClient::cClient(cSetup *setup, cStats *stats, cMessageBroker *mbroker, cSlotTim
     setup->setStarted(false);
     setup->setStop(false);
     setup->setDone(false);
-    this->t1 = (u_int64_t) (setup->getTime_t()*1000000000.0); //convert s to ns
-    this->t2 = (u_int64_t) (this-> t1 + setup->getTime_T()*1000000000.0); //convert s to ns
-    this->t3 = (u_int64_t) (setup->getTime_R()*1000000000.0); //convert s to ns
-    this->base_interval = (u_int64_t) setup->getInterval_i();
-    this->min_interval = setup->getMinInterval();
-    this->max_interval = setup->getMaxInterval();
-    this->bchange = setup->getBchange();
+    //this->t1 = (u_int64_t) (setup->getTime_t()*1000000000.0); //convert s to ns
+    //this->t2 = (u_int64_t) (this-> t1 + setup->getTime_T()*1000000000.0); //convert s to ns
+    //this->t3 = (u_int64_t) (setup->getTime_R()*1000000000.0); //convert s to ns
+    //this->base_interval = (u_int64_t) setup->getInterval_i();
+    //this->min_interval = setup->getMinInterval();
+    //this->max_interval = setup->getMaxInterval();
+    //this->bchange = setup->getBchange();
     this->pktBufferReady = false;
     this->senderReady = false;
     this->receiverReady = false;

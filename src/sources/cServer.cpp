@@ -98,7 +98,6 @@ int cServer::run() {
     }
 
     printf("\nFlowPing server on %s waiting on port %d\n", hostname, setup->getPort());
-
     //}
 
     unsigned char packet[MAX_PKT_SIZE + 60];
@@ -113,7 +112,6 @@ int cServer::run() {
             mbroker->push_lp(tmsg);
             continue;
         }
-        //connection = getConnection6(saClient6);
         connection = getConnectionFID(saClient6, (ping_pkt_t *)packet);
         connection->refTv = connection->curTv;
 
@@ -129,10 +127,6 @@ int cServer::run() {
             ((ping_pkt_t *)packet)->server_nsec = connection->curTv.tv_nsec;
             ret_size = sendto(this->sock, packet, connection->ret_size, 0, (struct sockaddr *) &saClient6, addr_len);
             connection->pkt_cnt++;
-            //ToDo Nefunguje na OpenWrt, jinde OK //dojde k zaplnněí fronty - nějak nefunguje .pop
-            //tmsg = new gen_msg_t;
-            //memcpy(tmsg,packet, sizeof(gen_msg_t));
-            //mbroker->push(connection, tmsg);
             if (ret_size < 0) {
                 continue;
             }
@@ -151,14 +145,9 @@ int cServer::run() {
 }
 
 void cServer::processCMessage(gen_msg_t *msg, t_conn * connection){
-
-    //u_int64_t ts;
-    u_int64_t conn = connection->conn_id;
-    //ToDo
-    //stats->connInit(conn_id, string(client_ip), saClient.sin_port);
-
     if (msg->type == CONTROL) {
-        //std::cerr << "CNT MSG" << std::endl;
+        std::stringstream msg_out;
+        msg_out.str("");
         //Todo modify structure !!!! packet data not present - ONLY header was copied
         ping_msg_t *ping_msg = (ping_msg_t *) msg;
         ping_msg->size = MIN_PKT_SIZE;
@@ -200,20 +189,14 @@ void cServer::processCMessage(gen_msg_t *msg, t_conn * connection){
                 break;
 
             case CNT_DONE_OK:
-                //std::cerr << "CNT DONE_OK" << std::endl;
                 if (connection->fout.is_open()) {
                     connection->fout.close();
                 }
-                cerr << ".::. Test from " << connection->client_ip << " finished.  ~  " << connection->pkt_cnt << " packets processed." << endl;
-                //cerr << connection << std::endl;
-                //delete connection;
-                connections.erase(conn);
+                msg_out << ".::. Test from " << connection->client_ip << " finished.  ~  " << connection->pkt_cnt << " packets processed." << endl;
+                connections.erase(connection->conn_id);
                 break;
 
             case CNT_FNAME_OK:
-                //std::cerr << "CNT FNAME_OK" << std::endl;
-                std::stringstream msg_out;
-                msg_out.str("");
                 msg_out << endl << ".::. Test from " << connection->client_ip << " started. \t\t[";
                 setup->setAntiAsym(false);
                 if (setup->extFilenameLen() || connection->F_par) {
