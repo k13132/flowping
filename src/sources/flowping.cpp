@@ -146,7 +146,12 @@ int main(int argc, char** argv) {
 #ifdef __x86_64__
     version << "x86_64 2.9.0-dev .::. F-Tester edition .::.";
     version << " (" << DD << " "<< TT << ")";
-#endif    
+#endif
+
+#ifdef __arm__
+    version << "arm 2.9.0-dev .::. F-Tester edition .::.";
+    version << " (" << DD << " "<< TT << ")";
+#endif
 
     setup = new cSetup(argc, argv, version.str());
     //Check cmd line parameters
@@ -175,16 +180,16 @@ int main(int argc, char** argv) {
         stats = new cServerStats(setup);
         mbroker = new cMessageBroker(setup, stats);
         std::thread t_mBroker (t_helper_cMBroker, (void *) mbroker);
-        CPU_ZERO(&cpuset);
-        CPU_SET(cpu % cpus, &cpuset);
-        pthread_setaffinity_np(t_mBroker.native_handle(), sizeof(cpu_set_t), &cpuset);
-        cpu++;
+        //CPU_ZERO(&cpuset);
+        //CPU_SET(cpu % cpus, &cpuset);
+        //pthread_setaffinity_np(t_mBroker.native_handle(), sizeof(cpu_set_t), &cpuset);
+        //cpu++;
         server = new cServer(setup, stats, mbroker);
         std::thread t_sServer (t_helper_sServer, (void *) server);
-        CPU_ZERO(&cpuset);
-        CPU_SET(cpu % cpus, &cpuset);
-        pthread_setaffinity_np(t_sServer.native_handle(), sizeof(cpu_set_t), &cpuset);
-        cpu++;
+        //CPU_ZERO(&cpuset);
+        //CPU_SET(cpu % cpus, &cpuset);
+        //pthread_setaffinity_np(t_sServer.native_handle(), sizeof(cpu_set_t), &cpuset);
+        //cpu++;
         t_sServer.join();
         delete(server);
         t_mBroker.join();
@@ -196,32 +201,32 @@ int main(int argc, char** argv) {
         stimer = new cSlotTimer(mbroker, setup);
         client = new cClient(setup, stats, mbroker, stimer);
         std::thread t_cPacketFactory (t_helper_cPacketFactory, (void *) client);
-        CPU_ZERO(&cpuset);
-        CPU_SET(cpu % cpus, &cpuset);
-        pthread_setaffinity_np(t_cPacketFactory.native_handle(), sizeof(cpu_set_t), &cpuset);
-        cpu++;
-
-        std::thread t_mBroker (t_helper_cMBroker, (void *) mbroker);
-        CPU_ZERO(&cpuset);
-        CPU_SET(cpu % cpus, &cpuset);
-        pthread_setaffinity_np(t_mBroker.native_handle(), sizeof(cpu_set_t), &cpuset);
+        //CPU_ZERO(&cpuset);
+        //CPU_SET(cpu % cpus, &cpuset);
+        //pthread_setaffinity_np(t_cPacketFactory.native_handle(), sizeof(cpu_set_t), &cpuset);
         //cpu++;
 
+        std::thread t_mBroker (t_helper_cMBroker, (void *) mbroker);
+        //CPU_ZERO(&cpuset);
+        //CPU_SET(cpu % cpus, &cpuset);
+        //pthread_setaffinity_np(t_mBroker.native_handle(), sizeof(cpu_set_t), &cpuset);
+        ////cpu++;
+
         std::thread t_cSlotTimer (t_helper_cSlotTimer, (void *) stimer);
-        CPU_ZERO(&cpuset);
-        CPU_SET(cpu % cpus, &cpuset);
-        pthread_setaffinity_np(t_cSlotTimer.native_handle(), sizeof(cpu_set_t), &cpuset);
-        cpu++;
+        //CPU_ZERO(&cpuset);
+        //CPU_SET(cpu % cpus, &cpuset);
+        //pthread_setaffinity_np(t_cSlotTimer.native_handle(), sizeof(cpu_set_t), &cpuset);
+        //cpu++;
         std::thread t_cReceiver (t_helper_cReceiver, (void *) client);
-        CPU_ZERO(&cpuset);
-        CPU_SET(cpu % cpus, &cpuset);
-        pthread_setaffinity_np(t_cReceiver.native_handle(), sizeof(cpu_set_t), &cpuset);
-        cpu++;
+        //CPU_ZERO(&cpuset);
+        //CPU_SET(cpu % cpus, &cpuset);
+        //pthread_setaffinity_np(t_cReceiver.native_handle(), sizeof(cpu_set_t), &cpuset);
+        //cpu++;
         std::thread t_cSender (t_helper_cSender, (void *) client);
-        CPU_ZERO(&cpuset);
-        CPU_SET(cpu % cpus, &cpuset);
-        pthread_setaffinity_np(t_cSender.native_handle(), sizeof(cpu_set_t), &cpuset);
-        cpu++;
+        //CPU_ZERO(&cpuset);
+        //CPU_SET(cpu % cpus, &cpuset);
+        //pthread_setaffinity_np(t_cSender.native_handle(), sizeof(cpu_set_t), &cpuset);
+        //cpu++;
         t_cSender.join();
         t_cPacketFactory.join();
         t_cReceiver.join();
