@@ -64,7 +64,7 @@ private:
     float jt_prev = 0; //ms
     float pkt_rtt;
     float rtt_min, rtt_max, rtt_avg;
-    u_int64_t time, pkt_sent, server_received, pkt_rcvd, last_seq_rcv, ooo_cnt, dup_cnt;
+    u_int64_t time, pkt_sent, server_received, pkt_rcvd, ooo_cnt, dup_cnt;
 private:
     u_int64_t timer_slot_interval;
 };

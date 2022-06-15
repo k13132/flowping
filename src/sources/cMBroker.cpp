@@ -19,8 +19,6 @@ std::ostream& operator<<(std::ostream& os, const ping_msg_t& obj)
     return os;
 }
 
-
-
 cMessageBroker::cMessageBroker(cSetup *setup, cStats *stats){
     if (setup) {
         this->setup = setup;
@@ -54,7 +52,6 @@ cMessageBroker::cMessageBroker(cSetup *setup, cStats *stats){
     this->rtt_max = -1;
     this->pkt_rcvd = 0;
     this->pkt_sent = 0;
-    this->last_seq_rcv = 0;
     this->ooo_cnt = 0;
 
     for (int i = 0; i < 2; i++){
@@ -265,9 +262,9 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
             //Todo modify structure !!!! packet data not present - ONLY header was copied
             ping_pkt = (struct ping_pkt_t*) (msg);
             if (ping_pkt->size < HEADER_LENGTH) std::cerr << "Invalid RX Packet Size: " << ping_pkt->size << std::endl;
-            ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den));
-            pkt_rtt = ((tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den)) - (ping_pkt->sec * 1000000000L) - (ping_pkt->nsec))/1000000.0; //ms
-            pkt_server_ts =  ping_pkt->server_sec * 1000000000L + ping_pkt->server_nsec  ;
+            ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * u_int64_t(1000000000L)) / chrono::system_clock::period::den));
+            pkt_rtt = ((tp.time_since_epoch().count() * ((chrono::system_clock::period::num * u_int64_t(1000000000L)) / chrono::system_clock::period::den)) - (ping_pkt->sec * u_int64_t(1000000000L)) - (ping_pkt->nsec))/1000000.0; //ms
+            pkt_server_ts =  ping_pkt->server_sec * u_int64_t(1000000000L) + ping_pkt->server_nsec;
             //ToDo A! packet counter in prepDataRec !
             if (not setup->silent()) {
                 *output << prepDataRec(ts, pkt_server_ts, RX, ping_pkt->size, ping_pkt->seq, pkt_rtt);
@@ -278,7 +275,7 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
         case MSG_TX_PKT:
             ping_pkt = (struct ping_pkt_t*) (msg);
             if (ping_pkt->size < HEADER_LENGTH) std::cerr << "Invalid TX Packet Size: " << ping_pkt->size << std::endl;
-            ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den));
+            ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * u_int64_t(1000000000L)) / chrono::system_clock::period::den));
             if (not setup->silent()) {
                 *output << prepDataRec(ts, 0, TX, ping_pkt->size, ping_pkt->seq, 0);
             }
@@ -301,7 +298,7 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
 
         case MSG_SLOT_TIMER_TICK:
             //std::cout << "MSG_SLOT_TIMER_TICK" << std::endl;
-            ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den));
+            ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * u_int64_t(1000000000L)) / chrono::system_clock::period::den));
             for (int direction = 0; direction < 2; direction ++){
                 *output << closeDataRecSlot(ts, direction);
             }
@@ -335,7 +332,7 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tmsg){
         case MSG_OUTPUT_CLOSE:
             //std::cout << "MSG_OUTPUT_CLOSE" << std::endl;
             //*output << c_stats->getReport();
-            ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * 1000000000L) / chrono::system_clock::period::den));
+            ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * u_int64_t(1000000000L)) / chrono::system_clock::period::den));
             //Flush buffered data
             if (not setup->silent()) {
                 if (setup->getSampleLen()){
@@ -413,10 +410,11 @@ std::string cMessageBroker::closeDataRecSlot(const u_int64_t ts, const u_int8_t 
             ss << "\n\t\t\t\"dir\":\"tx\",";
         }
         if (dir == RX){
+            ss << std::setprecision(3);
             ss << "\n\t\t\t\"dir\":\"rx\",";
             ss << "\n\t\t\t\"loss\":" << min(1.0, 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((sampled_int[dir].last_seen_seq)-sampled_int[dir].first_seq)) << ","; //in ms
-            ss << "\n\t\t\t\"rtt\":" << std::setprecision(3) << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << ","; //in ms
-            ss << "\n\t\t\t\"jitter\":" << std::setprecision(3) << sampled_int[dir].jitter_sum/sampled_int[dir].pkt_cnt << ","; //in ms
+            ss << "\n\t\t\t\"rtt\":" << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << ","; //in ms
+            ss << "\n\t\t\t\"jitter\":" << sampled_int[dir].jitter_sum/sampled_int[dir].pkt_cnt << ","; //in ms
             ss << "\n\t\t\t\"ooo_pkts\":" << sampled_int[dir].ooo << ",";
             ss << "\n\t\t\t\"dup_pkts\":" << sampled_int[dir].dup << ",";
         }
@@ -429,7 +427,13 @@ std::string cMessageBroker::closeDataRecSlot(const u_int64_t ts, const u_int8_t 
         }
         if (dir == RX){
             ss << "\n\t\t\t\"dir\":\"rx\",";
-            ss << "\n\t\t\t\"loss\":" << 1 << ",";
+            ss << std::setprecision(3) << std::fixed;
+            if (sampled_int[TX].last_seen_seq > sampled_int[RX].last_seen_seq){
+                ss << "\n\t\t\t\"loss\":" << 1.0 << ",";
+            }
+            else{
+                ss << "\n\t\t\t\"loss\":" << 0.0 << ",";
+            }
             ss << "\n\t\t\t\"ooo_pkts\":" << 0 << ",";
             ss << "\n\t\t\t\"dup_pkts\":" << 0 << ",";
             ss << "\n\t\t\t\"rtt\":" << 0 << ","; //in ms
@@ -558,9 +562,18 @@ std::string cMessageBroker::prepFinalDataRec(uint64_t ts, const u_int8_t dir){
         }
         if (dir == RX){
             ss << "\n\t\t\t\"dir\":\"rx\",";
-            ss << "\n\t\t\t\"loss\":" <<  min(1.0, 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((sampled_int[dir].last_seen_seq)-sampled_int[dir].first_seq)) << ","; //in ms
-            ss << "\n\t\t\t\"rtt\":" << std::setprecision(3) << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << ","; //in ms
-            ss << "\n\t\t\t\"jitter\":" << std::setprecision(3) << sampled_int[dir].jitter_sum/sampled_int[dir].pkt_cnt << ","; //in ms
+            ss << std::setprecision(3);
+            if ((sampled_int[dir].last_seen_seq-sampled_int[dir].first_seq) == 0){
+                if (sampled_int[dir].last_seen_seq == sampled_int[TX].last_seen_seq){
+                    ss << "\n\t\t\t\"loss\":0.0,";
+                }else{
+                    ss << "\n\t\t\t\"loss\":1.0,";
+                }
+            }else{
+                ss << "\n\t\t\t\"loss\":" <<  min(1.0, 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((sampled_int[dir].last_seen_seq)-sampled_int[dir].first_seq)) << ",";
+            }
+            ss << "\n\t\t\t\"rtt\":" << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << ","; //in ms
+            ss << "\n\t\t\t\"jitter\":" << sampled_int[dir].jitter_sum/sampled_int[dir].pkt_cnt << ","; //in ms
             ss << "\n\t\t\t\"ooo_pkts\":" << sampled_int[dir].ooo << ",";
             ss << "\n\t\t\t\"dup_pkts\":" << sampled_int[dir].dup << ",";
         }
@@ -580,10 +593,11 @@ std::string cMessageBroker::prepFinalDataRec(uint64_t ts, const u_int8_t dir){
                 ss << "\n\t\t\t\"dir\":\"tx\",";
             }
             if (dir == RX){
+                ss << std::setprecision(3);
                 ss << "\n\t\t\t\"dir\":\"rx\",";
                 ss << "\n\t\t\t\"loss\":" << 1.0 << ","; //in ms
-                ss << "\n\t\t\t\"rtt\":" << std::setprecision(3) << 0 << ","; //in ms
-                ss << "\n\t\t\t\"jitter\":" << std::setprecision(3) << 0 << ","; //in ms
+                ss << "\n\t\t\t\"rtt\":"  << 0 << ","; //in ms
+                ss << "\n\t\t\t\"jitter\":" << 0 << ","; //in ms
                 ss << "\n\t\t\t\"ooo_pkts\":" << 0 << ",";
                 ss << "\n\t\t\t\"dup_pkts\":" << 0 << ",";
             }

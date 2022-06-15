@@ -4,7 +4,19 @@ set (FlowPing_VERSION_MAJOR 2)
 
 
 set(CMAKE_CXX_STANDARD 17)
-SET(CMAKE_CXX_FLAGS "-Wall -Wextra -g -O3 -mssse3  -m64  -pthread -faligned-new")
+if(CMAKE_CROSSCOMPILING)
+    SET(CMAKE_CXX_FLAGS "-Wall -Wextra -g -O3 -pthread -faligned-new")
+else()
+    if (CMAKE_HOST_UNIX)
+        if (${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+            SET(CMAKE_CXX_FLAGS "-Wall -Wextra -g -O3 -mssse3  -m64  -pthread -faligned-new")
+        else()
+            message( STATUS ${CMAKE_HOST_SYSTEM_PROCESSOR})
+        endif()
+    else()
+        message( FATAL_ERROR "Only 64bit version is supported." )
+    endif()
+endif()
 
 find_package (Threads)
 

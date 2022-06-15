@@ -148,8 +148,14 @@ int main(int argc, char** argv) {
     version << " (" << DD << " "<< TT << ")";
 #endif
 
+
 #ifdef __aarch64__
     version << "arm_64 2.9.0-dev .::. F-Tester edition .::.";
+    version << " (" << DD << " "<< TT << ")";
+#endif
+
+#ifdef __arm__
+    version << "arm 2.9.0-dev .::. F-Tester edition .::.";
     version << " (" << DD << " "<< TT << ")";
 #endif
 
