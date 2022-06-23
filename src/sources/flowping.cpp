@@ -27,7 +27,7 @@
 
 
 
-#include "_types.h"
+#include "types.h"
 #include "cClient.h"
 #include "cServer.h"
 #include "cSetup.h"
@@ -159,6 +159,7 @@ int main(int argc, char** argv) {
     version << " (" << DD << " "<< TT << ")";
 #endif
 
+
     setup = new cSetup(argc, argv, version.str());
     //Check cmd line parameters
     if (setup->self_check() == SETUP_CHCK_SHOW) {
@@ -180,7 +181,7 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
     //Todo integrate SlotTimer in server code
-    cpu_set_t cpuset;
+    //cpu_set_t cpuset;
     unsigned int cpu = 0;
     if (setup->isServer()) {
         stats = new cServerStats(setup);

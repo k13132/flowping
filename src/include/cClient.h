@@ -29,7 +29,7 @@
 #ifndef CLIENT_H
 #define	CLIENT_H
 
-#include "_types.h"
+#include "types.h"
 #include "cSetup.h"
 #include "cStats.h"
 #include "cSlotTimer.h"
@@ -37,7 +37,7 @@
 #include "queue"
 #include <netdb.h>
 #include <cstdlib>
-#include <sys/socket.h>
+//#include <sys/socket.h>
 
 using namespace std;
 
@@ -46,7 +46,7 @@ public:
     cClient(cSetup *setup, cStats *stats, cMessageBroker *mbroker, cSlotTimer* stimer);
     bool status(void);
     int run_sender(void);
-    int run_receiver(void);
+    int run_receiver();
     int run_packetFactory(void);
     void terminate(void);
     virtual ~cClient();
@@ -58,7 +58,7 @@ private:
     vector <event_t> msg_store;
     vector <event_t> msg_store_snd;
     queue <ping_pkt_t> rcv_queue;
-    void delay(struct timespec);
+    static void delay(struct timespec, struct timespec);
 
     struct ping_pkt_t *ping_pkt;
     struct ping_msg_t *ping_msg;
@@ -73,7 +73,8 @@ private:
     bool isSenderReceiverReady();
 
 
-    int sock;
+    int sock[64];
+    int addr_family;
     struct sockaddr_in6 saServer6, saClient6;
     struct addrinfo hints, *resAddr=NULL, *ipv4_Addr = NULL, *ipv6_Addr = NULL;
     struct timeval my_ts, rrefTv, refTv2,  tmpTv;
@@ -81,7 +82,7 @@ private:
     double r_delta, delta, delta2, delta3;
     double sent_ts, tSent;
     double interval_i, interval_I;
-    pthread_barrier_t barr;
+    //pthread_barrier_t barr;
     u_int64_t t1, t2, t3;
     double bchange; //interval change - bitrate change
     u_int16_t frame_size;

@@ -14,10 +14,10 @@
 CROSS_PREFIX=
 
 # Compiler and linker
-#CXX = g++
+CXX = /usr/local/bin/g++-11
 
 # linker	
-#LXX = g++
+LXX = /usr/local/bin/g++-11
 
 # Arch choices
 #CXXFLAGS_ARCH=-march=armv5te -mabi=aapcs-linux

@@ -206,10 +206,21 @@ void cMessageBroker::run(){
 
 
 void cMessageBroker::processAndDeleteServerMessage(t_msg_t *tmsg) {
+    std::chrono::system_clock::time_point tp = tmsg->tp;
     gen_msg_t *msg = tmsg->msg;
+    u_int64_t ts;
+    u_int64_t pkt_client_ts;
     switch(msg->type){
         case MSG_RX_PKT:
             this->pkt_cnt_rx++;
+            if (not setup->silent()) {
+                ping_pkt = (struct ping_pkt_t*) (msg);
+                if (ping_pkt->size < HEADER_LENGTH) std::cerr << "Invalid RX Packet Size: " << ping_pkt->size << std::endl;
+                ts =  ping_pkt->server_sec * u_int64_t(1000000000L) + ping_pkt->server_nsec;
+                pkt_client_ts =  ping_pkt->sec * u_int64_t(1000000000L) + ping_pkt->nsec;
+                //tmsg->conn->fout << prepServerDataRec(ts, pkt_client_ts, RX, ping_pkt->size, ping_pkt->seq);
+                tmsg->conn->fout << "hit";
+            }
             break;
         case MSG_TX_PKT:
             this->pkt_cnt_tx++;
@@ -461,6 +472,15 @@ std::string cMessageBroker::closeDataRecSlot(const u_int64_t ts, const u_int8_t 
 }
 
 
+std::string cMessageBroker::prepServerDataRec(const u_int64_t ts, const u_int64_t pkt_client_ts, const u_int8_t dir, const uint16_t size, const uint64_t seq){
+    if (setup->getSampleLen()){
+    }else{
+    }
+    return "Initial string";
+}
+
+
+
 
 // double pkt_rtt, sample_cum_rtt;
 // u_int64_t sample_seq_first, sample_pkt_cnt;
@@ -496,7 +516,6 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int64_t pkt_
             pkt_cnt_tx++;
             bytes_cnt_tx += size;
         }
-
         sampled_int[dir].pkt_cnt++;
         sampled_int[dir].bytes += size;
         sampled_int[dir].last_seen_seq = seq;
@@ -545,7 +564,7 @@ std::string cMessageBroker::prepDataRec(const u_int64_t ts, const u_int64_t pkt_
     return ss.str();
 }
 
-std::string cMessageBroker::prepFinalDataRec(uint64_t ts, const u_int8_t dir){
+std::string cMessageBroker::prepFinalDataRec(const uint64_t ts, const u_int8_t dir){
     stringstream ss;
     if (sampled_int[dir].pkt_cnt){
         sampled_int[dir].seq++;

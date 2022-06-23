@@ -28,7 +28,7 @@
 #include <cstdlib> 
 #include <sstream>
 #include "cServer.h"
-#include "_types.h"
+#include "types.h"
 
 using namespace std;
 
@@ -106,6 +106,7 @@ int cServer::run() {
         ret_size = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, (struct sockaddr *) &saClient6, (socklen_t *) & addr_len);
         gen_msg_t *msg = nullptr;
         gen_msg_t *tmsg = nullptr;
+        //std::cout << "msg size:" << ret_size<< std::endl;
         if (ret_size < 0) {
             tmsg = new gen_msg_t;
             tmsg->type = MSG_KEEP_ALIVE;
@@ -115,11 +116,11 @@ int cServer::run() {
         connection = getConnectionFID(saClient6, (ping_pkt_t *)packet);
         connection->refTv = connection->curTv;
 
-        tmsg = new(gen_msg_t);
-        memcpy(tmsg,packet, sizeof(gen_msg_t));
-        tmsg->type = MSG_RX_PKT;
-        tmsg->size = ret_size;
-        mbroker->push(connection,tmsg);
+//        tmsg = new(gen_msg_t);
+//        memcpy(tmsg,packet, sizeof(gen_msg_t));
+//        tmsg->type = MSG_RX_PKT;
+//        tmsg->size = ret_size;
+//        mbroker->push(connection,tmsg);
         clock_gettime(CLOCK_REALTIME, &connection->curTv);
         msg = (struct gen_msg_t*) (packet);
         if (msg->type == PING) {
@@ -199,6 +200,8 @@ void cServer::processCMessage(gen_msg_t *msg, t_conn * connection){
             case CNT_FNAME_OK:
                 msg_out << endl << ".::. Test from " << connection->client_ip << " started. \t\t[";
                 setup->setAntiAsym(false);
+                //std::cout << (uint16_t )setup->extFilenameLen() << std::endl;
+                //if (connection->F_par) std::cout << "F_par" <<std::endl;
                 if (setup->extFilenameLen() || connection->F_par) {
                     msg_out << "F";
                 }
@@ -302,6 +305,7 @@ t_conn *  cServer::getConnectionFID(sockaddr_in6 saddr, ping_pkt_t *pkt) {
         connection->D_par = false;
         connection->e_par = false;
         connection->E_par = false;
+        connection->F_par = false;
         connection->H_par = false;
         connection->J_par = false;
         connection->W_par = false;

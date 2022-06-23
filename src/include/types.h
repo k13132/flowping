@@ -25,17 +25,15 @@
  */
 
 
-#ifndef _TYPES_H
-#define	_TYPES_H
+#ifndef xTYPES_H
+#define	xTYPES_H
 
-//#include <cstdlib>
 #include <stdint.h>
 #include <string>
 #include <ctime>
 #include <chrono>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/socket.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>

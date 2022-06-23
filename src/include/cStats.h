@@ -27,7 +27,7 @@
 #ifndef CSTATS_H
 #define CSTATS_H
 
-#include "_types.h"
+#include "types.h"
 #include "cSetup.h"
 
 //timestamp;hostname;test_duration;bytes_sent;bytes_received;avg_bitrate_tx, avg_bitrate_rx;avg_rtt;avg_pk_loss;current_bitrate_tx;current_bitrate_rx;current_rtt;current_pk_loss

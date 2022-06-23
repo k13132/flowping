@@ -27,7 +27,7 @@
 
 #ifndef FLOWPING_H
 #define	FLOWPING_H
-#include "_types.h"
+#include "types.h"
 #include "cClient.h"
 #include "cServer.h"
 #include "cSetup.h"

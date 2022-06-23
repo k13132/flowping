@@ -5,7 +5,7 @@
 #ifndef FLOWPING_CMESSAGEBROKER_H
 #define FLOWPING_CMESSAGEBROKER_H
 
-#include "_types.h"
+#include "types.h"
 #include "cSetup.h"
 #include "cStats.h"
 #include "SPSCQueue.h"
@@ -50,8 +50,9 @@ private:
 private:
     bool json_first;
     std::string prepDataRec(const u_int64_t ts, const u_int64_t pkt_server_ts, const u_int8_t dir, const uint16_t size, const uint64_t seq, const float rtt);
+    std::string prepServerDataRec(const u_int64_t ts, const u_int64_t pkt_client_ts, const u_int8_t dir, const uint16_t size, const uint64_t seq);
     std::string closeDataRecSlot(const u_int64_t ts, const u_int8_t dir);
-    std::string prepFinalDataRec(uint64_t ts, const u_int8_t dir);
+    std::string prepFinalDataRec(const uint64_t ts, const u_int8_t dir);
 private:
     std::ofstream fout;
     std::ostream* output;

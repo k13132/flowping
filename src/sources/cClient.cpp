@@ -85,10 +85,14 @@ cClient::cClient(cSetup *setup, cStats *stats, cMessageBroker *mbroker, cSlotTim
     this->pktBufferReady = false;
     this->senderReady = false;
     this->receiverReady = false;
+    this->addr_family = AF_INET6;
 }
 
 cClient::~cClient() {
-    close(this->sock);
+    close(this->sock[AF_INET6]);
+#ifdef __APPLE__
+    close(this->sock[AF_INET]);
+#endif
 }
 
 bool cClient::isSenderReceiverReady() {
@@ -127,27 +131,44 @@ int cClient::run_receiver() {
     stringstream message;
     stringstream ss;
     // Create a UDP socket
-    if ((this->sock = socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
+    if ((this->sock[AF_INET6] = socket(PF_INET6, SOCK_DGRAM, 0)) < 0) {
         perror("Can't open stream socket");
         exit(1);
     }
+#ifdef __APPLE__
+    if ((this->sock[AF_INET] = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
+        perror("Can't open stream socket");
+        exit(1);
+    }
+#endif
+
     //Set socket timeout
     struct timeval tv;
     tv.tv_sec = 1;
     tv.tv_usec = 0;
-    if (setsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0){
+    int rcvBufferSize = 1500*512;
+    int sockOptSize = sizeof(rcvBufferSize);
+
+    if (setsockopt(this->sock[AF_INET6], SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0){
         perror("setsockopt(SO_RCVTIMEO) failed");
     }
-
-    if (setup->useInterface()) {
-        setsockopt(this->sock, SOL_SOCKET, SO_BINDTODEVICE, setup->getInterface().c_str(), strlen(setup->getInterface().c_str()));
+    if (setsockopt(this->sock[AF_INET6], SOL_SOCKET, SO_RCVBUF,&rcvBufferSize,sockOptSize) < 0){
+        perror("setsockopt(SO_RCBUF) failed");
     }
+#ifdef __APPLE__
+    if (setsockopt(this->sock[AF_INET], SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0){
+        perror("setsockopt(SO_RCVTIMEO) failed");
+    }
+    if (setsockopt(this->sock[AF_INET], SOL_SOCKET, SO_RCVBUF,&rcvBufferSize,sockOptSize) < 0){
+        perror("setsockopt(SO_RCBUF) failed");
+    }
+#else
+    if (setup->useInterface()) {
+        setsockopt(this->sock[AF_INET6], SOL_SOCKET, SO_BINDTODEVICE, setup->getInterface().c_str(), strlen(setup->getInterface().c_str()));
+    }
+#endif
     // Fill in the address structure
     bzero((char *) & saClient6, sizeof (saClient6));
-    bzero((char *) & saServer6, sizeof (saServer6));
-    saServer6.sin6_family = AF_INET6;
-    saServer6.sin6_addr = in6addr_any; // Auto asssign address and allow connection from IPv4 and IPv6
-    saServer6.sin6_port = htons(setup->getPort()); // Set listening port
 
     // Synchronization point
     this->receiverReady = true;
@@ -168,13 +189,10 @@ int cClient::run_receiver() {
         tv.tv_usec = TV_USEC(setup->getSampleLen());
     }
 
-    int rcvBufferSize = 1500*128;
-    int sockOptSize = sizeof(rcvBufferSize);
-    setsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv));
-    setsockopt(this->sock, SOL_SOCKET, SO_RCVBUF,&rcvBufferSize,sockOptSize);
+
     this->r_running = true;
     while (!setup->isDone()) {
-        nRet = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, (struct sockaddr *) &saClient6, (socklen_t *) & addr_len);
+        nRet = recvfrom(this->sock[this->addr_family], packet, MAX_PKT_SIZE, 0, (struct sockaddr *) &saClient6, (socklen_t *) & addr_len);
         if (nRet < 0) {
             msg = new gen_msg_t;
             msg->type = MSG_SOCK_TIMEOUT;
@@ -260,9 +278,9 @@ int cClient::run_sender() {
     while (not isSenderReceiverReady()){
         usleep(200000);
     }
-    int sndBufferSize = 1500*128;
-    int sockOptSize = sizeof(sndBufferSize);
-    setsockopt(this->sock, SOL_SOCKET, SO_SNDBUF,&sndBufferSize,sockOptSize);
+//    int sndBufferSize = 1500*512;
+//    int sockOptSize = sizeof(sndBufferSize);
+//    setsockopt(this->sock, SOL_SOCKET, SO_SNDBUF,&sndBufferSize,sockOptSize);
 
     rc = getaddrinfo(setup->getHostname().c_str(), std::to_string(setup->getPort()).c_str(), &hints, &resAddr);
     if (rc != 0)
@@ -286,36 +304,51 @@ int cClient::run_sender() {
         }
         resAddr = resAddr->ai_next;
     }
-    uint8_t first_family = 4;
+    uint8_t first_family = AF_INET;
     if ((ipv6_Addr == NULL)&&(ipv4_Addr==NULL)) exit(1);
     while (!setup->isStarted()) {
         if ((setup->isIPv6Prefered())&&(ipv6_Addr != NULL)){
             resAddr = ipv6_Addr;
-            first_family = 6;
+            first_family = AF_INET6;
         }else{
             if (ipv4_Addr!=NULL){
                 resAddr = ipv4_Addr;
             }else{
                 resAddr = ipv6_Addr;
-                first_family = 6;
+                first_family = AF_INET6;
             }
         }
+#ifdef __APPLE__
+        this->addr_family = resAddr->ai_family;
+#endif
+        //std::cout << "addr_family: " << this->addr_family << std::endl;
         if (timeout < 25) {
-            nRet = sendto(this->sock, packet, ping_msg->size, 0, resAddr->ai_addr, resAddr->ai_addrlen);
+            nRet = sendto(this->sock[this->addr_family], packet, ping_msg->size, 0, resAddr->ai_addr, resAddr->ai_addrlen);
             if (nRet < 0) {
                 cerr << "Send ERROR\n";
-                close(this->sock);
+                close(this->sock[this->addr_family]);
                 exit(1);
             }
             usleep(200000); //  5pkt/s
             timeout++;
         }else{
-            if ((first_family == 4)&&(ipv6_Addr!=NULL)) resAddr = ipv6_Addr;
-            if ((first_family == 6)&&(ipv4_Addr!=NULL)) resAddr = ipv4_Addr;
-            nRet = sendto(this->sock, packet, ping_msg->size, 0, resAddr->ai_addr, resAddr->ai_addrlen);
+//            for (int i=0;i<resAddr->ai_addrlen;i++){
+//                printf("%d-",resAddr->ai_addr->sa_data[i]);
+//            }
+//            printf("\n");
+            if ((first_family == AF_INET)&&(ipv6_Addr!=NULL)) resAddr = ipv6_Addr;
+            if ((first_family == AF_INET6)&&(ipv4_Addr!=NULL)) resAddr = ipv4_Addr;
+//            for (int i=0;i<resAddr->ai_addrlen;i++){
+//                printf("%d-",resAddr->ai_addr->sa_data[i]);
+//            }
+//            printf("\n");
+#ifdef __APPLE__
+            this->addr_family = resAddr->ai_family;
+#endif
+            nRet = sendto(this->sock[this->addr_family], packet, ping_msg->size, 0, resAddr->ai_addr, resAddr->ai_addrlen);
             if (nRet < 0) {
                 cerr << "Send ERROR\n";
-                close(this->sock);
+                close(this->sock[this->addr_family]);
                 exit(1);
             }
             usleep(200000); //  5pkt/s
@@ -326,8 +359,8 @@ int cClient::run_sender() {
             exit(1);
         }
     }
-    setup->setAddrFamily(resAddr->ai_family);
 
+    setup->setAddrFamily(resAddr->ai_family);
     gen_msg_t *msg;
     while (!pktBufferReady) {
         usleep(200000);
@@ -377,7 +410,7 @@ int cClient::run_sender() {
                 ts.tv_sec = tgTime / 1000000000L;
                 ts.tv_nsec = tgTime % 1000000000L;
                 setup->recordLastDelay(ts);
-                delay(ts);
+                delay(ts, curTv);
                 clock_gettime(CLOCK_REALTIME, &curTv);
             }
             payload_size = tinfo.len;
@@ -400,7 +433,7 @@ int cClient::run_sender() {
             payload_size = HEADER_LENGTH;
         }
         //SEND PKT ************************
-        nRet = sendto(this->sock, packet, payload_size, 0, resAddr->ai_addr, resAddr->ai_addrlen);
+        nRet = sendto(this->sock[this->addr_family], packet, payload_size, 0, resAddr->ai_addr, resAddr->ai_addrlen);
         if (nRet < 0) {
             continue;
         }
@@ -427,7 +460,7 @@ int cClient::run_sender() {
     usleep(750000); //wait for network congestion "partialy" disapear.
     while (!setup->isDone()) {
         //std::cout << "Get server stats..." << std::endl;
-        nRet = sendto(this->sock, packet, ping_msg->size, 0, resAddr->ai_addr, resAddr->ai_addrlen);
+        nRet = sendto(this->sock[this->addr_family], packet, ping_msg->size, 0, resAddr->ai_addr, resAddr->ai_addrlen);
         if (nRet < 0) {
             //close JSON
             t = new gen_msg_t;
@@ -435,7 +468,7 @@ int cClient::run_sender() {
             mbroker->push_lp(t);
             cerr << "Send ERRROR\n";
             usleep(500000);
-            close(this->sock);
+            close(this->sock[this->addr_family]);
             exit(1);
         }
         //cerr << "send bytes: " << nRet << std::endl;
@@ -462,9 +495,16 @@ void cClient::terminate() {
     setup->setStop(true);
 }
 
-
-void cClient::delay(timespec req) {
-    clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &req, &req);
+void cClient::delay(timespec req, timespec cur) {
+    timespec tg;
+    int64_t diff = NS_TDIFF(req, cur);
+    //we do not expect to generate more than 10 Mpps
+    //std::cout << "diff is: " << diff << endl;
+    if (diff < 100 ) return;
+    tg.tv_sec = (uint32_t) (diff / 1000000000L);
+    tg.tv_nsec = (uint32_t) diff % 1000000000L;
+    //std::cout <<"... "<< tg.tv_sec << "." << tg.tv_nsec << endl;
+    nanosleep(&tg, NULL);
 }
 
 bool cClient::status() {
