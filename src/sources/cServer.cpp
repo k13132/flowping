@@ -25,7 +25,7 @@
  */
 
 
-#include <cstdlib> 
+#include <cstdlib>
 #include <sstream>
 #include "cServer.h"
 #include "types.h"
@@ -74,6 +74,12 @@ int cServer::run() {
     if (setsockopt(this->sock, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(on)) < 0){
         perror("setsockopt(SO_REUSEADDR) failed");
     }
+
+
+    int BufferSize = 1500*4096;
+    int sockOptSize = sizeof(BufferSize);
+    setsockopt(this->sock, SOL_SOCKET, SO_SNDBUF,&BufferSize,sockOptSize);
+    setsockopt(this->sock, SOL_SOCKET, SO_RCVBUF,&BufferSize,sockOptSize);
 
     // Fill in the address structure
     bzero((char *) & saClient6, sizeof (saClient6));
@@ -136,7 +142,7 @@ int cServer::run() {
             tmsg->type = MSG_TX_PKT;
             tmsg->size = ret_size;
             mbroker->push(connection, tmsg);
-       }else{
+        }else{
             processCMessage(msg, connection);
             sendto(this->sock, msg, MIN_PKT_SIZE, 0, (struct sockaddr *) &saClient6, addr_len);
             clock_gettime(CLOCK_REALTIME, &connection->curTv);

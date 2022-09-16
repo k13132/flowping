@@ -146,7 +146,7 @@ int cClient::run_receiver() {
     struct timeval tv;
     tv.tv_sec = 1;
     tv.tv_usec = 0;
-    int rcvBufferSize = 1500*512;
+    int rcvBufferSize = 1500*4096;
     int sockOptSize = sizeof(rcvBufferSize);
 
     if (setsockopt(this->sock[AF_INET6], SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0){
@@ -278,9 +278,9 @@ int cClient::run_sender() {
     while (not isSenderReceiverReady()){
         usleep(200000);
     }
-//    int sndBufferSize = 1500*512;
-//    int sockOptSize = sizeof(sndBufferSize);
-//    setsockopt(this->sock, SOL_SOCKET, SO_SNDBUF,&sndBufferSize,sockOptSize);
+    int sndBufferSize = 1500*4096;
+    int sockOptSize = sizeof(sndBufferSize);
+    setsockopt(this->sock[AF_INET6], SOL_SOCKET, SO_SNDBUF,&sndBufferSize,sockOptSize);
 
     rc = getaddrinfo(setup->getHostname().c_str(), std::to_string(setup->getPort()).c_str(), &hints, &resAddr);
     if (rc != 0)
