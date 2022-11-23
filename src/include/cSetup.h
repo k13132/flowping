@@ -48,11 +48,11 @@ public:
     cSetup(int argc, char **argv, string version);
     void usage(void);
     void show_version(void); //get version;
-    u_int16_t getMaxPacketSize();
+    uint16_t getMaxPacketSize();
 
     bool isServer(void);
     bool isClient(void);
-    u_int8_t self_check(void);
+    uint8_t self_check(void);
     int getPort();
     FILE * getFP(void);
     std::ostream* getOutput(void);
@@ -86,15 +86,16 @@ public:
     string getVersion(void);
     void setAddrFamily(sa_family_t family);
     sa_family_t getAddrFamily(void);
-    u_int64_t getTime_t();
-    u_int64_t getTime_T();
+    uint64_t getTime_t();
+    uint64_t getTime_T();
     double getTime_R();
-    u_int16_t getPacketSize();
-    u_int16_t getFirstPacketSize();
-    void setPayoadSize(u_int16_t);
+    uint16_t getPacketSize();
+    uint16_t getFirstPacketSize();
+    void setPayoadSize(uint16_t);
     string getHostname();
-    u_int64_t getDeadline();
-    u_int64_t getCount();
+    string getWorkingDirectory();
+    uint64_t getDeadline();
+    uint64_t getCount();
     double getInterval();
     double getInterval_i();
     double getInterval_I();
@@ -105,11 +106,11 @@ public:
     bool useInterface(void);
     string getInterface(void);
     void setHPAR(bool);
-    void setWPAR(bool);
-    double getRTBitrate(u_int64_t ts);
-    u_int64_t getMinInterval(void);
-    u_int64_t getMaxInterval(void);
-    u_int64_t getBaseRate(void);
+    void setLPAR(bool);
+    double getRTBitrate(uint64_t ts);
+    uint64_t getMinInterval(void);
+    uint64_t getMaxInterval(void);
+    uint64_t getBaseRate(void);
     void setExtFilename(string);
     string getExtFilename(void);
     uint16_t extFilenameLen(void);
@@ -119,7 +120,7 @@ public:
     timed_packet_t getNextPacket();
     bool nextPacket();
     bool tpReady();
-    u_int64_t getTimedBufferSize();
+    uint64_t getTimedBufferSize();
     virtual ~cSetup();
     timed_packet_t get_tmp_tpck();
     void recordLastDelay(timespec last_delay);
@@ -132,11 +133,14 @@ public:
     void setStarted(bool started);
     void setStop(bool stop);
     void setDone(bool done);
-    u_int64_t getSampleLen(void) const;
+    uint64_t getSampleLen(void) const;
+    void setFlowID(uint16_t flow_id);
+    uint16_t getFlowID();
 
 private:
-    u_int64_t sample_len; //in ms ... 0 means no sampling
+    uint64_t sample_len; //in ns ... 0 means no sampling
     sa_family_t addr_family = AF_INET;
+    uint16_t flow_id;
     bool started, stop, done;
     bool v_par;
     bool a_par;
@@ -159,6 +163,7 @@ private:
     bool C_par;
     bool D_par;
     bool w_par;
+    bool W_par;
     bool s_par;
     bool S_par;
     bool X_par;
@@ -167,7 +172,6 @@ private:
     bool R_par;
     bool e_par;
     bool E_par;
-    bool W_par;
     bool u_par;
     bool vonly;
     bool _par;
@@ -178,40 +182,40 @@ private:
     double time_t; // 10s
     double time_T; // 10s
     double time_R; // 10s
-    u_int16_t size, bsize, esize, fpsize; // 64B Payload
+    uint16_t size, bsize, esize, fpsize; // 64B Payload
     int rate_b; // 1kbit/s
     int rate_B; // 1kbit/s
-    u_int64_t step; // 
-    u_int64_t deadline; // 0s
-    u_int64_t count;
-    string filename, F_filename, srcfile, extfilename;
+    uint64_t step; // 
+    uint64_t deadline; // 0s
+    uint64_t count;
+    string filename, F_filename, srcfile, extfilename, wdir;
     string host, interface;
     string version;
     FILE *fp;
     std::ofstream fout;
     std::ostream* output;
     int64_t brate, erate;
-    u_int64_t bts, ets;
+    uint64_t bts, ets;
     bool tp_ready;
     bool fpsize_set;
     struct tpoint_def_t td_tmp;
     queue<tpoint_def_t> tpoints;
     rigtorp::SPSCQueue<timed_packet_t> pbuffer {128000};
-    u_int64_t getNextPacketTS(u_int64_t ts, u_int64_t sts, u_int64_t ets, u_int64_t srate, u_int64_t erate, u_int16_t len);
+    uint64_t getNextPacketTS(uint64_t ts, uint64_t sts, uint64_t ets, uint64_t srate, uint64_t erate, uint16_t len);
     timed_packet_t tmp_tpck;
     timespec last_delay;
     
     //prepNextPacket
-    u_int64_t s_tmp_rate, e_tmp_rate;
-    u_int16_t tmp_len;
-    u_int64_t tmp_ts, s_tmp_ts, e_tmp_ts;
+    uint64_t s_tmp_rate, e_tmp_rate;
+    uint16_t tmp_len;
+    uint64_t tmp_ts, s_tmp_ts, e_tmp_ts;
     timed_packet_t tpacket;
 
     //getNextPacket
     long delta_rate;
-    u_int64_t delay, nsec_delta;
+    uint64_t delay, nsec_delta;
     double interval;
-    u_int64_t tp_diff;
+    uint64_t tp_diff;
     bool ipv6;
     //refactor tpoint to match duration of test / defined scenario is repeated
     void refactorTPoints(void);

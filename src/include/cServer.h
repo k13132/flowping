@@ -33,29 +33,31 @@
 #include "cSetup.h"
 #include "cStats.h"
 #include "cMBroker.h"
+#include "cSlotTimer.h"
 #include <map>
 
 using namespace std;
 
 class cServer {
 public:
-    cServer(cSetup *setup, cStats *stats, cMessageBroker * mbroker);
+    cServer(cSetup *setup, cStats *stats, cMessageBroker * mbroker, cSlotTimer * stimer);
     void terminate(void);
     virtual ~cServer();
     int run(void);
 private:
-    map <u_int64_t, t_conn *> connections;
+    map <uint64_t, t_conn *> connections;
     t_conn * connection;
     cMessageBroker *mbroker;
     cServerStats *stats;
     cSetup *setup;
+    cSlotTimer *stimer;
     int sock;
     bool stop;
 private:
     t_conn *getConnection6(sockaddr_in6 addr);
     t_conn *getConnectionFID(sockaddr_in6 addr, ping_pkt_t *pkt);
     string stripFFFF(string str);
-    void processCMessage(gen_msg_t *msg, t_conn * connection);
+    void processControlMessage(gen_msg_t *msg, t_conn * connection);
 };
 
 #endif	/* SERVER_H */

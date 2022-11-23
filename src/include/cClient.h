@@ -83,11 +83,11 @@ private:
     double sent_ts, tSent;
     double interval_i, interval_I;
     //pthread_barrier_t barr;
-    u_int64_t t1, t2, t3;
+    uint64_t t1, t2, t3;
     double bchange; //interval change - bitrate change
-    u_int16_t frame_size;
-    u_int64_t base_interval;
-    u_int64_t interval, min_interval, max_interval,prev_interval;
+    uint16_t frame_size;
+    uint64_t base_interval;
+    uint64_t interval, min_interval, max_interval,prev_interval;
 
 };
 

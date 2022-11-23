@@ -96,7 +96,7 @@ void signalHandler(int sig) {
         if (setup->isServer()) {
             server->terminate();
         } else {
-            u_int16_t cnt;
+            uint16_t cnt;
             cnt=0;
             client->terminate();
             while ((client->status()&&(cnt<100))){
@@ -123,7 +123,7 @@ void signalHandler(int sig) {
 
 int main(int argc, char** argv) {
     // CPUs
-    unsigned int cpus = std::thread::hardware_concurrency();
+    //unsigned int cpus = std::thread::hardware_concurrency();
 
     // Osetreni reakci na signaly
     struct sigaction act;
@@ -144,7 +144,7 @@ int main(int argc, char** argv) {
     version.str("");
 
 #ifdef __x86_64__
-    version << "x86_64 2.9.1 .::. F-Tester edition .::.";
+    version << "x86_64 3.0.0.devel .::. F-Tester edition .::.";
     version << " (" << DD << " "<< TT << ")";
 #endif
 
@@ -174,15 +174,15 @@ int main(int argc, char** argv) {
     if (setup->self_check() == SETUP_CHCK_ERR) {
         cerr << "Invalid option!" << setup->self_check() << endl;
         //ToDo remove in other than F-Tester edition.
-        if (setup->isClient()){
-            std::cerr << "Missing [-J] parameter: Output to JSON is mandatory in FlowPing 2 F-Tester edition." << endl << endl;
-        }
+        //if (setup->isClient()){
+        //    std::cerr << "Missing [-J] parameter: Output to JSON is mandatory in FlowPing 2 F-Tester edition." << endl << endl;
+        //}
         setup->usage();
         return EXIT_FAILURE;
     }
     //Todo integrate SlotTimer in server code
     //cpu_set_t cpuset;
-    unsigned int cpu = 0;
+    //unsigned int cpu = 0;
     if (setup->isServer()) {
         stats = new cServerStats(setup);
         mbroker = new cMessageBroker(setup, stats);
@@ -191,12 +191,17 @@ int main(int argc, char** argv) {
         //CPU_SET(cpu % cpus, &cpuset);
         //pthread_setaffinity_np(t_mBroker.native_handle(), sizeof(cpu_set_t), &cpuset);
         //cpu++;
-        server = new cServer(setup, stats, mbroker);
+        stimer = new cSlotTimer(mbroker, setup);
+        server = new cServer(setup, stats, mbroker, stimer);
         std::thread t_sServer (t_helper_sServer, (void *) server);
+        std::thread t_cSlotTimer (t_helper_cSlotTimer, (void *) stimer);
+
         //CPU_ZERO(&cpuset);
         //CPU_SET(cpu % cpus, &cpuset);
         //pthread_setaffinity_np(t_sServer.native_handle(), sizeof(cpu_set_t), &cpuset);
         //cpu++;
+        t_cSlotTimer.join();
+        delete(stimer);
         t_sServer.join();
         delete(server);
         t_mBroker.join();

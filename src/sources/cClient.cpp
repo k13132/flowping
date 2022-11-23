@@ -33,6 +33,7 @@
 #include "cClient.h"
 #include <future>
 
+
 using namespace std;
 
 
@@ -51,6 +52,10 @@ unsigned short crc16(const unsigned char* data_p, unsigned char length){
 cClient::cClient(cSetup *setup, cStats *stats, cMessageBroker *mbroker, cSlotTimer* stimer) {
     first = true;
     this->setup = setup;
+    clock_gettime(CLOCK_REALTIME, &this->sentTv); //FIX initial delta
+    srand((int) this->sentTv.tv_nsec);
+    this->setup->setFlowID((uint16_t)(rand() % 65536));
+
     if (stats) {
         this->stats = (cClientStats *) stats;
     }else{
@@ -75,10 +80,10 @@ cClient::cClient(cSetup *setup, cStats *stats, cMessageBroker *mbroker, cSlotTim
     setup->setStarted(false);
     setup->setStop(false);
     setup->setDone(false);
-    //this->t1 = (u_int64_t) (setup->getTime_t()*1000000000.0); //convert s to ns
-    //this->t2 = (u_int64_t) (this-> t1 + setup->getTime_T()*1000000000.0); //convert s to ns
-    //this->t3 = (u_int64_t) (setup->getTime_R()*1000000000.0); //convert s to ns
-    //this->base_interval = (u_int64_t) setup->getInterval_i();
+    //this->t1 = (uint64_t) (setup->getTime_t()*1000000000.0); //convert s to ns
+    //this->t2 = (uint64_t) (this-> t1 + setup->getTime_T()*1000000000.0); //convert s to ns
+    //this->t3 = (uint64_t) (setup->getTime_R()*1000000000.0); //convert s to ns
+    //this->base_interval = (uint64_t) setup->getInterval_i();
     //this->min_interval = setup->getMinInterval();
     //this->max_interval = setup->getMaxInterval();
     //this->bchange = setup->getBchange();
@@ -176,7 +181,7 @@ int cClient::run_receiver() {
         usleep(200000);
     }
 
-    unsigned char packet[MAX_PKT_SIZE + HEADER_LENGTH];
+    unsigned char packet[MAX_PAYLOAD_SIZE + HEADER_LENGTH];
     int nRet;
     clock_gettime(CLOCK_REALTIME, &r_curTv);
 
@@ -192,7 +197,7 @@ int cClient::run_receiver() {
 
     this->r_running = true;
     while (!setup->isDone()) {
-        nRet = recvfrom(this->sock[this->addr_family], packet, MAX_PKT_SIZE, 0, (struct sockaddr *) &saClient6, (socklen_t *) & addr_len);
+        nRet = recvfrom(this->sock[this->addr_family], packet, MAX_PAYLOAD_SIZE, 0, (struct sockaddr *) &saClient6, (socklen_t *) & addr_len);
         if (nRet < 0) {
             msg = new gen_msg_t;
             msg->type = MSG_SOCK_TIMEOUT;
@@ -222,18 +227,19 @@ int cClient::run_sender() {
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_protocol = IPPROTO_UDP;
 
-    unsigned char packet[MAX_PKT_SIZE + 60] = {0};
+    unsigned char packet[MAX_PAYLOAD_SIZE + 60] = {0};
 
     //initialize random number generator
     uint64_t milliseconds_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     std::srand((unsigned)milliseconds_since_epoch);
 
-    for (unsigned i = 0; i< sizeof packet; i++){
-        packet[i] = (uint8_t)(rand() % 256);
-    }
 
     delta = 0;
     clock_gettime(CLOCK_REALTIME, &sentTv); //FIX initial delta
+
+    for (unsigned i = 0; i< sizeof packet; i++){
+        packet[i] = (uint8_t)(rand() % 256);
+    }
 
     ping_pkt = (struct ping_pkt_t*) (packet);
     ping_msg = (struct ping_msg_t*) (packet);
@@ -241,7 +247,7 @@ int cClient::run_sender() {
     ping_msg->params = 0;
     ping_pkt->type = CONTROL; //prepare the first packet
     ping_msg->code = CNT_NONE;
-    ping_msg->size = MIN_PKT_SIZE;
+    ping_msg->size = HEADER_LENGTH;
     if (setup->showTimeStamps()) {
         ping_msg->params = (ping_msg->params | CNT_DPAR);
     }
@@ -265,13 +271,19 @@ int cClient::run_sender() {
     if (setup->toJSON()) {
         ping_msg->params = (ping_msg->params | CNT_JPAR);
     }
+    if (setup->getSampleLen()){
+        std::cout << "Sample len:" << setup->getSampleLen() << std::endl;
+        ping_msg->params = (ping_msg->params | CNT_LPAR);
+        ping_msg->sample_len_ms = (uint32_t)(setup->getSampleLen() / 1000000);
+    }
     if (setup->getF_Filename().length() && setup->sendFilename()) {
         strcpy(ping_msg->msg, setup->getF_Filename().c_str());
         ping_msg->code = CNT_FNAME;
+        ping_msg->size += strlen(ping_msg->msg);
     } else {
         ping_msg->code = CNT_NOFNAME;
     }
-    ping_msg->size = HEADER_LENGTH + strlen(ping_msg->msg);
+    ping_msg->flow_id = setup->getFlowID();
     int timeout = 0;
     // Synchronization point
     this->senderReady = true;
@@ -323,6 +335,7 @@ int cClient::run_sender() {
 #endif
         //std::cout << "addr_family: " << this->addr_family << std::endl;
         if (timeout < 25) {
+            //std::cerr << ping_msg->msg << " pkt_len:" << ping_msg->size <<std::endl;
             nRet = sendto(this->sock[this->addr_family], packet, ping_msg->size, 0, resAddr->ai_addr, resAddr->ai_addrlen);
             if (nRet < 0) {
                 cerr << "Send ERROR\n";
@@ -372,24 +385,24 @@ int cClient::run_sender() {
     mbroker->push_lp(t);
 
     ping_pkt->type = PING; //prepare the first packet
-    ping_pkt->flow_id = (uint16_t)(rand() % 65536);
+    ping_pkt->flow_id = setup->getFlowID();
     clock_gettime(CLOCK_REALTIME, &start_ts);
     my_ts.tv_sec += setup->getTime_t();
     ping_pkt->sec = start_ts.tv_sec;
     ping_pkt->nsec = start_ts.tv_nsec;
-    u_int16_t payload_size;
+    uint16_t payload_size;
 
     clock_gettime(CLOCK_REALTIME, &refTv);
 
     timespec ts;
     timed_packet_t tinfo;
-    u_int64_t tgTime = 0;
+    uint64_t tgTime = 0;
 
     if (setup->getSampleLen()){
         stimer->start();
     }
-    u_int64_t start_time = NS_TIME(start_ts);
-    u_int64_t deadline = setup->getDeadline() * 1000000000L + start_time;
+    uint64_t start_time = NS_TIME(start_ts);
+    uint64_t deadline = setup->getDeadline() * 1000000000L + start_time;
     //std::cout << deadline - start_time << " / " << deadline << " / " << start_time <<std::endl;
     unsigned int i;
     for (i = 1; (i <= setup->getCount() && not setup->isStop());) {
@@ -445,7 +458,7 @@ int cClient::run_sender() {
         //Increment here - packet can be timeouted
         i++;
     }
-    usleep(250000);
+    usleep(10000);
     ping_pkt->type = CONTROL;
     t = new gen_msg_t;
     t->type = MSG_TIMER_END;
@@ -457,7 +470,7 @@ int cClient::run_sender() {
     ping_msg->code = CNT_DONE;
     ping_msg->size = MIN_PKT_SIZE;
     timeout = 0;
-    usleep(750000); //wait for network congestion "partialy" disapear.
+    usleep(10000); //wait for network congestion "partialy" disapear.
     while (!setup->isDone()) {
         //std::cout << "Get server stats..." << std::endl;
         nRet = sendto(this->sock[this->addr_family], packet, ping_msg->size, 0, resAddr->ai_addr, resAddr->ai_addrlen);

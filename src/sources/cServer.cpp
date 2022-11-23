@@ -29,10 +29,12 @@
 #include <sstream>
 #include "cServer.h"
 #include "types.h"
+#include "cSlotTimer.h"
+#include <filesystem>
 
 using namespace std;
 
-cServer::cServer(cSetup *setup, cStats *stats, cMessageBroker *mbroker) {
+cServer::cServer(cSetup *setup, cStats *stats, cMessageBroker *mbroker, cSlotTimer *stimer) {
     this->mbroker = mbroker;
     this->setup = setup;
     if (stats){
@@ -45,6 +47,11 @@ cServer::cServer(cSetup *setup, cStats *stats, cMessageBroker *mbroker) {
         this->mbroker = mbroker;
     }else{
         this->mbroker = nullptr;
+    }
+    if (stimer) {
+        this->stimer = stimer;
+    }else{
+        this->stimer = nullptr;
     }
     this->stop = false;
 }
@@ -70,6 +77,11 @@ int cServer::run() {
     tv.tv_usec = 0;
     if (setsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0){
         perror("setsockopt(SO_RCVTIMEO) failed");
+    }
+    tv.tv_sec = 0;
+    tv.tv_usec = 1000;
+    if (setsockopt(this->sock, SOL_SOCKET, SO_SNDTIMEO,&tv,sizeof(tv)) < 0){
+        perror("setsockopt(SO_SNDTIMEO) failed");
     }
     if (setsockopt(this->sock, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(on)) < 0){
         perror("setsockopt(SO_REUSEADDR) failed");
@@ -106,13 +118,13 @@ int cServer::run() {
     printf("\nFlowPing server on %s waiting on port %d\n", hostname, setup->getPort());
     //}
 
-    unsigned char packet[MAX_PKT_SIZE + 60];
+    unsigned char packet[MAX_PAYLOAD_SIZE + HEADER_LENGTH];
     // MAIN LOOP /////////////////////////////////
+    stimer->start();
     while (!stop) {
-        ret_size = recvfrom(this->sock, packet, MAX_PKT_SIZE, 0, (struct sockaddr *) &saClient6, (socklen_t *) & addr_len);
+        ret_size = recvfrom(this->sock, packet, MAX_PAYLOAD_SIZE + HEADER_LENGTH, 0, (struct sockaddr *) &saClient6, (socklen_t *) & addr_len);
         gen_msg_t *msg = nullptr;
         gen_msg_t *tmsg = nullptr;
-        //std::cout << "msg size:" << ret_size<< std::endl;
         if (ret_size < 0) {
             tmsg = new gen_msg_t;
             tmsg->type = MSG_KEEP_ALIVE;
@@ -120,58 +132,80 @@ int cServer::run() {
             continue;
         }
         connection = getConnectionFID(saClient6, (ping_pkt_t *)packet);
-        connection->refTv = connection->curTv;
-
-//        tmsg = new(gen_msg_t);
-//        memcpy(tmsg,packet, sizeof(gen_msg_t));
-//        tmsg->type = MSG_RX_PKT;
-//        tmsg->size = ret_size;
-//        mbroker->push(connection,tmsg);
         clock_gettime(CLOCK_REALTIME, &connection->curTv);
+        //connection->refTv = connection->curTv;
         msg = (struct gen_msg_t*) (packet);
         if (msg->type == PING) {
             ((ping_pkt_t *)packet)->server_sec = connection->curTv.tv_sec;
             ((ping_pkt_t *)packet)->server_nsec = connection->curTv.tv_nsec;
             ret_size = sendto(this->sock, packet, connection->ret_size, 0, (struct sockaddr *) &saClient6, addr_len);
-            connection->pkt_cnt++;
+
+            //RX STATS
+            tmsg = new(gen_msg_t);
+            memcpy(tmsg,packet, sizeof(gen_msg_t));
+            tmsg->type = MSG_RX_PKT;
+            //tmsg->size = ret_size;
+            mbroker->push(tmsg, connection);
+
             if (ret_size < 0) {
+                //Unable to send packet -> no TX stats needed
                 continue;
             }
+            //TX STATS
             tmsg = new(gen_msg_t);
             memcpy(tmsg,packet, sizeof(gen_msg_t));
             tmsg->type = MSG_TX_PKT;
             tmsg->size = ret_size;
-            mbroker->push(connection, tmsg);
+            mbroker->push(tmsg, connection);
         }else{
-            processCMessage(msg, connection);
+            //initiate output
+            processControlMessage(msg, connection);
+            if (!connection->initialized){
+                gen_msg_t * t = new gen_msg_t;
+                t->type = MSG_OUTPUT_INIT;
+                mbroker->push(t, connection);
+                connection->initialized = true;
+                stimer->addTimer(connection->conn_id, connection->sample_len, connection);
+            }
             sendto(this->sock, msg, MIN_PKT_SIZE, 0, (struct sockaddr *) &saClient6, addr_len);
-            clock_gettime(CLOCK_REALTIME, &connection->curTv);
+            //clock_gettime(CLOCK_REALTIME, &connection->curTv);
         }
     }
+    stimer->stop();
     return 1;
 }
 
-void cServer::processCMessage(gen_msg_t *msg, t_conn * connection){
+void cServer::processControlMessage(gen_msg_t *msg, t_conn * connection){
+    gen_msg_t * tmsg = nullptr;
     if (msg->type == CONTROL) {
         std::stringstream msg_out;
         msg_out.str("");
-        //Todo modify structure !!!! packet data not present - ONLY header was copied
         ping_msg_t *ping_msg = (ping_msg_t *) msg;
-        ping_msg->size = MIN_PKT_SIZE;
+        std::string path = "";
+        //Reduce msg size to header size if no message is included in control PKT
+        if (ping_msg->code != CNT_FNAME) ping_msg->size = MIN_PKT_SIZE;
+        //std::cout << "CTR MSG COde received: " << (uint16_t) msg->id << " / "<< (uint16_t )ping_msg->code << std::endl;
         switch (ping_msg->code) {
             case CNT_FNAME:
                 //std::cerr << "CNT FNAME" << std::endl;
                 if (connection->fout.is_open()) {
+                    std::cerr << "closing file!" << std::endl;
                     connection->fout.close();
                 }
-                connection->fout.open(setup->getFilename().c_str());
+                path = std::string(ping_msg->msg);
+                //Only filename is allowed to make it through
+                path = path.substr(path.find_last_of("//") + 1);
+
+                connection->fout.open(setup->getWorkingDirectory() + "/" + path);
                 ping_msg->code = CNT_FNAME_OK;
                 if (not connection->fout.is_open()) {
                     //Todo wrong place for redirect
                     std::cerr << "Unable to open file, redirecting to STDOUT" << std::endl;
                     ping_msg->code = CNT_OUTPUT_REDIR;
+                }else{
+                    connection->F_par = true;
                 }
-                processCMessage(msg,connection);
+                processControlMessage(msg, connection);
                 break;
 
             case CNT_NOFNAME:
@@ -184,29 +218,30 @@ void cServer::processCMessage(gen_msg_t *msg, t_conn * connection){
                     }
                 }
                 ping_msg->code = CNT_FNAME_OK;
-                processCMessage(msg,connection);
+                processControlMessage(msg, connection);
                 break;
 
             case CNT_DONE:
                 //std::cerr << "CNT DONE" << std::endl;
                 ping_msg->code = CNT_DONE_OK;
-                ping_msg->count = connection->pkt_cnt;
+                ping_msg->count = connection->pkt_rx_cnt;
                 setup->setExtFilename(string());
-                processCMessage(msg,connection);
+                tmsg = new gen_msg_t;
+                tmsg->type = MSG_OUTPUT_CLOSE;
+                mbroker->push(tmsg, connection);
+                processControlMessage(msg, connection);
                 break;
 
             case CNT_DONE_OK:
-                if (connection->fout.is_open()) {
-                    connection->fout.close();
-                }
-                msg_out << ".::. Test from " << connection->client_ip << " finished.  ~  " << connection->pkt_cnt << " packets processed." << endl;
-                connections.erase(connection->conn_id);
+                msg_out << ".::. Test from " << connection->client_ip << " finished.  ~  " << connection->pkt_tx_cnt << "/" << connection->pkt_rx_cnt << " packets processed." << endl;
+                cerr << msg_out.str() << endl;
+                stimer->removeTimer(connection->conn_id);
                 break;
 
             case CNT_FNAME_OK:
                 msg_out << endl << ".::. Test from " << connection->client_ip << " started. \t\t[";
                 setup->setAntiAsym(false);
-                //std::cout << (uint16_t )setup->extFilenameLen() << std::endl;
+                // std::cout << (uint16_t )setup->extFilenameLen() << std::endl;
                 //if (connection->F_par) std::cout << "F_par" <<std::endl;
                 if (setup->extFilenameLen() || connection->F_par) {
                     msg_out << "F";
@@ -239,12 +274,13 @@ void cServer::processCMessage(gen_msg_t *msg, t_conn * connection){
                     connection->E_par = setup->showSendBitrate();
                 }
 
-                if (ping_msg->params & CNT_WPAR) {
-                    setup->setWPAR(true);
-                    connection->W_par = true;
-                    msg_out << "W";
+                if (ping_msg->params & CNT_LPAR) {
+                    setup->setLPAR(true);
+                    connection->L_par = true;
+                    connection->sample_len = (uint64_t)ping_msg->sample_len_ms * 1000000L;
+                    msg_out << "L";
                 } else {
-                    setup->setWPAR(false);
+                    setup->setLPAR(false);
                 }
                 if (ping_msg->params & CNT_XPAR) {
                     setup->setXPAR(false);
@@ -290,23 +326,34 @@ string cServer::stripFFFF(string str) {
 }
 
 t_conn *  cServer::getConnectionFID(sockaddr_in6 saddr, ping_pkt_t *pkt) {
-    //u_int64_t conn_id = saddr.sin6_addr.s6_addr[0] * (u_int64_t)saddr.sin6_port;
-    u_int64_t conn_id = (uint64_t) pkt->flow_id;
+    //uint64_t conn_id = saddr.sin6_addr.s6_addr[0] * (uint64_t)saddr.sin6_port;
+    uint64_t conn_id = (uint64_t) pkt->flow_id;
     if (this->connections.count(conn_id) == 1) {
         connection = this->connections.at(conn_id);
     } else {
+        //std::cout << "Initializing connection with id: " << conn_id << std::endl;
         char addr[INET6_ADDRSTRLEN];
         connection = new t_conn;
         connection->ip = saddr.sin6_addr;
         connection->port = saddr.sin6_port;
         connection->conn_id = conn_id;
+        connection->sample_len = 0;
         inet_ntop(AF_INET6, &saddr.sin6_addr, addr, INET6_ADDRSTRLEN);
         connection->client_ip = stripFFFF(string(addr));
-        connection->pkt_cnt = 0;
+        connection->pkt_tx_cnt = 0;
+        connection->pkt_rx_cnt = 0;
+        connection->bytes_tx_cnt = 0;
+        connection->bytes_rx_cnt = 0;
         connection->refTv.tv_sec = 0;
         connection->refTv.tv_nsec = 0;
         connection->curTv.tv_sec = 0;
         connection->curTv.tv_nsec = 0;
+        connection->jitter = 0;
+        connection->jt_prev = 0;
+        connection->jt_diff = 0;
+        connection->jt_delay_prev = 0;
+        connection->finished = false;
+        connection->initialized = false;
         connection->C_par = false;
         connection->D_par = false;
         connection->e_par = false;
@@ -314,12 +361,25 @@ t_conn *  cServer::getConnectionFID(sockaddr_in6 saddr, ping_pkt_t *pkt) {
         connection->F_par = false;
         connection->H_par = false;
         connection->J_par = false;
-        connection->W_par = false;
+        connection->L_par = false;
         connection->X_par = setup->isAsym();
         connection->AX_par = false;
         connection->ret_size = pkt->size;
         if (setup->isAsym(connection->X_par)){
             connection->ret_size = MIN_PKT_SIZE;
+        }
+        for (int i = 0; i < 2; i++){
+            connection->sampled_int[i].first = true;
+            connection->sampled_int[i].first_seq = 0;
+            connection->sampled_int[i].pkt_cnt = 0;
+            connection->sampled_int[i].ts_limit = 0;
+            connection->sampled_int[i].seq = 0;
+            connection->sampled_int[i].ooo = 0;
+            connection->sampled_int[i].dup = 0;
+            connection->sampled_int[i].rtt_sum = 0;
+            connection->sampled_int[i].bytes = 0;
+            connection->sampled_int[i].jitter_sum = 0;
+            connection->sampled_int[i].last_seen_seq = 0;
         }
         this->connections[conn_id] = connection;
     }

@@ -45,7 +45,7 @@ void cStats::printRealTime(void) {
 void cStats::printSummary(void) {
 }
 
-void cStats::pk_enque(const u_int64_t conn_id, const u_int16_t direction, const timespec ts, const u_int16_t len, const u_int64_t seq, const float rtt) {
+void cStats::pk_enque(const uint64_t conn_id, const uint16_t direction, const timespec ts, const uint16_t len, const uint64_t seq, const float rtt) {
     pinfo_t pk_info;
     pk_info.ts = ts;
     pk_info.len = len;
@@ -102,24 +102,24 @@ void cStats::pk_enque(const u_int64_t conn_id, const u_int16_t direction, const 
         }
         pk_stats->rx_qsize += pk_info.len;
         pk_stats->max_seq = max(pk_stats->max_seq, seq);
-        pk_stats->rx_q_cumulative_rtt += (u_int64_t) (pk_info.rtt * 1000.0);
+        pk_stats->rx_q_cumulative_rtt += (uint64_t) (pk_info.rtt * 1000.0);
         pk_queue->push(pk_info);
         while (pk_stats->rx_qtime > 10000000000 && pk_queue->size() > 2) {
             pk_info = pk_queue->front();
             pk_queue->pop();
             pk_stats->rx_qtime = NS_TDIFF(pk_queue->back().ts, pk_info.ts);
             pk_stats->rx_qsize -= pk_info.len;
-            pk_stats->rx_q_cumulative_rtt -= (u_int64_t) (pk_info.rtt * 1000.0);
+            pk_stats->rx_q_cumulative_rtt -= (uint64_t) (pk_info.rtt * 1000.0);
         }
     }
 }
 
-void cStats::prepareStats(const u_int64_t conn_id, const uint16_t direction, stats_t* stats) {
+void cStats::prepareStats(const uint64_t conn_id, const uint16_t direction, stats_t* stats) {
     queue<pinfo_t> * pk_queue;
     qstats_t * pk_stats;
     pk_stats = nullptr;
     pk_queue = nullptr;
-    u_int32_t max_seq;
+    uint32_t max_seq;
     if (qstats.count(conn_id) == 0) {
         cerr << "cStats::ERRROR (1) - no stats for connId: " << conn_id << endl;
     } else {
@@ -341,7 +341,7 @@ void cClientStats::printSummary(void) {
 
 }
 
-void cClientStats::addServerStats(const u_int64_t server_rx_pkts) {
+void cClientStats::addServerStats(const uint64_t server_rx_pkts) {
     stats->server_rx_pkts = server_rx_pkts;
 }
 
@@ -394,7 +394,7 @@ std::string cClientStats::getReport() {
     return ss.str();
 }
 
-void cClientStats::pktRecv(const timespec ts, const u_int16_t len, const u_int64_t seq, const float rtt) {
+void cClientStats::pktRecv(const timespec ts, const uint16_t len, const uint64_t seq, const float rtt) {
     stats->rx_pkts++;
     stats->rx_bytes += len;
     stats->cumulative_rtt += (rtt * 1000);
@@ -413,7 +413,7 @@ void cClientStats::pktRecv(const timespec ts, const u_int16_t len, const u_int64
     this->pk_enque(1, RX, ts, len, seq, rtt);
 }
 
-void cClientStats::pktRecv(const u_int64_t ts, const u_int16_t len, const u_int64_t seq, const float rtt) {
+void cClientStats::pktRecv(const uint64_t ts, const uint16_t len, const uint64_t seq, const float rtt) {
     stats->rx_pkts++;
     stats->rx_bytes += len;
     stats->cumulative_rtt += (rtt * 1000);
@@ -435,13 +435,13 @@ void cClientStats::pktRecv(const u_int64_t ts, const u_int16_t len, const u_int6
     this->pk_enque(1, RX, tv, len, seq, rtt);
 }
 
-void cClientStats::pktSent(const timespec ts, const uint16_t len, const u_int64_t seq) {
+void cClientStats::pktSent(const timespec ts, const uint16_t len, const uint64_t seq) {
     stats->tx_pkts++;
     stats->tx_bytes += len;
     this->pk_enque(1, TX, ts, len, seq, 0);
 }
 
-void cClientStats::pktSent(const u_int64_t ts, const uint16_t len, const u_int64_t seq) {
+void cClientStats::pktSent(const uint64_t ts, const uint16_t len, const uint64_t seq) {
     stats->tx_pkts++;
     stats->tx_bytes += len;
     timespec tv;
@@ -467,7 +467,7 @@ cServerStats::~cServerStats(){
 }
 
 
-void cServerStats::pktSent(const u_int64_t conn_id, const timespec ts, const uint16_t len, const u_int64_t seq, const std::string src, const u_int32_t port) {
+void cServerStats::pktSent(const uint64_t conn_id, const timespec ts, const uint16_t len, const uint64_t seq, const std::string src, const uint32_t port) {
     if (s_stats.count(conn_id) == 0) {
         //cerr << "ServerStats {stats} should be initialized at the time of instance construction" << endl;
         //exit(1);
@@ -478,7 +478,7 @@ void cServerStats::pktSent(const u_int64_t conn_id, const timespec ts, const uin
     this->pk_enque(conn_id, TX, ts, len, seq, 0);
 }
 
-void cServerStats::pktReceived(const u_int64_t conn_id, const timespec ts, const uint16_t len, const u_int64_t seq, const std::string src, const u_int32_t port) {
+void cServerStats::pktReceived(const uint64_t conn_id, const timespec ts, const uint16_t len, const uint64_t seq, const std::string src, const uint32_t port) {
     if (s_stats.count(conn_id) == 0) {
         // in case of server restart and client test still running.
         connInit(conn_id, src, port);
@@ -496,7 +496,7 @@ void cServerStats::printRealTime(void) {
     double duration;
     clock_gettime(CLOCK_REALTIME, &curTv);
 
-    for (std::map<u_int64_t, s_stats_t *>::const_iterator it = s_stats.begin(); it != s_stats.end(); ++it) {
+    for (std::map<uint64_t, s_stats_t *>::const_iterator it = s_stats.begin(); it != s_stats.end(); ++it) {
         this->prepareStats(it->first, RX, it->second);
         this->prepareStats(it->first, TX, it->second);
         duration = (double) (NS_TIME(curTv)-(it->second->test_start)) / 1000000000.0;
@@ -600,7 +600,7 @@ void cServerStats::printSummary(void) {
 
 }
 
-u_int16_t cServerStats::connStatRemove(const u_int64_t conn_id) {
+uint16_t cServerStats::connStatRemove(const uint64_t conn_id) {
     if (s_stats.count(conn_id) > 0) {
         if (s_stats[conn_id]) {
             delete s_stats[conn_id];
@@ -611,7 +611,7 @@ u_int16_t cServerStats::connStatRemove(const u_int64_t conn_id) {
     return 1;
 }
 
-void cServerStats::connInit(const u_int64_t conn_id, const string src, const u_int32_t port) {
+void cServerStats::connInit(const uint64_t conn_id, const string src, const uint32_t port) {
     timespec curTv;
     clock_gettime(CLOCK_REALTIME, &curTv);
 

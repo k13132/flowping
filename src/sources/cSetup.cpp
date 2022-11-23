@@ -31,6 +31,7 @@
 #include "types.h"
 #include "cSetup.h"
 #include <cmath>
+#include <filesystem>
 
 
 using namespace std;
@@ -75,7 +76,7 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->XR_par = false;
     this->R_par = false;
     this->r_par = false;
-    this->W_par = false;
+    //this->W_par = false;
     this->J_par = false;
     this->_par = false;
     this->antiAsym = false;
@@ -102,9 +103,12 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->ets = 0;
     this->fpsize = 64;
     this->fpsize_set = false;
-
     this->version = version;
-    while ((c = getopt(argc, argv, "JCXeEaSqDH6?w:d:p:c:h:s:i:F:f:u:vI:t:T:b:B:r:R:L:")) != EOF) {
+
+    const std::filesystem::path pth;
+    std::error_code ec;
+
+    while ((c = getopt(argc, argv, "JCXeEaSqDH6?w:d:p:c:h:s:i:F:f:u:vI:t:T:b:B:r:R:L:W:")) != EOF) {
         switch (c) {
             case 'v':
                 this->v_par = true;
@@ -152,7 +156,10 @@ cSetup::cSetup(int argc, char **argv, string version) {
             case 'L':
                 this->L_par = true;
                 this->vonly = false;
-                this->sample_len = (u_int64_t)(atof(optarg)*1000000000); //in ns
+                this->sample_len = (uint64_t)(atof(optarg)*1000000000); //in ns
+                if (this->sample_len == 0) break;
+                if (this->sample_len < 1000000) this->sample_len = 1000000;
+                if (this->sample_len > 1000000000L*3600L) this->sample_len = 1000000000L*3600;
                 break;
             case 't': //T1
                 this->vonly = false;
@@ -244,6 +251,15 @@ cSetup::cSetup(int argc, char **argv, string version) {
             case 'W':
                 this->vonly = false;
                 this->W_par = true;
+                if (std::filesystem::is_directory(optarg, ec))
+                {
+                    this->wdir = optarg;
+                }else
+                {
+                    std::cerr << "Error in is_directory: " << ec.message() << std::endl;
+                    std::cerr << "Setting working directory to ./" << std::endl;
+                    this->wdir = ".";
+                }
                 break;
             case 'w':
                 this->vonly = false;
@@ -257,8 +273,8 @@ cSetup::cSetup(int argc, char **argv, string version) {
             case 's':
                 this->s_par = true;
                 this->vonly = false;
-                if (atoi(optarg) > MAX_PKT_SIZE) {
-                    this->size = MAX_PKT_SIZE;
+                if (atoi(optarg) > MAX_PAYLOAD_SIZE) {
+                    this->size = MAX_PAYLOAD_SIZE;
                 } else {
                     this->size = atoi(optarg);
                 }
@@ -309,13 +325,25 @@ cSetup::cSetup(int argc, char **argv, string version) {
             exit(1);
         }
     }
+    if (L_par && not J_par){
+        this->sample_len = 0;
+        this->L_par = false;
+    }
 }
 
 cSetup::~cSetup() {
 
 }
 
-u_int8_t cSetup::self_check(void) {
+void cSetup::setFlowID(uint16_t flow_id){
+    this->flow_id = flow_id;
+}
+
+uint16_t cSetup::getFlowID(){
+    return this->flow_id;
+}
+
+uint8_t cSetup::self_check(void) {
     if (C_par && J_par){
             return SETUP_CHCK_ERR;
     }
@@ -331,15 +359,15 @@ u_int8_t cSetup::self_check(void) {
         }
     } else {
         //ToDo Remove in other than F-Tester edition of FlowPing
-        if (not J_par) {
-            return SETUP_CHCK_ERR;
-        }
+        //if (not J_par) {
+        //    return SETUP_CHCK_ERR;
+        //}
     }
     return SETUP_CHCK_OK;
 }
 
-u_int16_t cSetup::getMaxPacketSize(void) {
-    return MAX_PKT_SIZE;
+uint16_t cSetup::getMaxPacketSize(void) {
+    return MAX_PAYLOAD_SIZE;
 }
 
 bool cSetup::isServer() {
@@ -383,23 +411,21 @@ void cSetup::usage() {
     cout << " -----------------------------------------------------------------------------------------------" << endl;
     cout << "| Common:                                                                                       |" << endl;
     cout << "|         [-?]                       Usage (Print this table)                                   |" << endl;
-    cout << "|         [-D]                       Print timestamps in ping output                            |" << endl;
-    cout << "|         [-e]                       Print current RX Bitrate                                   |" << endl;
-    cout << "|         [-E]                       Print current TX Bitrate                                   |" << endl;
     cout << "|         [-f filename]              Store ping output in specified file                        |" << endl;
     cout << "|         [-p port]     [2424]       Port number                                                |" << endl;
     cout << "|         [-q]                       Silent (suppress ping output)                              |" << endl;
     cout << "|         [-v]                       Print version                                              |" << endl;
+    cout << "|         [-D]                       Show unix timestamps                                       |" << endl;
     cout << "|         [-X]                       Asymmetric mode (TX Payload  is limited to 32 B)           |" << endl;
     cout << "| Server:                                                                                       |" << endl;
     cout << "|         [-S]                       Run as server                                              |" << endl;
+    cout << "|         [-W]                       working directory                                          |" << endl;
     cout << "| Client:                                                                                       |" << endl;
     cout << "|         [-6]                       Prefer IPv6 over IPv4                                      |" << endl;
     cout << "|         [-a]                       Busy-loop mode! (100% CPU usage), more accurate bitrate    |" << endl;
     cout << "|         [-b kbit/s]                BitRate (first limit)                                      |" << endl;
     cout << "|         [-B kbit/s]                BitRate (second limit)                                     |" << endl;
     cout << "|         [-c count]    [unlimited]  Send specified number of packets                           |" << endl;
-    cout << "|         [-C]                       CSV output format [;;;;]                                   |" << endl;
     cout << "|         [-J]                       JSON output format                                         |" << endl;
     cout << "|         [-d]                       Set source interface                                       |" << endl;
     cout << "|         [-F filename]              Send FileName to server (overide server settings)          |" << endl;
@@ -468,12 +494,12 @@ bool cSetup::outToFile() {
     return this->f_par;
 }
 
-u_int64_t cSetup::getTime_t() {
-    return (u_int64_t)this->time_t;
+uint64_t cSetup::getTime_t() {
+    return (uint64_t)this->time_t;
 };
 
-u_int64_t cSetup::getTime_T() {
-    return (u_int64_t)this->time_T;
+uint64_t cSetup::getTime_T() {
+    return (uint64_t)this->time_T;
 
 };
 
@@ -486,11 +512,11 @@ string cSetup::getHostname() {
     return this->host;
 }
 
-u_int64_t cSetup::getDeadline() {
+uint64_t cSetup::getDeadline() {
     return this->deadline;
 }
 
-u_int64_t cSetup::getCount() {
+uint64_t cSetup::getCount() {
     return this->count;
 }
 
@@ -510,19 +536,19 @@ bool cSetup::silent() {
     return this->q_par;
 }
 
-u_int64_t cSetup::getMinInterval() {
+uint64_t cSetup::getMinInterval() {
     if (this->interval_i>this->interval_I) {
-        return (u_int64_t)this->interval_I;
+        return (uint64_t)this->interval_I;
     } else {
-        return (u_int64_t)this->interval_i;
+        return (uint64_t)this->interval_i;
     }
 }
 
-u_int64_t cSetup::getMaxInterval() {
+uint64_t cSetup::getMaxInterval() {
     if (this->interval_i>this->interval_I) {
-        return (u_int64_t)this->interval_i;
+        return (uint64_t)this->interval_i;
     } else {
-        return (u_int64_t)this->interval_I;
+        return (uint64_t)this->interval_I;
     }
 }
 
@@ -563,15 +589,15 @@ double cSetup::getSchange() {
     return schange;
 }
 
-u_int16_t cSetup::getPacketSize() {
+uint16_t cSetup::getPacketSize() {
     return this->size;
 }
 
-u_int64_t cSetup::getBaseRate() {
+uint64_t cSetup::getBaseRate() {
     if (this->b_par) {
         return this->rate_b * 1000;
     } else {
-        return (u_int64_t) (this->getPacketSize()*8 * 1000000000 / this->interval_i);
+        return (uint64_t) (this->getPacketSize()*8 * 1000000000 / this->interval_i);
     }
 }
 bool cSetup::frameSize() {
@@ -616,7 +642,7 @@ std::ostream& operator<<(std::ostream& os, const tpoint_def_t& obj)
 int cSetup::parseCmdLine() {
     //Overit zda to funguje - pripadne zda to takto budeme delat?
     //cout << this->size << "\t" << this->interval_i << "\t" << this->interval_I << endl;
-    u_int32_t shift = 0;
+    uint32_t shift = 0;
     tpoint_def_t tmp;
     tmp.ts = 0;
     if (deadline == 0) {
@@ -716,7 +742,7 @@ int cSetup::parseSrcFile() {
             if (!fpsize_set) {
                 fpsize = atoi(xstr);
                 if (fpsize < MIN_PKT_SIZE) fpsize = MIN_PKT_SIZE;
-                if (fpsize > MAX_PKT_SIZE) fpsize = MAX_PKT_SIZE;
+                if (fpsize > MAX_PAYLOAD_SIZE) fpsize = MAX_PAYLOAD_SIZE;
                 fpsize_set = true;
             }
             tmp.len = atoi(xstr);
@@ -724,7 +750,7 @@ int cSetup::parseSrcFile() {
                 tmp.len -= 42; //todo check negative size of payload.
             }
             if (tmp.len < MIN_PKT_SIZE) tmp.len = MIN_PKT_SIZE;
-            if (tmp.len > MAX_PKT_SIZE) tmp.len = MAX_PKT_SIZE;
+            if (tmp.len > MAX_PAYLOAD_SIZE) tmp.len = MAX_PAYLOAD_SIZE;
             if (tmp.ts < check.ts) {
                 cerr << "Time inconsistency in source file!" << endl;
             }
@@ -781,7 +807,7 @@ bool cSetup::tpReady() {
     return this->tp_ready;
 }
 
-void cSetup::setPayoadSize(u_int16_t psize) {
+void cSetup::setPayoadSize(uint16_t psize) {
     this->size = psize;
 }
 
@@ -801,30 +827,30 @@ void cSetup::setHPAR(bool value) {
     this->H_par = value;
 }
 
-void cSetup::setWPAR(bool value) {
-    this->W_par = value;
+void cSetup::setLPAR(bool value) {
+    this->L_par = value;
 }
 
-u_int64_t cSetup::getNextPacketTS(u_int64_t ts, u_int64_t sts, u_int64_t ets, u_int64_t srate, u_int64_t erate, u_int16_t len) {
+uint64_t cSetup::getNextPacketTS(uint64_t ts, uint64_t sts, uint64_t ets, uint64_t srate, uint64_t erate, uint16_t len) {
     //std::cout << ts << ", " << sts << ", "<< ets << ", " << srate << ", " << erate << ", " << len << std::endl;
     if ((srate == 0)&&(erate == 0)) {
         return ets;
     }
     delta_rate = erate - srate;
     if (delta_rate == 0) {
-        delay = (u_int64_t)8*1000000000 * len / erate;
+        delay = (uint64_t)8*1000000000 * len / erate;
     } else {
         nsec_delta = ts - sts;
         tp_diff = (ets - sts);
         if (nsec_delta == 0){
             //first packet delay
             if (srate == 0){
-                delay = (u_int64_t) 1000000000 * std::sqrt( 16 * len / ((std::abs(delta_rate * 1000000000)) /(double)(tp_diff)));
+                delay = (uint64_t) 1000000000 * std::sqrt( 16 * len / ((std::abs(delta_rate * 1000000000)) /(double)(tp_diff)));
             }else{
-                delay = (u_int64_t) 8*1000000000 * len / srate;
+                delay = (uint64_t) 8*1000000000 * len / srate;
             }
         }else{
-            delay = (u_int64_t) 8*1000000000 * (len / (srate + (delta_rate *  (nsec_delta / (double)tp_diff)))); //interval [tv_nsec];
+            delay = (uint64_t) 8*1000000000 * (len / (srate + (delta_rate *  (nsec_delta / (double)tp_diff)))); //interval [tv_nsec];
         }
     }
     return ts + delay;
@@ -838,13 +864,13 @@ bool cSetup::prepNextPacket() {
         if (td_tmp.len == 0) {
             td_tmp = (tpoint_def_t) tpoints.front();
             s_tmp_rate = td_tmp.bitrate * 1000;
-            s_tmp_ts = (u_int64_t) td_tmp.ts * 1000000000L;
+            s_tmp_ts = (uint64_t) td_tmp.ts * 1000000000L;
             tmp_len = td_tmp.len;
             tmp_ts = s_tmp_ts;
             tpoints.pop();
         }
         td_tmp = (tpoint_def_t) tpoints.front();
-        e_tmp_ts = (u_int64_t) td_tmp.ts * 1000000000L;
+        e_tmp_ts = (uint64_t) td_tmp.ts * 1000000000L;
         e_tmp_rate = td_tmp.bitrate * 1000;
         if (e_tmp_ts != s_tmp_ts) {
             if (tmp_ts < e_tmp_ts) {
@@ -892,7 +918,7 @@ bool cSetup::nextPacket() {
     return not pbuffer.empty();
 }
 
-u_int64_t cSetup::getTimedBufferSize() {
+uint64_t cSetup::getTimedBufferSize() {
     return pbuffer.size();
 }
 
@@ -948,7 +974,7 @@ void cSetup::setAntiAsym(bool val) {
     this->antiAsym = val;
 }
 
-u_int16_t cSetup::getFirstPacketSize() {
+uint16_t cSetup::getFirstPacketSize() {
     return fpsize;
 }
 
@@ -976,10 +1002,17 @@ void cSetup::setDone(bool done) {
     cSetup::done = done;
 }
 
-u_int64_t cSetup::getSampleLen() const {
+uint64_t cSetup::getSampleLen() const {
     return sample_len;
 }
 
 bool cSetup::isIPv6Prefered() const {
     return ipv6;
+}
+
+string cSetup::getWorkingDirectory() {
+    if (W_par){
+        return wdir;
+    }
+    return ".";
 }

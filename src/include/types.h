@@ -57,7 +57,7 @@
 #include <cmath>
 #include <map>
 
-#define MAX_PKT_SIZE 1472
+#define MAX_PAYLOAD_SIZE 1472
 #define MIN_PKT_SIZE 32  //we need to transfer whole header.
 #define HEADER_LENGTH 32
 
@@ -72,7 +72,7 @@
 #define CNT_OUTPUT_REDIR 6
 
 #define CNT_HPAR 1  //0000 0001
-#define CNT_WPAR 2  //0000 0010
+#define CNT_LPAR 2  //0000 0010
 #define CNT_CPAR 4  //0000 0100
 #define CNT_XPAR 8  //0000 1000
 #define CNT_DPAR 16  //0001 0000
@@ -116,62 +116,102 @@ struct event_t{
 
 
 //struct ping_pkt_t {         //Min PK SIZE 32B
-//    u_int8_t type;
-//    u_int8_t id;
-//    u_int16_t size;         //payload_size
-//    u_int16_t flow_id;
-//    u_int16_t padding1;
-//    u_int64_t sec;
-//    u_int64_t nsec;
-//    u_int64_t seq;
-//    char data[MAX_PKT_SIZE-HEADER_LENGTH];
+//    uint8_t type;
+//    uint8_t id;
+//    uint16_t size;         //payload_size
+//    uint16_t flow_id;
+//    uint16_t padding1;
+//    uint64_t sec;
+//    uint64_t nsec;
+//    uint64_t seq;
+//    char data[MAX_PAYLOAD_SIZE-HEADER_LENGTH];
 //};
 
+//Do not pack this structure!
 struct ping_pkt_t {         //Header size 32B 1+1+2+2+4+4+4+4+8+2, Min. Payload size = 0B
-    u_int8_t type;
-    u_int8_t id;
-    u_int16_t size;         //payload_size
-    u_int16_t flow_id;
-    u_int16_t padding1;
-    u_int32_t sec;
-    u_int32_t nsec;
-    u_int32_t server_sec;
-    u_int32_t server_nsec;
-    u_int64_t seq;
-    char data[MAX_PKT_SIZE-HEADER_LENGTH];
+    uint8_t type;
+    uint8_t id;
+    uint16_t size;         //payload_size
+    uint16_t flow_id;
+    uint16_t padding1;
+    uint32_t sec;
+    uint32_t nsec;
+    uint32_t server_sec;
+    uint32_t server_nsec;
+    uint64_t seq;
+    char data[MAX_PAYLOAD_SIZE];
 };
 
-struct ping_msg_t {         //Min MSG SIZE 16B
-    u_int8_t type;
-    u_int8_t code;
-    u_int16_t size;
-    u_int64_t count;
-    u_int8_t params;        // 00000001 - H_PAR //Bit encoded
-    u_int8_t id;
-    u_int16_t check;
-    uint64_t padding1;
-    uint64_t padding2;
-    char msg[MAX_PKT_SIZE-HEADER_LENGTH];
+struct __attribute__ ((packed)) ping_msg_t {         //Min MSG SIZE 16B 1+1+2+8+1+1+2+8+8
+    uint8_t type;
+    uint8_t code;
+    uint16_t size;
+    uint16_t flow_id;
+    uint8_t params;        // 00000001 - H_PAR //Bit encoded
+    uint8_t id;
+    uint16_t check;
+    uint16_t padding1;
+    uint32_t sample_len_ms;
+    uint64_t count;
+    char msg[MAX_PAYLOAD_SIZE];
 };
 
-struct gen_msg_t{           //Min MSG SIZE 4B
-    u_int8_t type;
-    u_int8_t id;
-    u_int16_t size;
-    u_int64_t padding_3;
-    u_int64_t padding_4;
-    u_int64_t padding_5;
-    char msg[MAX_PKT_SIZE-HEADER_LENGTH];
+// struct
+// because of alignment it is necessary to have packed structure or use exact same padding/structure as ping_msg_t
+//packed structure is use only in setup phase so no need to worry about performance penalty.
+struct __attribute__ ((packed)) gen_msg_t{           //Min MSG SIZE 4B
+    uint8_t type;
+    uint8_t id;
+    uint16_t size;
+    uint16_t flow_id;
+    uint8_t padding_1;
+    uint8_t padding_2;
+    uint16_t padding_3;
+    uint16_t padding_4;
+    uint32_t padding_5;
+    uint64_t padding_6;
+    char msg[MAX_PAYLOAD_SIZE]; //offset must be same as offset of msg in ping_msg_t
 };
+
+
+struct sampled_int_t{
+    bool first;
+    double rtt_sum;
+    double delay_sum;
+    uint64_t first_seq;
+    uint64_t last_seen_seq;
+    uint64_t pkt_cnt;
+    uint64_t bytes;
+    uint64_t ts_limit;
+    uint64_t seq;
+    uint64_t ooo;
+    uint64_t dup;
+    float jitter_sum;
+};
+
 
 struct t_conn{
+    std::chrono::system_clock::time_point start, end;
     timespec  curTv, refTv;
-    u_int64_t pkt_cnt;
+    uint64_t pkt_rx_cnt;
+    uint64_t pkt_tx_cnt;
+    uint64_t bytes_rx_cnt;
+    uint64_t bytes_tx_cnt;
+    float jitter;
+    float jt_prev;
+    float jt_diff;
+    float jt_delay_prev;
     in6_addr ip;
-    u_int16_t port;
-    u_int64_t conn_id;
-    u_int32_t ret_size;
+    uint16_t port;
+    uint64_t conn_id;
+    uint32_t ret_size;
+    uint64_t sample_len;
     string client_ip;
+    sampled_int_t sampled_int[2];
+    uint64_t dup_cnt;
+    uint64_t ooo_cnt;
+    bool finished;
+    bool initialized;
     bool C_par;
     bool J_par;
     bool D_par;
@@ -180,9 +220,10 @@ struct t_conn{
     bool F_par;
     bool H_par;
     bool X_par;
+    bool L_par;
     bool AX_par;
-    bool W_par;
     std::ofstream fout;
+    std::ostream* output;
 };
 
 
@@ -200,24 +241,10 @@ struct tpoint_def_t{
 };
 
 struct timed_packet_t{
-    u_int64_t ts;
-    u_int32_t sec;
-    u_int32_t nsec;
-    u_int16_t len;
-};
-
-struct sampled_int_t{
-    bool first;
-    double rtt_sum;
-    u_int64_t first_seq;
-    u_int64_t last_seen_seq;
-    u_int64_t pkt_cnt;
-    u_int64_t bytes;
-    u_int64_t ts_limit;
-    u_int64_t seq;
-    u_int64_t ooo;
-    u_int64_t dup;
-    float jitter_sum;
+    uint64_t ts;
+    uint32_t sec;
+    uint32_t nsec;
+    uint16_t len;
 };
 
 
