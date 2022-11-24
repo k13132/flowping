@@ -9,3 +9,11 @@ https://flowping.fel.cvut.cz
 * ver. 1.5.3 Original application in flowping_v1_archive branch 
 
 Note: sample length for JSON output is possible from 1 ms to 1 hour. 0 is reserved for per packet mode output.
+
+
+
+ToDo v3:
+* signal to all client when server receives SIGQUIT
+* close all output files after SIGQUIT
+* set connection limit
+* dead connection collector

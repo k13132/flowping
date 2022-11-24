@@ -272,7 +272,7 @@ int cClient::run_sender() {
         ping_msg->params = (ping_msg->params | CNT_JPAR);
     }
     if (setup->getSampleLen()){
-        std::cout << "Sample len:" << setup->getSampleLen() << std::endl;
+        //std::cout << "Sample len:" << setup->getSampleLen() << std::endl;
         ping_msg->params = (ping_msg->params | CNT_LPAR);
         ping_msg->sample_len_ms = (uint32_t)(setup->getSampleLen() / 1000000);
     }

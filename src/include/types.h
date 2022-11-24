@@ -191,7 +191,7 @@ struct sampled_int_t{
 
 
 struct t_conn{
-    std::chrono::system_clock::time_point start, end;
+    std::chrono::system_clock::time_point start, end, last_pkt_rcvd;
     timespec  curTv, refTv;
     uint64_t pkt_rx_cnt;
     uint64_t pkt_tx_cnt;
@@ -202,9 +202,11 @@ struct t_conn{
     float jt_diff;
     float jt_delay_prev;
     in6_addr ip;
+    sa_family_t family;
     uint16_t port;
     uint64_t conn_id;
-    uint32_t ret_size;
+    uint16_t size;
+    uint16_t ret_size;
     uint64_t sample_len;
     string client_ip;
     sampled_int_t sampled_int[2];
@@ -212,6 +214,7 @@ struct t_conn{
     uint64_t ooo_cnt;
     bool finished;
     bool initialized;
+    bool started;
     bool C_par;
     bool J_par;
     bool D_par;

@@ -132,6 +132,7 @@ int cServer::run() {
             continue;
         }
         connection = getConnectionFID(saClient6, (ping_pkt_t *)packet);
+        connection->size = ret_size;
         clock_gettime(CLOCK_REALTIME, &connection->curTv);
         //connection->refTv = connection->curTv;
         msg = (struct gen_msg_t*) (packet);
@@ -177,6 +178,8 @@ int cServer::run() {
 
 void cServer::processControlMessage(gen_msg_t *msg, t_conn * connection){
     gen_msg_t * tmsg = nullptr;
+    timespec tv;
+    clock_gettime(CLOCK_REALTIME, &tv);
     if (msg->type == CONTROL) {
         std::stringstream msg_out;
         msg_out.str("");
@@ -187,15 +190,19 @@ void cServer::processControlMessage(gen_msg_t *msg, t_conn * connection){
         //std::cout << "CTR MSG COde received: " << (uint16_t) msg->id << " / "<< (uint16_t )ping_msg->code << std::endl;
         switch (ping_msg->code) {
             case CNT_FNAME:
-                //std::cerr << "CNT FNAME" << std::endl;
+                if (connection->started){
+                    if (NS_TDIFF(connection->curTv, tv)<10000000000){
+                        break;
+                    }
+                }
                 if (connection->fout.is_open()) {
+                    //drop duplicate message in first 10 secs
                     std::cerr << "closing file!" << std::endl;
                     connection->fout.close();
                 }
                 path = std::string(ping_msg->msg);
                 //Only filename is allowed to make it through
                 path = path.substr(path.find_last_of("//") + 1);
-
                 connection->fout.open(setup->getWorkingDirectory() + "/" + path);
                 ping_msg->code = CNT_FNAME_OK;
                 if (not connection->fout.is_open()) {
@@ -209,6 +216,12 @@ void cServer::processControlMessage(gen_msg_t *msg, t_conn * connection){
                 break;
 
             case CNT_NOFNAME:
+                if (connection->started){
+                    //drop duplicate message in first 10 secs
+                    if (NS_TDIFF(connection->curTv, tv)<10000000000){
+                        break;
+                    }
+                }
                 //std::cerr << "CNT NOFNAME" << std::endl;
                 if (setup->getFilename().length() && setup->outToFile()) {
                     connection->fout.open(setup->getFilename().c_str());
@@ -308,6 +321,7 @@ void cServer::processControlMessage(gen_msg_t *msg, t_conn * connection){
                 }
                 msg_out << "]";
                 cerr << msg_out.str() << endl;
+                connection->started = true;
                 break;
 
         }
@@ -330,12 +344,18 @@ t_conn *  cServer::getConnectionFID(sockaddr_in6 saddr, ping_pkt_t *pkt) {
     uint64_t conn_id = (uint64_t) pkt->flow_id;
     if (this->connections.count(conn_id) == 1) {
         connection = this->connections.at(conn_id);
+        if (setup->isAsym()){
+            connection->ret_size = MIN_PKT_SIZE;
+        }else{
+            connection->ret_size = pkt->size;
+        }
     } else {
         //std::cout << "Initializing connection with id: " << conn_id << std::endl;
         char addr[INET6_ADDRSTRLEN];
         connection = new t_conn;
         connection->ip = saddr.sin6_addr;
         connection->port = saddr.sin6_port;
+        connection->family = saddr.sin6_family;
         connection->conn_id = conn_id;
         connection->sample_len = 0;
         inet_ntop(AF_INET6, &saddr.sin6_addr, addr, INET6_ADDRSTRLEN);
@@ -354,6 +374,7 @@ t_conn *  cServer::getConnectionFID(sockaddr_in6 saddr, ping_pkt_t *pkt) {
         connection->jt_delay_prev = 0;
         connection->finished = false;
         connection->initialized = false;
+        connection->started = false;
         connection->C_par = false;
         connection->D_par = false;
         connection->e_par = false;
@@ -364,10 +385,8 @@ t_conn *  cServer::getConnectionFID(sockaddr_in6 saddr, ping_pkt_t *pkt) {
         connection->L_par = false;
         connection->X_par = setup->isAsym();
         connection->AX_par = false;
-        connection->ret_size = pkt->size;
-        if (setup->isAsym(connection->X_par)){
-            connection->ret_size = MIN_PKT_SIZE;
-        }
+        connection->size = HEADER_LENGTH;
+        connection->ret_size = HEADER_LENGTH;
         for (int i = 0; i < 2; i++){
             connection->sampled_int[i].first = true;
             connection->sampled_int[i].first_seq = 0;

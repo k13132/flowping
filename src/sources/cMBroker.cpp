@@ -224,6 +224,7 @@ void cMessageBroker::processAndDeleteServerMessage(t_msg_t *tMsg) {
     switch(msg->type){
         case MSG_RX_PKT:
             tMsg->conn->pkt_rx_cnt++;
+            tMsg->conn->last_pkt_rcvd = tp;
             if (not setup->silent()) {
                 if (tMsg->conn->J_par){
                     *tMsg->conn->output << prepServerDataRec(tMsg, RX);
@@ -267,9 +268,8 @@ void cMessageBroker::processAndDeleteServerMessage(t_msg_t *tMsg) {
 
         case MSG_SLOT_TIMER_STOP:
             break;
-
         case MSG_SLOT_TIMER_TICK:
-            if (tMsg->conn->J_par){
+            if (tMsg->conn->J_par && tMsg->conn->fout.is_open()){
                 ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * uint64_t(1000000000L)) / chrono::system_clock::period::den));
                 for (int direction = 0; direction < 2; direction ++){
                     *tMsg->conn->output << closeServerDataRecSlot(ts, tMsg, direction);
@@ -288,14 +288,14 @@ void cMessageBroker::processAndDeleteServerMessage(t_msg_t *tMsg) {
             ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * uint64_t(1000000000L)) / chrono::system_clock::period::den));
             tMsg->conn->end = tp;
             //Flush buffered data
-            if (not setup->silent()) {
+            if (tMsg->conn->J_par && tMsg->conn->fout.is_open()) {
                 if (tMsg->conn->sample_len){
                     *tMsg->conn->output << prepServerFinalDataRec(ts, tMsg, TX);
                     *tMsg->conn->output << prepServerFinalDataRec(ts, tMsg, RX);
                 }
             }
             //std::cout << "conn info:: " << *tMsg->conn << std::endl;
-            if (setup->toJSON()) {
+            if (tMsg->conn->J_par && tMsg->conn->fout.is_open()) {
                 *tMsg->conn->output << "\n\t],";
                 *tMsg->conn->output << "\n\t\"server_stats\": {";
                 *tMsg->conn->output << "\n\t\t\"tx_pkts\" :"<< tMsg->conn->pkt_tx_cnt << ",";
@@ -357,13 +357,11 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tMsg){
             ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * uint64_t(1000000000L)) / chrono::system_clock::period::den));
             pkt_rtt = ((tp.time_since_epoch().count() * ((chrono::system_clock::period::num * uint64_t(1000000000L)) / chrono::system_clock::period::den)) - (ping_pkt->sec * uint64_t(1000000000L)) - (ping_pkt->nsec))/1000000.0; //ms
             pkt_server_ts =  ping_pkt->server_sec * uint64_t(1000000000L) + ping_pkt->server_nsec;
-            if (not setup->silent()) {
-                if (setup->toJSON()) {
-                    *output << prepDataRec(ts, pkt_server_ts, RX, ping_pkt->size, ping_pkt->seq, pkt_rtt);
-                    break;
-                }
-                *output << pingOutputRec(ts, pkt_server_ts, RX, ping_pkt->size, ping_pkt->seq, pkt_rtt);
+            if (setup->toJSON()) {
+                *output << prepDataRec(ts, pkt_server_ts, RX, ping_pkt->size, ping_pkt->seq, pkt_rtt);
+                break;
             }
+            *output << pingOutputRec(ts, pkt_server_ts, RX, ping_pkt->size, ping_pkt->seq, pkt_rtt);
             //c_stats->pktRecv(ts, ping_pkt->size, ping_pkt->seq, pkt_rtt);
             break;
 
@@ -371,14 +369,12 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tMsg){
             ping_pkt = (struct ping_pkt_t*) (msg);
             if (ping_pkt->size < HEADER_LENGTH) std::cerr << "Invalid TX Packet Size: " << ping_pkt->size << std::endl;
             ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * uint64_t(1000000000L)) / chrono::system_clock::period::den));
-            if (not setup->silent()) {
-                if (setup->toJSON()){
-                    *output << prepDataRec(ts, 0, TX, ping_pkt->size, ping_pkt->seq, 0);
-                    break;
-                }else{
-                    pkt_cnt_tx ++;
-                    break;
-                }
+            if (setup->toJSON()){
+                *output << prepDataRec(ts, 0, TX, ping_pkt->size, ping_pkt->seq, 0);
+                break;
+            }else{
+                pkt_cnt_tx ++;
+                break;
             }
             //c_stats->pktSent(ts, ping_pkt->size, ping_pkt->seq);
             break;
@@ -457,7 +453,7 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tMsg){
                 *output << std::endl;
                 *output << ".::. " << pkt_cnt_tx << " packets transmitted, " << pkt_cnt_rx << " packets received, ";
                 if (pkt_cnt_tx){
-                    *output << std::setprecision(3) << std::fixed << 100 * (double)(1.0-(pkt_cnt_rx / pkt_cnt_tx)) << "% packet loss" ;
+                    *output << std::setprecision(3) << std::fixed << 100 * (double)(1.0-((double)pkt_cnt_rx / (double)pkt_cnt_tx)) << "% packet loss" ;
                 }else{
                     *output << "100% packet loss" ;
                 }
@@ -508,15 +504,15 @@ std::string cMessageBroker::prepHeader() {
 
 std::string cMessageBroker::prepServerHeader(t_conn * conn) {
     stringstream header;
-    if (setup->toJSON()){
+    if (conn->J_par && conn->fout.is_open()){
         auto now = std::chrono::system_clock::now();
         auto in_time_t = std::chrono::system_clock::to_time_t(now);
         header << "{\n\t\"info\": {";
         header << "\n\t\t\"start\":\"" << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X") << "\",";
         header << "\n\t\t\"version\":\"" << setup->getVersion() << "\",";
-        if (setup->getAddrFamily() == AF_INET) header << "\n\t\t\"ip_family\":\"IPv4\",";
-        if (setup->getAddrFamily() == AF_INET6) header << "\n\t\t\"ip_family\":\"IPv6\",";
-        header << "\n\t\t\"remote\":\"" << setup->getHostname().c_str() << "\",";
+        if (conn->family == AF_INET) header << "\n\t\t\"ip_family\":\"IPv4\",";
+        if (conn->family == AF_INET6) header << "\n\t\t\"ip_family\":\"IPv6\",";
+        header << "\n\t\t\"remote\":\"" << conn->client_ip << "\",";
         header << "\n\t\t\"slot_duration\":" << conn->sample_len / 1000000000L << ",";
         header << "\n\t\t\"flow_id\":" << conn->conn_id;
         header << "\n\t},";
@@ -527,7 +523,7 @@ std::string cMessageBroker::prepServerHeader(t_conn * conn) {
         header << "C_TimeStamp;C_Direction;C_PacketSize;C_From;C_Sequence;C_RTT;C_Delta;C_RX_Rate;C_To;C_TX_Rate;\n";
         return header.str();
     }
-    header << ".::. Pinging " << setup->getHostname() << " with " << setup->getPacketSize() << " bytes of data:" << endl;
+    //header << ".::. Pinging " << setup->getHostname() << " with " << setup->getPacketSize() << " bytes of data:" << endl;
     return header.str();
 }
 
@@ -672,10 +668,10 @@ std::string cMessageBroker::closeDataRecSlot(const uint64_t ts, const uint8_t di
 std::string cMessageBroker::prepServerDataRec(t_msg_t* tMsg, const uint8_t dir){
     t_conn * conn = tMsg->conn;
     ping_pkt_t * ping_pkt = (struct ping_pkt_t*) (tMsg->msg);
-    if (ping_pkt->size < HEADER_LENGTH) std::cerr << "Invalid RX Packet Size: " << ping_pkt->size << std::endl;
+    if (conn->size < HEADER_LENGTH) std::cerr << "Invalid RX Packet Size: " << conn->size << std::endl;
     const uint64_t ts = ping_pkt->server_sec * uint64_t(1000000000L) + ping_pkt->server_nsec;
     const uint64_t pkt_client_ts =  ping_pkt->sec * uint64_t(1000000000L) + ping_pkt->nsec;
-    const uint16_t size = ping_pkt->size;
+    const uint16_t size = conn->size;
     const uint64_t seq = ping_pkt->seq;
     const uint64_t delay = ts - pkt_client_ts;
     stringstream ss;
@@ -705,7 +701,7 @@ std::string cMessageBroker::prepServerDataRec(t_msg_t* tMsg, const uint8_t dir){
             conn->sampled_int[dir].jitter_sum += conn->jitter;
         } else{
             //conn->pkt_tx_cnt++;
-            conn->bytes_tx_cnt += size;
+            conn->bytes_tx_cnt += conn->ret_size;
         }
         conn->sampled_int[dir].pkt_cnt++;
         conn->sampled_int[dir].bytes += size;
@@ -722,15 +718,16 @@ std::string cMessageBroker::prepServerDataRec(t_msg_t* tMsg, const uint8_t dir){
         ss << "\n\t\t\t\"ts\":"  << std::setprecision(6) << std::fixed << (double)(ts/1000000000.0) << ",";
         if (dir == TX){
             //pkt_cnt_tx++;
-            conn->bytes_tx_cnt += size;
+            conn->bytes_tx_cnt += conn->ret_size;
             ss << "\n\t\t\t\"dir\":\"tx\",";
+            ss << "\n\t\t\t\"size\":" << conn->ret_size << ",\n\t\t\t\"seq\":" << seq << "\n\t\t}";
         }
         if (dir == RX){
-            if (sampled_int[dir].last_seen_seq == seq){
+            if (conn->sampled_int[dir].last_seen_seq == seq){
                 conn->dup_cnt++;
                 return ss.str();
             }
-            if (sampled_int[dir].last_seen_seq > seq){
+            if (conn->sampled_int[dir].last_seen_seq > seq){
                 conn->ooo_cnt++;
                 return ss.str();
             }
@@ -747,8 +744,8 @@ std::string cMessageBroker::prepServerDataRec(t_msg_t* tMsg, const uint8_t dir){
             jitter = jt_prev + (1.0 / 16.0) * (jt_diff - jt_prev);
             //jitter_sum += jitter;
             ss << "\n\t\t\t\"jitter\":"  << std::setprecision(6) << std::fixed << (double)(jitter/1000000.0) << ",";
+            ss << "\n\t\t\t\"size\":" << size << ",\n\t\t\t\"seq\":" << seq << "\n\t\t}";
         }
-        ss << "\n\t\t\t\"size\":" << size << ",\n\t\t\t\"seq\":" << seq << "\n\t\t}";
         sampled_int[dir].last_seen_seq = seq;
         return ss.str();
     }
@@ -879,6 +876,7 @@ std::string cMessageBroker::pingOutputRec(const uint64_t ts, const uint64_t pkt_
     }
     last_seen_seq = seq;
     ss  << std::endl;
+    if (setup->silent()) return "";
     return ss.str();
 }
 
