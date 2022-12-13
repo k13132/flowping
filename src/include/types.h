@@ -63,6 +63,7 @@
 
 #define CONTROL 0
 #define PING 32
+
 #define CNT_NONE 0
 #define CNT_DONE 1
 #define CNT_DONE_OK  2
@@ -70,6 +71,7 @@
 #define CNT_NOFNAME 4
 #define CNT_FNAME_OK 5
 #define CNT_OUTPUT_REDIR 6
+#define CNT_TERM 8
 
 #define CNT_HPAR 1  //0000 0001
 #define CNT_LPAR 2  //0000 0010
@@ -190,7 +192,7 @@ struct sampled_int_t{
 };
 
 
-struct t_conn{
+struct conn_t{
     std::chrono::system_clock::time_point start, end, last_pkt_rcvd;
     timespec  curTv, refTv;
     uint64_t pkt_rx_cnt;
@@ -202,6 +204,7 @@ struct t_conn{
     float jt_diff;
     float jt_delay_prev;
     in6_addr ip;
+    sockaddr_in6 saddr;
     sa_family_t family;
     uint16_t port;
     uint64_t conn_id;
@@ -233,7 +236,7 @@ struct t_conn{
 struct t_msg_t{
     std::chrono::system_clock::time_point tp;
     gen_msg_t* msg;
-    t_conn* conn;
+    conn_t* conn;
 };
 
 

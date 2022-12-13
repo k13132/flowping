@@ -26,29 +26,29 @@ link_directories(./sources)
 #include(GNUInstallDirs)
 
 add_library(cSetup ./sources/cSetup.cpp ./include/cSetup.h  external/SPSCQueue.h)
-add_library(cStats ./sources/cStats.cpp ./include/cStats.h ./sources/cSetup.cpp ./include/cSetup.h)
-add_library(cServer ./sources/cServer.cpp ./sources/cSetup.cpp ./sources/cStats.cpp sources/cMBroker.cpp include/cMBroker.h)
-add_library(cClient ./sources/cClient.cpp ./sources/cSetup.cpp ./sources/cStats.cpp sources/cMBroker.cpp include/cMBroker.h )
-add_library(cMBroker ./sources/cSetup.cpp include/cSetup.h ./sources/cStats.cpp ./include/cStats.h sources/cMBroker.cpp include/cMBroker.h external/SPSCQueue.h)
+add_library(cServer ./sources/cServer.cpp ./sources/cSetup.cpp sources/cMBroker.cpp include/cMBroker.h sources/cCBroker.cpp include/cCBroker.h)
+add_library(cClient ./sources/cClient.cpp ./sources/cSetup.cpp sources/cMBroker.cpp include/cMBroker.h )
+add_library(cMBroker ./sources/cSetup.cpp include/cSetup.h sources/cMBroker.cpp include/cMBroker.h external/SPSCQueue.h)
+add_library(cCBroker ./sources/cCBroker.cpp include/cCBroker.h)
 add_library(cSlotTimer ./sources/cSlotTimer.cpp ./include/cSlotTimer.h ./sources/cSetup.cpp ./include/cSetup.h sources/cMBroker.cpp include/cMBroker.h)
 
 
 link_libraries(cSetup ${CMAKE_THREAD_LIBS_INIT})
-link_libraries(cStats ${CMAKE_THREAD_LIBS_INIT})
 link_libraries(cServer ${CMAKE_THREAD_LIBS_INIT})
 link_libraries(cClient ${CMAKE_THREAD_LIBS_INIT})
 link_libraries(cMBroker ${CMAKE_THREAD_LIBS_INIT})
+link_libraries(cCBroker ${CMAKE_THREAD_LIBS_INIT})
 link_libraries(cSlotTimer ${CMAKE_THREAD_LIBS_INIT})
 
 link_libraries(cSetup)
 link_libraries(cSlotTimer)
-link_libraries(cStats)
 link_libraries(cServer)
 link_libraries(cClient)
 link_libraries(cMBroker)
+link_libraries(cCBroker)
 
-add_executable(flowping ./sources/flowping.cpp ./sources/cClient.cpp ./sources/cSetup.cpp ./sources/cServer.cpp ./sources/cStats.cpp sources/cMBroker.cpp include/cMBroker.h external/SPSCQueue.h sources/cSlotTimer.cpp include/cSlotTimer.h)
-target_link_libraries(flowping cSetup cStats cServer cClient cMBroker cSlotTimer ${CMAKE_THREAD_LIBS_INIT})
+add_executable(flowping ./sources/flowping.cpp ./sources/cClient.cpp ./sources/cSetup.cpp ./sources/cServer.cpp sources/cMBroker.cpp include/cMBroker.h external/SPSCQueue.h sources/cSlotTimer.cpp include/cSlotTimer.h sources/cCBroker.cpp include/cCBroker.h)
+target_link_libraries(flowping cSetup cServer cClient cMBroker cCBroker cSlotTimer ${CMAKE_THREAD_LIBS_INIT})
 
 install(TARGETS flowping RUNTIME DESTINATION /usr/bin)
 

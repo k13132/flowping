@@ -29,23 +29,16 @@
 
 #include "types.h"
 #include "cClient.h"
-#include "cServer.h"
-#include "cSetup.h"
-#include "cStats.h"
-#include "cMBroker.h"
-#include "cSlotTimer.h"
 #include <thread>
-
 #include <cstdlib>
 #include <iostream>
 #include <csignal>
-#include <sched.h>
 
 cSetup *setup = nullptr;
 cClient *client = nullptr;
 cServer *server = nullptr;
-cStats *stats = nullptr;
 cMessageBroker * mbroker = nullptr;
+cConnectionBroker * cbroker = nullptr;
 cSlotTimer *stimer = nullptr;
 
 void * t_helper_sServer(void * arg) {
@@ -82,13 +75,19 @@ void * t_helper_cMBroker(void * arg) {
     return nullptr;
 }
 
+//Connection Broker
+void * t_helper_cCBroker(void * arg) {
+    cbroker = (cConnectionBroker *) arg;
+    cbroker->run();
+    return nullptr;
+}
+
 //Slot Timer
 void * t_helper_cSlotTimer(void * arg) {
     stimer = (cSlotTimer *) arg;
     stimer->run();
     return nullptr;
 }
-
 
 //Handle some basic signals
 void signalHandler(int sig) {
@@ -105,19 +104,11 @@ void signalHandler(int sig) {
             }
         }
     }
-    if (sig == SIGUSR1) { //SIG 10              
-        if (stats){
-            stats->printRealTime();
-        }else{
-            cerr << "Error: Stats module is not enabled. Recompile FlowPing with Stats module.\n";
-        }
+    if (sig == SIGUSR1) { //SIG 10
+        //stats was removed from code in version 3
     }
     if (sig == SIGUSR2) { //SIG 12              
-        if (stats){
-            stats->printStatus();
-        }else{
-            cerr << "Error: Stats module is not enabled. Recompile FlowPing with Stats module.\n";
-        }
+        //stats was removed from code in version 3
     }
 }
 
@@ -125,7 +116,7 @@ int main(int argc, char** argv) {
     // CPUs
     //unsigned int cpus = std::thread::hardware_concurrency();
 
-    // Osetreni reakci na signaly
+    // Signal handling
     struct sigaction act;
     act.sa_handler = signalHandler;
     sigemptyset(&act.sa_mask);
@@ -144,18 +135,18 @@ int main(int argc, char** argv) {
     version.str("");
 
 #ifdef __x86_64__
-    version << "x86_64 3.0.0.devel";
+    version << "x86_64 3.0.0";
     version << " (" << DD << " "<< TT << ")";
 #endif
 
 
 #ifdef __aarch64__
-    version << "arm_64 2.9.0-dev .::. F-Tester edition .::.";
+    version << "arm_64 3.0.0 .::. F-Tester edition .::.";
     version << " (" << DD << " "<< TT << ")";
 #endif
 
 #ifdef __arm__
-    version << "arm 2.9.0-dev .::. F-Tester edition .::.";
+    version << "arm 3.0.0 .::. F-Tester edition .::.";
     version << " (" << DD << " "<< TT << ")";
 #endif
 
@@ -180,76 +171,45 @@ int main(int argc, char** argv) {
         setup->usage();
         return EXIT_FAILURE;
     }
-    //Todo integrate SlotTimer in server code
-    //cpu_set_t cpuset;
-    //unsigned int cpu = 0;
     if (setup->isServer()) {
-        stats = new cServerStats(setup);
-        mbroker = new cMessageBroker(setup, stats);
-        std::thread t_mBroker (t_helper_cMBroker, (void *) mbroker);
-        //CPU_ZERO(&cpuset);
-        //CPU_SET(cpu % cpus, &cpuset);
-        //pthread_setaffinity_np(t_mBroker.native_handle(), sizeof(cpu_set_t), &cpuset);
-        //cpu++;
+        mbroker = new cMessageBroker(setup);
         stimer = new cSlotTimer(mbroker, setup);
-        server = new cServer(setup, stats, mbroker, stimer);
+        cbroker = new cConnectionBroker(mbroker);
+        server = new cServer(setup, mbroker, cbroker, stimer);
+
+        std::thread t_mBroker (t_helper_cMBroker, (void *) mbroker);
+        std::thread t_cBroker (t_helper_cCBroker, (void *) cbroker);
         std::thread t_sServer (t_helper_sServer, (void *) server);
         std::thread t_cSlotTimer (t_helper_cSlotTimer, (void *) stimer);
 
-        //CPU_ZERO(&cpuset);
-        //CPU_SET(cpu % cpus, &cpuset);
-        //pthread_setaffinity_np(t_sServer.native_handle(), sizeof(cpu_set_t), &cpuset);
-        //cpu++;
         t_cSlotTimer.join();
-        delete(stimer);
         t_sServer.join();
-        delete(server);
+        t_cBroker.join();
         t_mBroker.join();
+
+        delete(stimer);
+        delete(server);
+        delete(cbroker);
         delete(mbroker);
     } else {
-
-        stats = new cClientStats(setup);
-        mbroker = new cMessageBroker(setup, stats);
+        mbroker = new cMessageBroker(setup);
         stimer = new cSlotTimer(mbroker, setup);
-        client = new cClient(setup, stats, mbroker, stimer);
+        client = new cClient(setup, mbroker, stimer);
         std::thread t_cPacketFactory (t_helper_cPacketFactory, (void *) client);
-        //CPU_ZERO(&cpuset);
-        //CPU_SET(cpu % cpus, &cpuset);
-        //pthread_setaffinity_np(t_cPacketFactory.native_handle(), sizeof(cpu_set_t), &cpuset);
-        //cpu++;
-
         std::thread t_mBroker (t_helper_cMBroker, (void *) mbroker);
-        //CPU_ZERO(&cpuset);
-        //CPU_SET(cpu % cpus, &cpuset);
-        //pthread_setaffinity_np(t_mBroker.native_handle(), sizeof(cpu_set_t), &cpuset);
-        ////cpu++;
-
         std::thread t_cSlotTimer (t_helper_cSlotTimer, (void *) stimer);
-        //CPU_ZERO(&cpuset);
-        //CPU_SET(cpu % cpus, &cpuset);
-        //pthread_setaffinity_np(t_cSlotTimer.native_handle(), sizeof(cpu_set_t), &cpuset);
-        //cpu++;
         std::thread t_cReceiver (t_helper_cReceiver, (void *) client);
-        //CPU_ZERO(&cpuset);
-        //CPU_SET(cpu % cpus, &cpuset);
-        //pthread_setaffinity_np(t_cReceiver.native_handle(), sizeof(cpu_set_t), &cpuset);
-        //cpu++;
         std::thread t_cSender (t_helper_cSender, (void *) client);
-        //CPU_ZERO(&cpuset);
-        //CPU_SET(cpu % cpus, &cpuset);
-        //pthread_setaffinity_np(t_cSender.native_handle(), sizeof(cpu_set_t), &cpuset);
-        //cpu++;
         t_cSender.join();
         t_cPacketFactory.join();
         t_cReceiver.join();
-        delete(client);
         t_cSlotTimer.join();
-        delete(stimer);
         t_mBroker.join();
+        delete(client);
+        delete(stimer);
         delete(mbroker);
     }
     delete(setup);
-    delete(stats);
     return EXIT_SUCCESS;
 }
 

@@ -31,7 +31,6 @@
 
 #include "types.h"
 #include "cSetup.h"
-#include "cStats.h"
 #include "cSlotTimer.h"
 #include "flowping.h"
 #include "queue"
@@ -43,7 +42,7 @@ using namespace std;
 
 class cClient {
 public:
-    cClient(cSetup *setup, cStats *stats, cMessageBroker *mbroker, cSlotTimer* stimer);
+    cClient(cSetup *setup, cMessageBroker *mbroker, cSlotTimer* stimer);
     bool status(void);
     int run_sender(void);
     int run_receiver();
@@ -66,8 +65,7 @@ private:
     cMessageBroker *mbroker;
     cSetup *setup;
     cSlotTimer* stimer;
-    cClientStats *stats;
-    
+
     bool senderReady;
     bool receiverReady;
     bool isSenderReceiverReady();

@@ -7,22 +7,21 @@
 
 #include "types.h"
 #include "cSetup.h"
-#include "cStats.h"
 #include "SPSCQueue.h"
 
 
 
 class cMessageBroker {
 public:
-    cMessageBroker(cSetup *setup, cStats *stats);
+    cMessageBroker(cSetup *setup);
     virtual ~cMessageBroker();
-    //void push(t_conn * conn, gen_msg_t *msg);
+    //void push(conn_t * conn, gen_msg_t *msg);
     void push_rx(gen_msg_t *msg);
     void push_tx(gen_msg_t *msg);
-    void push(gen_msg_t *msg,t_conn * conn);
+    void push(gen_msg_t *msg, conn_t * conn);
     void push_lp(gen_msg_t *msg);
     void push_hp(gen_msg_t *msg);
-    void push_hp(gen_msg_t *msg, t_conn * conn);
+    void push_hp(gen_msg_t *msg, conn_t * conn);
     void run();
 private:
     // todo remove dup
@@ -33,8 +32,6 @@ private:
     std::chrono::system_clock::time_point end;
 
     cSetup *setup;
-    cClientStats *c_stats;
-    cServerStats *s_stats;
 
     sampled_int_t sampled_int[2];
 
@@ -57,7 +54,7 @@ private:
     std::string closeDataRecSlot(const uint64_t ts, const uint8_t dir);
     std::string prepFinalDataRec(const uint64_t ts, const uint8_t dir);
 
-    std::string prepServerHeader(t_conn * conn);
+    std::string prepServerHeader(conn_t * conn);
     std::string prepServerDataRec(t_msg_t * tmsg, const uint8_t dir);
     std::string closeServerDataRecSlot(const uint64_t ts, t_msg_t * tmsg, const uint8_t dir);
     std::string prepServerFinalDataRec(const uint64_t ts, t_msg_t * tmsg, const uint8_t dir);

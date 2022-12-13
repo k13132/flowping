@@ -12,7 +12,7 @@
 struct slot_t{
     std::chrono::system_clock::time_point trigger;
     std::chrono::nanoseconds interval;
-    t_conn * conn;
+    conn_t * conn;
 };
 
 
@@ -21,7 +21,7 @@ public:
     cSlotTimer(cMessageBroker *, cSetup *);
     virtual ~cSlotTimer();
     void start();
-    void addTimer(uint16_t flow_id, uint64_t slot_interval, t_conn *conn);
+    void addTimer(conn_t *conn);
     void removeTimer(uint16_t flow_id);
     void stop();
     void run();

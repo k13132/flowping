@@ -50,7 +50,7 @@ LIBS_PATH=
 
 
 # Object files
-OBJS = cClient.o cServer.o cSetup.o cStats.o cSlotTimer.o cMBroker.o flowping.o
+OBJS = cClient.o cServer.o cSetup.o cSlotTimer.o cMBroker.o cCBroker.o flowping.o
 
 all: $(TARGET)
 	
@@ -104,14 +104,14 @@ cServer.o: $(SRC_DIR)/cServer.cpp
 cSetup.o: $(SRC_DIR)/cSetup.cpp
 	$(CROSS_PREFIX)$(CXX) -c $(CXXFLAGS) $(CFLAGS_ARCH) $(INCLUDE_PATHS) -o cSetup.o $(SRC_DIR)/cSetup.cpp 
 
-cStats.o: $(SRC_DIR)/cStats.cpp
-	$(CROSS_PREFIX)$(CXX) -c $(CXXFLAGS) $(CFLAGS_ARCH) $(INCLUDE_PATHS) -o cStats.o $(SRC_DIR)/cStats.cpp 
-
 cSlotTimer.o: $(SRC_DIR)/cSlotTimer.cpp
 	$(CROSS_PREFIX)$(CXX) -c $(CXXFLAGS) $(CFLAGS_ARCH) $(INCLUDE_PATHS) -o cSlotTimer.o $(SRC_DIR)/cSlotTimer.cpp
 
 cMBroker.o: $(SRC_DIR)/cMBroker.cpp
 	$(CROSS_PREFIX)$(CXX) -c $(CXXFLAGS) $(CFLAGS_ARCH) $(INCLUDE_PATHS) -o cMBroker.o $(SRC_DIR)/cMBroker.cpp 
+
+cCBroker.o: $(SRC_DIR)/cCBroker.cpp
+	$(CROSS_PREFIX)$(CXX) -c $(CXXFLAGS) $(CFLAGS_ARCH) $(INCLUDE_PATHS) -o cCBroker.o $(SRC_DIR)/cCBroker.cpp
 
 flowping.o: $(SRC_DIR)/flowping.cpp
 	$(CROSS_PREFIX)$(CXX) -c $(CXXFLAGS) $(CFLAGS_ARCH) $(INCLUDE_PATHS) -o flowping.o $(SRC_DIR)/flowping.cpp 

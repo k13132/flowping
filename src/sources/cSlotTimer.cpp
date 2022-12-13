@@ -78,15 +78,15 @@ void cSlotTimer::run() {
     }
 }
 
-void cSlotTimer::addTimer(uint16_t flowid, uint64_t slot_interval, t_conn * conn) {
-    if (slot_interval){
-        std::chrono::nanoseconds interval(slot_interval);
+void cSlotTimer::addTimer(conn_t * conn) {
+    if (conn->sample_len){
+        std::chrono::nanoseconds interval(conn->sample_len);
         slot_t slot;
         slot.interval = interval;
         slot.trigger = std::chrono::system_clock::now();
         slot.trigger += interval;
         slot.conn = conn;
-        this->slots[flowid] = slot;
+        this->slots[conn->conn_id] = slot;
         this->run_active = true;
     }
 }

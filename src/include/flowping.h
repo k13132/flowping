@@ -31,8 +31,8 @@
 #include "cClient.h"
 #include "cServer.h"
 #include "cSetup.h"
-#include "cStats.h"
 #include "cMBroker.h"
+#include "cCBroker.h"
 
 
 #endif	/* FLOWPING_H */

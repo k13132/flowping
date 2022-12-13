@@ -34,25 +34,27 @@
 
 using namespace std;
 
-cServer::cServer(cSetup *setup, cStats *stats, cMessageBroker *mbroker, cSlotTimer *stimer) {
-    this->mbroker = mbroker;
+cServer::cServer(cSetup *setup, cMessageBroker *mbroker, cConnectionBroker *cbroker, cSlotTimer *stimer) {
     this->setup = setup;
-    if (stats){
-        this->stats = (cServerStats *) stats;
-    }else{
-        this->stats = nullptr;
-    }
 
     if (mbroker) {
         this->mbroker = mbroker;
     }else{
         this->mbroker = nullptr;
     }
+
+    if (cbroker) {
+        this->cbroker = cbroker;
+    }else{
+        this->cbroker = nullptr;
+    }
+
     if (stimer) {
         this->stimer = stimer;
     }else{
         this->stimer = nullptr;
     }
+
     this->stop = false;
 }
 
@@ -119,7 +121,11 @@ int cServer::run() {
     //}
 
     unsigned char packet[MAX_PAYLOAD_SIZE + HEADER_LENGTH];
+
+    //
     // MAIN LOOP /////////////////////////////////
+    //
+    conn_t * connection = nullptr;
     stimer->start();
     while (!stop) {
         ret_size = recvfrom(this->sock, packet, MAX_PAYLOAD_SIZE + HEADER_LENGTH, 0, (struct sockaddr *) &saClient6, (socklen_t *) & addr_len);
@@ -131,7 +137,10 @@ int cServer::run() {
             mbroker->push_lp(tmsg);
             continue;
         }
-        connection = getConnectionFID(saClient6, (ping_pkt_t *)packet);
+        connection = cbroker->getConn(saClient6, (ping_pkt_t *)packet, setup->isAsym());
+        if (connection == nullptr){
+            continue;
+        }
         connection->size = ret_size;
         clock_gettime(CLOCK_REALTIME, &connection->curTv);
         //connection->refTv = connection->curTv;
@@ -166,7 +175,7 @@ int cServer::run() {
                 t->type = MSG_OUTPUT_INIT;
                 mbroker->push(t, connection);
                 connection->initialized = true;
-                stimer->addTimer(connection->conn_id, connection->sample_len, connection);
+                stimer->addTimer(connection);
             }
             sendto(this->sock, msg, MIN_PKT_SIZE, 0, (struct sockaddr *) &saClient6, addr_len);
             //clock_gettime(CLOCK_REALTIME, &connection->curTv);
@@ -176,7 +185,7 @@ int cServer::run() {
     return 1;
 }
 
-void cServer::processControlMessage(gen_msg_t *msg, t_conn * connection){
+void cServer::processControlMessage(gen_msg_t *msg, conn_t * connection){
     gen_msg_t * tmsg = nullptr;
     timespec tv;
     clock_gettime(CLOCK_REALTIME, &tv);
@@ -328,79 +337,48 @@ void cServer::processControlMessage(gen_msg_t *msg, t_conn * connection){
     }
 };
 
+//we need to alert all clients if there are active connections
 void cServer::terminate() {
+    ping_msg_t * tmsg = nullptr;
     std::cerr << "Terminate called" << std::endl;
+    uint16_t ret_size = 0;
+    uint8_t counter = 20;
+    conn_t * conn;
+    while (cbroker->getConnCount() && counter){
+        //std::cerr << "Connection remaining: " << (std::uint16_t) cbroker->getConnCount() << std::endl;
+        vector conn_ids = cbroker->getActiveConnIDs();
+        for (int conn_id : conn_ids) {
+            conn = cbroker->getConnByID(conn_id);
+            if (conn->finished) continue; //we do not expect finished connection here, but...
+            tmsg = new ping_msg_t;
+            tmsg->type = CONTROL;
+            tmsg->code = CNT_TERM;
+            if (conn->family == AF_INET6 ){
+                //std::cerr << "sending MSG_TERM over IPv6" << std::endl;
+                ret_size = sendto(this->sock, tmsg, MIN_PKT_SIZE, 0, (struct sockaddr *) &conn->saddr, INET6_ADDRSTRLEN);
+            }else{
+                //std::cerr << "sending MSG_TERM over IPv4" << std::endl;
+                ret_size = sendto(this->sock, tmsg, MIN_PKT_SIZE, 0, (struct sockaddr *) &conn->saddr, INET_ADDRSTRLEN);
+            }
+            if (ret_size < 0){
+                std::cerr << "Unable to send packet" << std::endl;
+            }
+            usleep(5000);
+        }
+        usleep(50000);
+        counter--;
+    }
+    cbroker->stop();
     this->stop = true;
     setup->setDone(true);
 }
 
-string cServer::stripFFFF(string str) {
-    if (str.find("::ffff:",0,7) == 0) return str.substr(7);
-    return str;
-}
 
-t_conn *  cServer::getConnectionFID(sockaddr_in6 saddr, ping_pkt_t *pkt) {
-    //uint64_t conn_id = saddr.sin6_addr.s6_addr[0] * (uint64_t)saddr.sin6_port;
-    uint64_t conn_id = (uint64_t) pkt->flow_id;
-    if (this->connections.count(conn_id) == 1) {
-        connection = this->connections.at(conn_id);
-        if (setup->isAsym()){
-            connection->ret_size = MIN_PKT_SIZE;
-        }else{
-            connection->ret_size = pkt->size;
-        }
-    } else {
-        //std::cout << "Initializing connection with id: " << conn_id << std::endl;
-        char addr[INET6_ADDRSTRLEN];
-        connection = new t_conn;
-        connection->ip = saddr.sin6_addr;
-        connection->port = saddr.sin6_port;
-        connection->family = saddr.sin6_family;
-        connection->conn_id = conn_id;
-        connection->sample_len = 0;
-        inet_ntop(AF_INET6, &saddr.sin6_addr, addr, INET6_ADDRSTRLEN);
-        connection->client_ip = stripFFFF(string(addr));
-        connection->pkt_tx_cnt = 0;
-        connection->pkt_rx_cnt = 0;
-        connection->bytes_tx_cnt = 0;
-        connection->bytes_rx_cnt = 0;
-        connection->refTv.tv_sec = 0;
-        connection->refTv.tv_nsec = 0;
-        connection->curTv.tv_sec = 0;
-        connection->curTv.tv_nsec = 0;
-        connection->jitter = 0;
-        connection->jt_prev = 0;
-        connection->jt_diff = 0;
-        connection->jt_delay_prev = 0;
-        connection->finished = false;
-        connection->initialized = false;
-        connection->started = false;
-        connection->C_par = false;
-        connection->D_par = false;
-        connection->e_par = false;
-        connection->E_par = false;
-        connection->F_par = false;
-        connection->H_par = false;
-        connection->J_par = false;
-        connection->L_par = false;
-        connection->X_par = setup->isAsym();
-        connection->AX_par = false;
-        connection->size = HEADER_LENGTH;
-        connection->ret_size = HEADER_LENGTH;
-        for (int i = 0; i < 2; i++){
-            connection->sampled_int[i].first = true;
-            connection->sampled_int[i].first_seq = 0;
-            connection->sampled_int[i].pkt_cnt = 0;
-            connection->sampled_int[i].ts_limit = 0;
-            connection->sampled_int[i].seq = 0;
-            connection->sampled_int[i].ooo = 0;
-            connection->sampled_int[i].dup = 0;
-            connection->sampled_int[i].rtt_sum = 0;
-            connection->sampled_int[i].bytes = 0;
-            connection->sampled_int[i].jitter_sum = 0;
-            connection->sampled_int[i].last_seen_seq = 0;
-        }
-        this->connections[conn_id] = connection;
-    }
-    return connection;
-}
+
+//void cServer::terminate() {
+//    std::cerr << "Terminate called" << std::endl;
+//    this->stop = true;
+//    setup->setDone(true);
+//}
+
+

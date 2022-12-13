@@ -19,7 +19,7 @@ std::ostream& operator<<(std::ostream& os, const ping_msg_t& obj)
 }
 
 //ToDo
-std::ostream& operator<<(std::ostream& os, const t_conn& obj)
+std::ostream& operator<<(std::ostream& os, const conn_t& obj)
 {
     os << "Connection id: " << (uint16_t)obj.conn_id << std::endl;
     os << "Start ts: " << (uint64_t)obj.start.time_since_epoch().count() << std::endl;
@@ -29,26 +29,14 @@ std::ostream& operator<<(std::ostream& os, const t_conn& obj)
 }
 
 
-cMessageBroker::cMessageBroker(cSetup *setup, cStats *stats){
+cMessageBroker::cMessageBroker(cSetup *setup){
     if (setup) {
         this->setup = setup;
     }else{
         //todo KILL execution, we can not continue without setup module;
         this->setup = nullptr;
     }
-    if (stats) {
-        if (setup->isServer()){
-            this->s_stats = (cServerStats*)stats;
-            this->c_stats = nullptr;
-        }
-        if (setup->isClient()){
-            this->s_stats = nullptr;
-            this->c_stats = (cClientStats*)stats;
-        }
-    }else{
-        this->s_stats = nullptr;
-        this->c_stats = nullptr;
-    }
+
     bytes_cnt_tx = 0;
     bytes_cnt_rx = 0;
     pkt_cnt_rx = 0;
@@ -87,7 +75,7 @@ cMessageBroker::~cMessageBroker(){
     }
 }
 
-void cMessageBroker::push(gen_msg_t *msg, t_conn *conn){
+void cMessageBroker::push(gen_msg_t *msg, conn_t *conn){
     struct t_msg_t *t_msg;
     t_msg = new t_msg_t;
     t_msg->tp = std::chrono::system_clock::now();
@@ -128,7 +116,7 @@ void cMessageBroker::push_hp(gen_msg_t *msg){
     msg_buf_hp.push(t_msg);
 }
 
-void cMessageBroker::push_hp(gen_msg_t *msg, t_conn * conn){
+void cMessageBroker::push_hp(gen_msg_t *msg, conn_t * conn){
     struct t_msg_t *t_msg;
     t_msg = new t_msg_t;
     t_msg->tp = std::chrono::system_clock::now();
@@ -314,9 +302,10 @@ void cMessageBroker::processAndDeleteServerMessage(t_msg_t *tMsg) {
                 fout.close();
                 output = &std::cout;
             }
+            tMsg->conn->finished = true;
             break;
         default:
-            std::cerr << "ERROR :: UNKNOWN MSG TYPE RECEIVED!";
+            std::cerr << "ERROR :: UNKNOWN MSG TYPE RECEIVED! " << (uint16_t) msg->type << std::endl;
     }
     delete msg;
     msg = nullptr;
@@ -327,7 +316,9 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tMsg){
     gen_msg_t *msg = tMsg->msg;
     uint64_t ts;
     uint64_t pkt_server_ts;
+    //std::cout << "MSG_RECEIVED:" << (::uint16_t)msg->type << std::endl;
     switch(msg->type){
+        //std::cout << "MSG_CNT_RECEIVED:" << (::uint16_t)ping_msg->code << std::endl;
         case MSG_RX_CNT:
             //Todo modify structure !!!! packet data not present - ONLY header was copied
             ping_msg = (struct ping_msg_t*) (msg);
@@ -341,6 +332,9 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tMsg){
             }
             if (ping_msg->code == CNT_FNAME_OK) setup->setStarted(true);
             if (ping_msg->code == CNT_OUTPUT_REDIR) setup->setStarted(true);
+            if (ping_msg->code == CNT_TERM){
+                setup->setStop(true);
+            }
             break;
 
             //Probably not accessible
@@ -502,7 +496,7 @@ std::string cMessageBroker::prepHeader() {
     return header.str();
 }
 
-std::string cMessageBroker::prepServerHeader(t_conn * conn) {
+std::string cMessageBroker::prepServerHeader(conn_t * conn) {
     stringstream header;
     if (conn->J_par && conn->fout.is_open()){
         auto now = std::chrono::system_clock::now();
@@ -529,7 +523,7 @@ std::string cMessageBroker::prepServerHeader(t_conn * conn) {
 
 std::string cMessageBroker::closeServerDataRecSlot(const uint64_t ts,t_msg_t * tMsg, const uint8_t dir){
     stringstream ss;
-    t_conn * conn = tMsg->conn;
+    conn_t * conn = tMsg->conn;
     conn->sampled_int[dir].seq++;
     conn->sampled_int[dir].ts_limit += conn->sample_len;
     if (conn->sampled_int[dir].first == false){
@@ -666,7 +660,7 @@ std::string cMessageBroker::closeDataRecSlot(const uint64_t ts, const uint8_t di
 
 
 std::string cMessageBroker::prepServerDataRec(t_msg_t* tMsg, const uint8_t dir){
-    t_conn * conn = tMsg->conn;
+    conn_t * conn = tMsg->conn;
     ping_pkt_t * ping_pkt = (struct ping_pkt_t*) (tMsg->msg);
     if (conn->size < HEADER_LENGTH) std::cerr << "Invalid RX Packet Size: " << conn->size << std::endl;
     const uint64_t ts = ping_pkt->server_sec * uint64_t(1000000000L) + ping_pkt->server_nsec;
@@ -946,7 +940,7 @@ std::string cMessageBroker::prepFinalDataRec(const uint64_t ts, const uint8_t di
 
 std::string cMessageBroker::prepServerFinalDataRec(const uint64_t ts, t_msg_t * tMsg, const uint8_t dir){
     stringstream ss;
-    t_conn * conn = tMsg->conn;
+    conn_t * conn = tMsg->conn;
     //std::cout << conn->conn_id << ": " << conn->bytes_rx_cnt << std::endl;
     if (conn->sampled_int[dir].pkt_cnt){
         conn->sampled_int[dir].seq++;

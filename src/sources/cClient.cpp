@@ -49,18 +49,12 @@ unsigned short crc16(const unsigned char* data_p, unsigned char length){
     return crc;
 }
 
-cClient::cClient(cSetup *setup, cStats *stats, cMessageBroker *mbroker, cSlotTimer* stimer) {
+cClient::cClient(cSetup *setup, cMessageBroker *mbroker, cSlotTimer* stimer) {
     first = true;
     this->setup = setup;
     clock_gettime(CLOCK_REALTIME, &this->sentTv); //FIX initial delta
     srand((int) this->sentTv.tv_nsec);
     this->setup->setFlowID((uint16_t)(rand() % 65536));
-
-    if (stats) {
-        this->stats = (cClientStats *) stats;
-    }else{
-        this->stats = nullptr;
-    }
 
     if (mbroker) {
         this->mbroker = mbroker;
