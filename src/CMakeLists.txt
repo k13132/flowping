@@ -22,6 +22,7 @@ find_package (Threads)
 
 include_directories(./include ./external)
 link_directories(./sources)
+link_libraries(stdc++fs)
 
 #include(GNUInstallDirs)
 
