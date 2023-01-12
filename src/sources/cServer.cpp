@@ -341,7 +341,7 @@ void cServer::processControlMessage(gen_msg_t *msg, conn_t * connection){
 void cServer::terminate() {
     ping_msg_t * tmsg = nullptr;
     std::cerr << "Terminate called" << std::endl;
-    uint16_t ret_size = 0;
+    int16_t ret_size = 0;
     uint8_t counter = 20;
     conn_t * conn;
     while (cbroker->getConnCount() && counter){
