@@ -3,7 +3,7 @@ project (flowping)
 set (FlowPing_VERSION_MAJOR 2)
 
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 if(CMAKE_CROSSCOMPILING)
     SET(CMAKE_CXX_FLAGS "-Wall -Wextra -g -O3 -pthread -faligned-new")
 else()

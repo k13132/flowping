@@ -312,7 +312,7 @@ int cClient::run_sender() {
     }
     uint8_t first_family = AF_INET;
     if ((ipv6_Addr == NULL)&&(ipv4_Addr==NULL)) exit(1);
-    while (!setup->isStarted()) {
+    while (!setup->isStarted() && !setup->isStop()) {
         if ((setup->isIPv6Prefered())&&(ipv6_Addr != NULL)){
             resAddr = ipv6_Addr;
             first_family = AF_INET6;

@@ -336,6 +336,7 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tMsg){
             if (ping_msg->code == CNT_FNAME_OK) setup->setStarted(true);
             if (ping_msg->code == CNT_OUTPUT_REDIR) setup->setStarted(true);
             if (ping_msg->code == CNT_TERM){
+                std::cout << "Connection terminated by server" << std::endl;
                 setup->setStop(true);
             }
             break;
@@ -530,15 +531,15 @@ std::string cMessageBroker::closeServerDataRecSlot(const uint64_t ts,t_msg_t * t
     conn_t * conn = tMsg->conn;
     conn->sampled_int[dir].seq++;
     conn->sampled_int[dir].ts_limit += conn->sample_len;
-    if (conn->sampled_int[dir].first == false){
-        ss << ",\n\t\t{";
-    }else{
-        ss << "\n\t\t{";
-        conn->sampled_int[TX].first = false;
-        conn->sampled_int[RX].first = false;
-    }
     //for discusion: base it on server o client (silence) setup?
     if (!setup->silent()){
+        if (conn->sampled_int[dir].first == false){
+            ss << ",\n\t\t{";
+        }else{
+            ss << "\n\t\t{";
+            conn->sampled_int[TX].first = false;
+            conn->sampled_int[RX].first = false;
+        }
         if (conn->sampled_int[dir].pkt_cnt){
             ss << "\n\t\t\t\"ts\":"  << std::setprecision(6) << std::fixed << (double)(ts/1000000000.0) << ",";
             if (dir == TX){

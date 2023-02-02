@@ -189,6 +189,7 @@ int cServer::run() {
 }
 
 void cServer::processControlMessage(gen_msg_t *msg, conn_t * connection){
+    if (connection->finished) return;
     gen_msg_t * tmsg = nullptr;
     timespec tv;
     clock_gettime(CLOCK_REALTIME, &tv);
@@ -219,12 +220,12 @@ void cServer::processControlMessage(gen_msg_t *msg, conn_t * connection){
                 //We expect POSIX attributes on FS
                 if (std::filesystem::exists(setup->getWorkingDirectory() + "/" + path)){
                     std::filesystem::file_time_type ftime = std::filesystem::last_write_time(setup->getWorkingDirectory() + "/" + path);
-                    auto now = std::chrono::system_clock::now();
-                    auto systemtime = std::chrono::file_clock::to_sys(ftime);
-                    uint64_t age = std::chrono::duration_cast<std::chrono::seconds>(now - systemtime).count();
+                    auto now = std::filesystem::file_time_type::clock::now();
+                    uint64_t age = std::chrono::duration_cast<std::chrono::seconds>(now - ftime).count();
                     if (age < 10) {
                         std::cerr << "Trying to open active file, closing connection!" << std::endl;
                         ping_msg->code = CNT_TERM;
+                        connection->finished  = true;
                         break;
                     }
                 }
