@@ -215,6 +215,8 @@ void cServer::processControlMessage(gen_msg_t *msg, conn_t * connection){
                 path = std::string(ping_msg->msg);
                 //Only filename is allowed to make it through
                 path = path.substr(path.find_last_of("//") + 1);
+                //Read time directly from FS works also among multiple FP instances
+                //We expect POSIX attributes on FS
                 if (std::filesystem::exists(setup->getWorkingDirectory() + "/" + path)){
                     std::filesystem::file_time_type ftime = std::filesystem::last_write_time(setup->getWorkingDirectory() + "/" + path);
                     auto now = std::chrono::system_clock::now();

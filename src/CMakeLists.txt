@@ -23,7 +23,7 @@ find_package (Threads)
 include_directories(./include ./external)
 link_directories(./sources)
 
-#necessary for gcc preceding version 9
+#necessary for gcc prior to version 9.1
 link_libraries(stdc++fs)
 
 #include(GNUInstallDirs)
