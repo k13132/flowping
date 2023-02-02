@@ -31,6 +31,7 @@
 #include "types.h"
 #include "cSlotTimer.h"
 #include <filesystem>
+#include <chrono>
 
 using namespace std;
 
@@ -171,11 +172,13 @@ int cServer::run() {
             //initiate output
             processControlMessage(msg, connection);
             if (!connection->initialized){
-                gen_msg_t * t = new gen_msg_t;
-                t->type = MSG_OUTPUT_INIT;
-                mbroker->push(t, connection);
-                connection->initialized = true;
-                stimer->addTimer(connection);
+                if (msg->type != CNT_TERM){
+                    gen_msg_t * t = new gen_msg_t;
+                    t->type = MSG_OUTPUT_INIT;
+                    mbroker->push(t, connection);
+                    connection->initialized = true;
+                    stimer->addTimer(connection);
+                }
             }
             sendto(this->sock, msg, MIN_PKT_SIZE, 0, (struct sockaddr *) &saClient6, addr_len);
             //clock_gettime(CLOCK_REALTIME, &connection->curTv);
@@ -212,6 +215,17 @@ void cServer::processControlMessage(gen_msg_t *msg, conn_t * connection){
                 path = std::string(ping_msg->msg);
                 //Only filename is allowed to make it through
                 path = path.substr(path.find_last_of("//") + 1);
+                if (std::filesystem::exists(setup->getWorkingDirectory() + "/" + path)){
+                    std::filesystem::file_time_type ftime = std::filesystem::last_write_time(setup->getWorkingDirectory() + "/" + path);
+                    auto now = std::chrono::system_clock::now();
+                    auto systemtime = std::chrono::file_clock::to_sys(ftime);
+                    uint64_t age = std::chrono::duration_cast<std::chrono::seconds>(now - systemtime).count();
+                    if (age < 10) {
+                        std::cerr << "Trying to open active file, closing connection!" << std::endl;
+                        ping_msg->code = CNT_TERM;
+                        break;
+                    }
+                }
                 connection->fout.open(setup->getWorkingDirectory() + "/" + path);
                 ping_msg->code = CNT_FNAME_OK;
                 if (not connection->fout.is_open()) {
@@ -222,6 +236,10 @@ void cServer::processControlMessage(gen_msg_t *msg, conn_t * connection){
                     connection->F_par = true;
                 }
                 processControlMessage(msg, connection);
+                break;
+
+            case CNT_OUTPUT_REDIR:
+                //ToDo
                 break;
 
             case CNT_NOFNAME:

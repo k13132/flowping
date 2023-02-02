@@ -59,6 +59,7 @@ cMessageBroker::cMessageBroker(cSetup *setup){
         this->sampled_int[i].ooo = 0;
         this->sampled_int[i].dup = 0;
         this->sampled_int[i].rtt_sum = 0;
+        this->sampled_int[i].delay_sum = 0;
         this->sampled_int[i].bytes = 0;
         this->sampled_int[i].jitter_sum = 0;
         this->sampled_int[i].last_seen_seq = 0;
@@ -212,6 +213,7 @@ void cMessageBroker::processAndDeleteServerMessage(t_msg_t *tMsg) {
     switch(msg->type){
         case MSG_RX_PKT:
             tMsg->conn->pkt_rx_cnt++;
+            tMsg->conn->bytes_rx_cnt+=tMsg->conn->size;
             tMsg->conn->last_pkt_rcvd = tp;
             if (not setup->silent()) {
                 if (tMsg->conn->J_par){
@@ -222,6 +224,7 @@ void cMessageBroker::processAndDeleteServerMessage(t_msg_t *tMsg) {
             break;
         case MSG_TX_PKT:
             tMsg->conn->pkt_tx_cnt++;
+            tMsg->conn->bytes_tx_cnt+=tMsg->conn->size;
             if (not setup->silent()) {
                 if (tMsg->conn->J_par) {
                     *tMsg->conn->output << prepServerDataRec(tMsg, TX);
@@ -351,11 +354,12 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tMsg){
             ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * uint64_t(1000000000L)) / chrono::system_clock::period::den));
             pkt_rtt = ((tp.time_since_epoch().count() * ((chrono::system_clock::period::num * uint64_t(1000000000L)) / chrono::system_clock::period::den)) - (ping_pkt->sec * uint64_t(1000000000L)) - (ping_pkt->nsec))/1000000.0; //ms
             pkt_server_ts =  ping_pkt->server_sec * uint64_t(1000000000L) + ping_pkt->server_nsec;
+            pkt_delay = (ts - pkt_server_ts) / 1000000.0;
             if (setup->toJSON()) {
-                *output << prepDataRec(ts, pkt_server_ts, RX, ping_pkt->size, ping_pkt->seq, pkt_rtt);
+                *output << prepDataRec(ts, pkt_server_ts, RX, ping_pkt->size, ping_pkt->seq, pkt_rtt, pkt_delay);
                 break;
             }
-            *output << pingOutputRec(ts, pkt_server_ts, RX, ping_pkt->size, ping_pkt->seq, pkt_rtt);
+            *output << pingOutputRec(ts, RX, ping_pkt->size, ping_pkt->seq, pkt_rtt);
             //c_stats->pktRecv(ts, ping_pkt->size, ping_pkt->seq, pkt_rtt);
             break;
 
@@ -364,7 +368,7 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tMsg){
             if (ping_pkt->size < HEADER_LENGTH) std::cerr << "Invalid TX Packet Size: " << ping_pkt->size << std::endl;
             ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * uint64_t(1000000000L)) / chrono::system_clock::period::den));
             if (setup->toJSON()){
-                *output << prepDataRec(ts, 0, TX, ping_pkt->size, ping_pkt->seq, 0);
+                *output << prepDataRec(ts, 0, TX, ping_pkt->size, ping_pkt->seq, 0, 0);
                 break;
             }else{
                 pkt_cnt_tx ++;
@@ -533,43 +537,46 @@ std::string cMessageBroker::closeServerDataRecSlot(const uint64_t ts,t_msg_t * t
         conn->sampled_int[TX].first = false;
         conn->sampled_int[RX].first = false;
     }
-    if (conn->sampled_int[dir].pkt_cnt){
-        ss << "\n\t\t\t\"ts\":"  << std::setprecision(6) << std::fixed << (double)(ts/1000000000.0) << ",";
-        if (dir == TX){
-            ss << "\n\t\t\t\"dir\":\"tx\",";
-        }
-        if (dir == RX){
-            ss << std::setprecision(6);
-            ss << "\n\t\t\t\"dir\":\"rx\",";
-            ss << "\n\t\t\t\"loss\":" << min(1.0, 1.0 - (float)conn->sampled_int[dir].pkt_cnt / (float)((conn->sampled_int[dir].last_seen_seq)-conn->sampled_int[dir].first_seq)) << ","; //in ms
-            ss << "\n\t\t\t\"delay\":" << std::setprecision(6) << std::fixed << (double)(conn->sampled_int[dir].delay_sum/conn->sampled_int[dir].pkt_cnt/1000000.0) << ","; //in ms
-            ss << "\n\t\t\t\"jitter\":" << std::setprecision(6) << std::fixed << (double)(conn->sampled_int[dir].jitter_sum/conn->sampled_int[dir].pkt_cnt/1000000.0) << ","; //in ms
-            ss << "\n\t\t\t\"ooo_pkts\":" << conn->sampled_int[dir].ooo << ",";
-            ss << "\n\t\t\t\"dup_pkts\":" << conn->sampled_int[dir].dup << ",";
-        }
-        ss << "\n\t\t\t\"pkts\":" << conn->sampled_int[dir].pkt_cnt << ",";
-        ss << "\n\t\t\t\"bytes\":" << conn->sampled_int[dir].bytes << ",\n\t\t\t\"seq\":" << conn->sampled_int[dir].seq << "\n\t\t}";
-    }else{
-        ss << "\n\t\t\t\"ts\":"  << std::setprecision(6) << std::fixed << (double)(ts/1000000000.0) << ",";
-        if (dir == TX){
-            ss << "\n\t\t\t\"dir\":\"tx\",";
-        }
-        if (dir == RX){
-            ss << "\n\t\t\t\"dir\":\"rx\",";
-            ss << std::setprecision(6) << std::fixed;
-            if (conn->sampled_int[TX].last_seen_seq > conn->sampled_int[RX].last_seen_seq){
-                ss << "\n\t\t\t\"loss\":" << 1.0 << ",";
+    //for discusion: base it on server o client (silence) setup?
+    if (!setup->silent()){
+        if (conn->sampled_int[dir].pkt_cnt){
+            ss << "\n\t\t\t\"ts\":"  << std::setprecision(6) << std::fixed << (double)(ts/1000000000.0) << ",";
+            if (dir == TX){
+                ss << "\n\t\t\t\"dir\":\"tx\",";
             }
-            else{
-                ss << "\n\t\t\t\"loss\":" << 0.0 << ",";
+            if (dir == RX){
+                ss << std::setprecision(6);
+                ss << "\n\t\t\t\"dir\":\"rx\",";
+                ss << "\n\t\t\t\"loss\":" << min(1.0, 1.0 - (float)conn->sampled_int[dir].pkt_cnt / (float)((conn->sampled_int[dir].last_seen_seq)-conn->sampled_int[dir].first_seq)) << ","; //in ms
+                ss << "\n\t\t\t\"delay\":" << std::setprecision(6) << std::fixed << (double)(conn->sampled_int[dir].delay_sum/conn->sampled_int[dir].pkt_cnt/1000000.0) << ","; //in ms
+                ss << "\n\t\t\t\"jitter\":" << std::setprecision(6) << std::fixed << (double)(conn->sampled_int[dir].jitter_sum/conn->sampled_int[dir].pkt_cnt/1000000.0) << ","; //in ms
+                ss << "\n\t\t\t\"ooo_pkts\":" << conn->sampled_int[dir].ooo << ",";
+                ss << "\n\t\t\t\"dup_pkts\":" << conn->sampled_int[dir].dup << ",";
             }
-            ss << "\n\t\t\t\"ooo_pkts\":" << 0 << ",";
-            ss << "\n\t\t\t\"dup_pkts\":" << 0 << ",";
-            ss << "\n\t\t\t\"delay\":" << 0 << ","; //in ms
-            ss << "\n\t\t\t\"jitter\":" << 0 << ","; //in ms
+            ss << "\n\t\t\t\"pkts\":" << conn->sampled_int[dir].pkt_cnt << ",";
+            ss << "\n\t\t\t\"bytes\":" << conn->sampled_int[dir].bytes << ",\n\t\t\t\"seq\":" << conn->sampled_int[dir].seq << "\n\t\t}";
+        }else{
+            ss << "\n\t\t\t\"ts\":"  << std::setprecision(6) << std::fixed << (double)(ts/1000000000.0) << ",";
+            if (dir == TX){
+                ss << "\n\t\t\t\"dir\":\"tx\",";
+            }
+            if (dir == RX){
+                ss << "\n\t\t\t\"dir\":\"rx\",";
+                ss << std::setprecision(6) << std::fixed;
+                if (conn->sampled_int[TX].last_seen_seq > conn->sampled_int[RX].last_seen_seq){
+                    ss << "\n\t\t\t\"loss\":" << 1.0 << ",";
+                }
+                else{
+                    ss << "\n\t\t\t\"loss\":" << 0.0 << ",";
+                }
+                ss << "\n\t\t\t\"ooo_pkts\":" << 0 << ",";
+                ss << "\n\t\t\t\"dup_pkts\":" << 0 << ",";
+                ss << "\n\t\t\t\"delay\":" << 0 << ","; //in ms
+                ss << "\n\t\t\t\"jitter\":" << 0 << ","; //in ms
+            }
+            ss << "\n\t\t\t\"pkts\":" << 0 << ",";
+            ss << "\n\t\t\t\"bytes\":" << 0 << ",\n\t\t\t\"seq\":" << conn->sampled_int[dir].seq << "\n\t\t}";
         }
-        ss << "\n\t\t\t\"pkts\":" << 0 << ",";
-        ss << "\n\t\t\t\"bytes\":" << 0 << ",\n\t\t\t\"seq\":" << conn->sampled_int[dir].seq << "\n\t\t}";
     }
     if (dir == RX) {
         conn->sampled_int[dir].ooo = 0;
@@ -585,8 +592,6 @@ std::string cMessageBroker::closeServerDataRecSlot(const uint64_t ts,t_msg_t * t
     }
     conn->sampled_int[dir].bytes = 0;
     conn->sampled_int[dir].pkt_cnt = 0;
-    //FIXME
-    //sampled_int[dir].first_seq = sampled_int[dir].last_seen_seq;
     return ss.str();
 }
 
@@ -612,6 +617,7 @@ std::string cMessageBroker::closeDataRecSlot(const uint64_t ts, const uint8_t di
             ss << "\n\t\t\t\"dir\":\"rx\",";
             ss << "\n\t\t\t\"loss\":" << min(1.0, 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((sampled_int[dir].last_seen_seq)-sampled_int[dir].first_seq)) << ","; //in ms
             ss << "\n\t\t\t\"rtt\":" << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << ","; //in ms
+            ss << "\n\t\t\t\"delay\":" << sampled_int[dir].delay_sum/sampled_int[dir].pkt_cnt << ","; //in ms
             ss << "\n\t\t\t\"jitter\":" << sampled_int[dir].jitter_sum/sampled_int[dir].pkt_cnt << ","; //in ms
             ss << "\n\t\t\t\"ooo_pkts\":" << sampled_int[dir].ooo << ",";
             ss << "\n\t\t\t\"dup_pkts\":" << sampled_int[dir].dup << ",";
@@ -647,6 +653,7 @@ std::string cMessageBroker::closeDataRecSlot(const uint64_t ts, const uint8_t di
         sampled_int[dir].bytes = 0;
         sampled_int[dir].first_seq = sampled_int[dir].last_seen_seq;
         sampled_int[dir].rtt_sum = 0;
+        sampled_int[dir].delay_sum = 0;
         sampled_int[dir].jitter_sum  = 0;
     }else{
         //do nothing
@@ -655,6 +662,7 @@ std::string cMessageBroker::closeDataRecSlot(const uint64_t ts, const uint8_t di
     sampled_int[dir].pkt_cnt = 0;
     //FIXME
     //sampled_int[dir].first_seq = sampled_int[dir].last_seen_seq;
+    if (setup->silent()) return "";
     return ss.str();
 }
 
@@ -683,7 +691,7 @@ std::string cMessageBroker::prepServerDataRec(t_msg_t* tMsg, const uint8_t dir){
                 return ss.str();
             }
             //conn->pkt_rx_cnt++;
-            conn->bytes_rx_cnt += size;
+            //conn->bytes_rx_cnt += size;
             conn->sampled_int[dir].delay_sum += ts - pkt_client_ts;
             //J(i) = J(i-1) + (|D(i-1,i)| - J(i-1))/16   viz RFC3550 (RTP/RTCP)
             conn->jt_diff = (ts-pkt_client_ts) - conn->jt_delay_prev;
@@ -695,7 +703,7 @@ std::string cMessageBroker::prepServerDataRec(t_msg_t* tMsg, const uint8_t dir){
             conn->sampled_int[dir].jitter_sum += conn->jitter;
         } else{
             //conn->pkt_tx_cnt++;
-            conn->bytes_tx_cnt += conn->ret_size;
+            //conn->bytes_tx_cnt += conn->ret_size;
         }
         conn->sampled_int[dir].pkt_cnt++;
         conn->sampled_int[dir].bytes += size;
@@ -712,7 +720,7 @@ std::string cMessageBroker::prepServerDataRec(t_msg_t* tMsg, const uint8_t dir){
         ss << "\n\t\t\t\"ts\":"  << std::setprecision(6) << std::fixed << (double)(ts/1000000000.0) << ",";
         if (dir == TX){
             //pkt_cnt_tx++;
-            conn->bytes_tx_cnt += conn->ret_size;
+            //conn->bytes_tx_cnt += conn->ret_size;
             ss << "\n\t\t\t\"dir\":\"tx\",";
             ss << "\n\t\t\t\"size\":" << conn->ret_size << ",\n\t\t\t\"seq\":" << seq << "\n\t\t}";
         }
@@ -727,7 +735,7 @@ std::string cMessageBroker::prepServerDataRec(t_msg_t* tMsg, const uint8_t dir){
             }
             ss << "\n\t\t\t\"cts\":"  << std::setprecision(6) << std::fixed << (double)(pkt_client_ts/1000000000.0) << ",";
             //pkt_cnt_rx++;
-            conn->bytes_rx_cnt += size;
+            //conn->bytes_rx_cnt += size;
             ss << "\n\t\t\t\"dir\":\"rx\",";
             ss << "\n\t\t\t\"delay\":"  << std::setprecision(6) << std::fixed << (double)(delay/1000000.0) << ",";
             //J(i) = J(i-1) + (|D(i-1,i)| - J(i-1))/16   viz RFC3550 (RTP/RTCP)
@@ -753,7 +761,7 @@ std::string cMessageBroker::prepServerDataRec(t_msg_t* tMsg, const uint8_t dir){
 // uint64_t sample_seq_first, sample_pkt_cnt;
 // uint64_t sample_ts_limit;
 
-std::string cMessageBroker::prepDataRec(const uint64_t ts, const uint64_t pkt_server_ts, const uint8_t dir, const uint16_t size, const uint64_t seq, const float rtt){
+std::string cMessageBroker::prepDataRec(const uint64_t ts, const uint64_t pkt_server_ts, const uint8_t dir, const uint16_t size, const uint64_t seq, const float rtt, const float delay){
     stringstream ss;
     if (setup->getSampleLen()){
         // if (ts < sampled_int[dir].ts_limit){
@@ -771,6 +779,7 @@ std::string cMessageBroker::prepDataRec(const uint64_t ts, const uint64_t pkt_se
             pkt_cnt_rx++;
             bytes_cnt_rx += size;
             sampled_int[dir].rtt_sum += rtt;
+            sampled_int[dir].delay_sum += delay;
             //J(i) = J(i-1) + (|D(i-1,i)| - J(i-1))/16   viz RFC3550 (RTP/RTCP)
             jt_diff = rtt - jt_rtt_prev;
             jt_rtt_prev = rtt;
@@ -804,17 +813,18 @@ std::string cMessageBroker::prepDataRec(const uint64_t ts, const uint64_t pkt_se
         if (dir == RX){
             if (sampled_int[dir].last_seen_seq == seq){
                 dup_cnt++;
-                return ss.str();
+                //return ss.str();
             }
             if (sampled_int[dir].last_seen_seq > seq){
                 ooo_cnt++;
-                return ss.str();
+                //return ss.str();
             }
             ss << "\n\t\t\t\"sts\":"  << std::setprecision(6) << std::fixed << (double)(pkt_server_ts/1000000000.0) << ",";
             pkt_cnt_rx++;
             bytes_cnt_rx += size;
             ss << "\n\t\t\t\"dir\":\"rx\",";
             ss << "\n\t\t\t\"rtt\":" << std::setprecision(6) << rtt << ","; //in ms
+            ss << "\n\t\t\t\"delay\":" << std::setprecision(6) << delay << ","; //in ms
             //J(i) = J(i-1) + (|D(i-1,i)| - J(i-1))/16   viz RFC3550 (RTP/RTCP)
             jt_diff = rtt - jt_rtt_prev;
             jt_rtt_prev = rtt;
@@ -826,12 +836,13 @@ std::string cMessageBroker::prepDataRec(const uint64_t ts, const uint64_t pkt_se
         }
         ss << "\n\t\t\t\"size\":" << size << ",\n\t\t\t\"seq\":" << seq << "\n\t\t}";
         sampled_int[dir].last_seen_seq = seq;
-        return ss.str();
+        //return ss.str();
     }
+    if (setup->silent()) return "";
     return ss.str();
 }
 
-std::string cMessageBroker::pingOutputRec(const uint64_t ts, const uint64_t pkt_server_ts, const uint8_t dir, const uint16_t size, const uint64_t seq, const float rtt){
+std::string cMessageBroker::pingOutputRec(const uint64_t ts, const uint8_t dir, const uint16_t size, const uint64_t seq, const float rtt){
     stringstream ss;
     if (setup->showTimeStamps()){
         ss << std::setprecision(6) << std::fixed << (double)(ts/1000000000.0) << " ";
@@ -903,6 +914,7 @@ std::string cMessageBroker::prepFinalDataRec(const uint64_t ts, const uint8_t di
                 ss << "\n\t\t\t\"loss\":" <<  min(1.0, 1.0 - (float)sampled_int[dir].pkt_cnt / (float)((sampled_int[dir].last_seen_seq)-sampled_int[dir].first_seq)) << ",";
             }
             ss << "\n\t\t\t\"rtt\":" << sampled_int[dir].rtt_sum/sampled_int[dir].pkt_cnt << ","; //in ms
+            ss << "\n\t\t\t\"delay\":" << sampled_int[dir].delay_sum/sampled_int[dir].pkt_cnt << ","; //in ms
             ss << "\n\t\t\t\"jitter\":" << sampled_int[dir].jitter_sum/sampled_int[dir].pkt_cnt << ","; //in ms
             ss << "\n\t\t\t\"ooo_pkts\":" << sampled_int[dir].ooo << ",";
             ss << "\n\t\t\t\"dup_pkts\":" << sampled_int[dir].dup << ",";
@@ -927,6 +939,7 @@ std::string cMessageBroker::prepFinalDataRec(const uint64_t ts, const uint8_t di
                 ss << "\n\t\t\t\"dir\":\"rx\",";
                 ss << "\n\t\t\t\"loss\":" << 1.0 << ","; //in ms
                 ss << "\n\t\t\t\"rtt\":"  << 0 << ","; //in ms
+                ss << "\n\t\t\t\"delay\":"  << 0 << ","; //in ms
                 ss << "\n\t\t\t\"jitter\":" << 0 << ","; //in ms
                 ss << "\n\t\t\t\"ooo_pkts\":" << 0 << ",";
                 ss << "\n\t\t\t\"dup_pkts\":" << 0 << ",";
@@ -935,6 +948,7 @@ std::string cMessageBroker::prepFinalDataRec(const uint64_t ts, const uint8_t di
             ss << "\n\t\t\t\"bytes\":" << 0 << ",\n\t\t\t\"seq\":" << sampled_int[dir].seq << "\n\t\t}";
         }
     }
+    if (setup->silent()) return "";
     return ss.str();
 }
 

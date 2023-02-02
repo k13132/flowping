@@ -85,6 +85,7 @@ void cSlotTimer::addTimer(conn_t * conn) {
         slot.interval = interval;
         slot.trigger = std::chrono::system_clock::now();
         slot.trigger += interval;
+        std::cout << ".";
         slot.conn = conn;
         this->slots[conn->conn_id] = slot;
         this->run_active = true;
@@ -92,7 +93,7 @@ void cSlotTimer::addTimer(conn_t * conn) {
 }
 
 void cSlotTimer::removeTimer(uint16_t flow_id) {
-    if (this-slots.count(flow_id)){
+    if (this->slots.count(flow_id)){
         this->slots.erase(flow_id);
     }
     if (this->slots.size()<1){

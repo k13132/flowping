@@ -49,8 +49,8 @@ private:
     void processAndDeleteServerMessage(t_msg_t *tmsg);
 
     std::string prepHeader();
-    std::string prepDataRec(const uint64_t ts, const uint64_t pkt_server_ts, const uint8_t dir, const uint16_t size, const uint64_t seq, const float rtt);
-    std::string pingOutputRec(const uint64_t ts, const uint64_t pkt_server_ts, const uint8_t dir, const uint16_t size, const uint64_t seq, const float rtt);
+    std::string prepDataRec(const uint64_t ts, const uint64_t pkt_server_ts, const uint8_t dir, const uint16_t size, const uint64_t seq, const float rtt, const float delay);
+    std::string pingOutputRec(const uint64_t ts, const uint8_t dir, const uint16_t size, const uint64_t seq, const float rtt);
     std::string closeDataRecSlot(const uint64_t ts, const uint8_t dir);
     std::string prepFinalDataRec(const uint64_t ts, const uint8_t dir);
 
@@ -68,6 +68,7 @@ private:
     float jt_diff = 0; //ms
     float jt_prev = 0; //ms
     float pkt_rtt;
+    float pkt_delay;
     double rtt_sum;
     float rtt_min;
     float rtt_avg;

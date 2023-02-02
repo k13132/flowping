@@ -3,7 +3,7 @@ project (flowping)
 set (FlowPing_VERSION_MAJOR 2)
 
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 if(CMAKE_CROSSCOMPILING)
     SET(CMAKE_CXX_FLAGS "-Wall -Wextra -g -O3 -pthread -faligned-new")
 else()
@@ -22,6 +22,8 @@ find_package (Threads)
 
 include_directories(./include ./external)
 link_directories(./sources)
+
+#necessary for gcc preceding version 9
 link_libraries(stdc++fs)
 
 #include(GNUInstallDirs)
