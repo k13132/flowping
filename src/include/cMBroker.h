@@ -68,7 +68,7 @@ private:
     float jt_diff = 0; //ms
     float jt_prev = 0; //ms
     float pkt_rtt;
-    float pkt_delay;
+    double pkt_delay;
     double rtt_sum;
     float rtt_min;
     float rtt_avg;

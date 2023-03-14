@@ -118,7 +118,7 @@ int cServer::run() {
         exit(1);
     }
 
-    printf("\nFlowPing server on %s waiting on port %d\n", hostname, setup->getPort());
+    printf("FlowPing server on %s waiting on port %d\n", hostname, setup->getPort());
     //}
 
     unsigned char packet[MAX_PAYLOAD_SIZE + HEADER_LENGTH];

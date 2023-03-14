@@ -286,7 +286,7 @@ void cMessageBroker::processAndDeleteServerMessage(t_msg_t *tMsg) {
                 }
             }
             //std::cout << "conn info:: " << *tMsg->conn << std::endl;
-            if (tMsg->conn->J_par && tMsg->conn->fout.is_open()) {
+            if (tMsg->conn->J_par && (tMsg->conn->fout.is_open()||(tMsg->conn->output == &std::cout))) {
                 *tMsg->conn->output << "\n\t],";
                 *tMsg->conn->output << "\n\t\"server_stats\": {";
                 *tMsg->conn->output << "\n\t\t\"tx_pkts\" :"<< tMsg->conn->pkt_tx_cnt << ",";
@@ -355,7 +355,14 @@ void cMessageBroker::processAndDeleteClientMessage(t_msg_t *tMsg){
             ts = (tp.time_since_epoch().count() * ((chrono::system_clock::period::num * uint64_t(1000000000L)) / chrono::system_clock::period::den));
             pkt_rtt = ((tp.time_since_epoch().count() * ((chrono::system_clock::period::num * uint64_t(1000000000L)) / chrono::system_clock::period::den)) - (ping_pkt->sec * uint64_t(1000000000L)) - (ping_pkt->nsec))/1000000.0; //ms
             pkt_server_ts =  ping_pkt->server_sec * uint64_t(1000000000L) + ping_pkt->server_nsec;
-            pkt_delay = (ts - pkt_server_ts) / 1000000.0;
+            if (ts > pkt_server_ts){
+                pkt_delay = (double)(ts - pkt_server_ts) / 1000000.0; //in ms
+            }else{
+                //leave it split!
+                pkt_delay = (double)(pkt_server_ts - ts) / 1000000.0; //in ms
+                pkt_delay = - pkt_delay;
+            }
+
             if (setup->toJSON()) {
                 *output << prepDataRec(ts, pkt_server_ts, RX, ping_pkt->size, ping_pkt->seq, pkt_rtt, pkt_delay);
                 break;
@@ -503,14 +510,14 @@ std::string cMessageBroker::prepHeader() {
 
 std::string cMessageBroker::prepServerHeader(conn_t * conn) {
     stringstream header;
-    if (conn->J_par && conn->fout.is_open()){
+    if (conn->J_par && (conn->fout.is_open()||(conn->output == &std::cout))){
         auto now = std::chrono::system_clock::now();
         auto in_time_t = std::chrono::system_clock::to_time_t(now);
         header << "{\n\t\"info\": {";
         header << "\n\t\t\"start\":\"" << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X") << "\",";
         header << "\n\t\t\"version\":\"" << setup->getVersion() << "\",";
-        if (conn->family == AF_INET) header << "\n\t\t\"ip_family\":\"IPv4\",";
-        if (conn->family == AF_INET6) header << "\n\t\t\"ip_family\":\"IPv6\",";
+        if (conn->family == AF_INET) header << "\n\t\t\"socket_ip_family\":\"IPv4\",";
+        if (conn->family == AF_INET6) header << "\n\t\t\"socket_ip_family\":\"IPv6 & IPv4\",";
         header << "\n\t\t\"remote\":\"" << conn->client_ip << "\",";
         header << "\n\t\t\"slot_duration\":" << conn->sample_len / 1000000000L << ",";
         header << "\n\t\t\"flow_id\":" << conn->conn_id;
@@ -676,7 +683,16 @@ std::string cMessageBroker::prepServerDataRec(t_msg_t* tMsg, const uint8_t dir){
     const uint64_t pkt_client_ts =  ping_pkt->sec * uint64_t(1000000000L) + ping_pkt->nsec;
     const uint16_t size = conn->size;
     const uint64_t seq = ping_pkt->seq;
-    const uint64_t delay = ts - pkt_client_ts;
+    //const uint64_t delay = 0;
+
+    if (ts > pkt_client_ts){
+        pkt_delay = (double)(ts - pkt_client_ts) / 1000000.0; //in ms
+    }else{
+        //leave it split!
+        pkt_delay = (double)(pkt_client_ts - ts) / 1000000.0; //in ms
+        pkt_delay = - pkt_delay;
+    }
+    //std::cout << ts << " / " << pkt_client_ts<< "/" << pkt_delay << "/" << pkt_client_ts - ts << std::endl;
     stringstream ss;
     if (conn->sample_len){
         // if (ts < sampled_int[dir].ts_limit){
@@ -693,10 +709,10 @@ std::string cMessageBroker::prepServerDataRec(t_msg_t* tMsg, const uint8_t dir){
             }
             //conn->pkt_rx_cnt++;
             //conn->bytes_rx_cnt += size;
-            conn->sampled_int[dir].delay_sum += ts - pkt_client_ts;
+            conn->sampled_int[dir].delay_sum += pkt_delay;
             //J(i) = J(i-1) + (|D(i-1,i)| - J(i-1))/16   viz RFC3550 (RTP/RTCP)
-            conn->jt_diff = (ts-pkt_client_ts) - conn->jt_delay_prev;
-            conn->jt_delay_prev = delay;
+            conn->jt_diff = (pkt_delay) - conn->jt_delay_prev;
+            conn->jt_delay_prev = pkt_delay;
             if (conn->jt_diff < 0) conn->jt_diff = -conn->jt_diff;
             conn->jt_prev = conn->jitter;
             conn->jitter = conn->jt_prev + (1.0 / 16.0) * (conn->jt_diff - conn->jt_prev);
@@ -738,15 +754,15 @@ std::string cMessageBroker::prepServerDataRec(t_msg_t* tMsg, const uint8_t dir){
             //pkt_cnt_rx++;
             //conn->bytes_rx_cnt += size;
             ss << "\n\t\t\t\"dir\":\"rx\",";
-            ss << "\n\t\t\t\"delay\":"  << std::setprecision(6) << std::fixed << (double)(delay/1000000.0) << ",";
+            ss << "\n\t\t\t\"delay\":"  << std::setprecision(6) << std::fixed << (pkt_delay) << ",";
             //J(i) = J(i-1) + (|D(i-1,i)| - J(i-1))/16   viz RFC3550 (RTP/RTCP)
-            jt_diff = delay - jt_rtt_prev;
-            jt_rtt_prev = delay;
+            jt_diff = pkt_delay - jt_rtt_prev;
+            jt_rtt_prev = pkt_delay;
             if (jt_diff < 0) jt_diff = -jt_diff;
             jt_prev = jitter;
             jitter = jt_prev + (1.0 / 16.0) * (jt_diff - jt_prev);
             //jitter_sum += jitter;
-            ss << "\n\t\t\t\"jitter\":"  << std::setprecision(6) << std::fixed << (double)(jitter/1000000.0) << ",";
+            ss << "\n\t\t\t\"jitter\":"  << std::setprecision(6) << std::fixed << jitter << ",";
             ss << "\n\t\t\t\"size\":" << size << ",\n\t\t\t\"seq\":" << seq << "\n\t\t}";
         }
         sampled_int[dir].last_seen_seq = seq;
