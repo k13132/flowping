@@ -886,7 +886,7 @@ std::string cMessageBroker::pingOutputRec(const uint64_t ts, const uint8_t dir, 
         rtt_min = min(rtt_min, rtt);
         rtt_max = max(rtt_max, rtt);
         ss << "seq=" << seq << " ";
-        ss << "time=" << std::setprecision(6) << rtt << " "; //in ms
+        ss << "time=" << std::setprecision(3) <<std::fixed << rtt << " "; //in ms
         //J(i) = J(i-1) + (|D(i-1,i)| - J(i-1))/16   viz RFC3550 (RTP/RTCP)
         jt_diff = rtt - jt_rtt_prev;
         jt_rtt_prev = rtt;
@@ -894,7 +894,7 @@ std::string cMessageBroker::pingOutputRec(const uint64_t ts, const uint8_t dir, 
         jt_prev = jitter;
         jitter = jt_prev + (1.0 / 16.0) * (jt_diff - jt_prev);
         //jitter_sum += jitter;
-        ss << "jitter=" << std::setprecision(6) << jitter << ","; //in ms
+        ss << "jitter=" << std::setprecision(3)  <<std::fixed<< jitter << ","; //in ms
     }
     last_seen_seq = seq;
     ss  << std::endl;

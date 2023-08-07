@@ -136,8 +136,15 @@ public:
     uint64_t getSampleLen(void) const;
     void setFlowID(uint16_t flow_id);
     uint16_t getFlowID();
+    int getNetType();
+    uint64_t getMaxTimedBufferSize();
+    int getSocketRcvBufferSize();
+    int getSocketSndBufferSize();
+    uint16_t getMaxInvitePackets();
+    uint32_t getInvitePacketRepeatDelay();
 
 private:
+    net_constants_t netConstants;
     uint64_t sample_len; //in ns ... 0 means no sampling
     sa_family_t addr_family = AF_INET;
     uint16_t flow_id;
@@ -173,10 +180,21 @@ private:
     bool e_par;
     bool E_par;
     bool u_par;
+    bool nettype_par;
+    bool so_rcvbuf_par;
+    bool so_sndbuf_par;
+    bool net_invite_max_par;
+    bool net_invite_repeat_delay_par;
+
     bool vonly;
     bool _par;
     bool antiAsym;
     int port;
+    int net_type;
+    int so_rcvbuf;
+    int so_sndbuf;
+    uint16_t net_invite_max;
+    uint32_t net_invite_repeat_delay;
     double interval_i; // 1s
     double interval_I; // 1s
     double time_t; // 10s
@@ -219,8 +237,8 @@ private:
     bool ipv6;
     //refactor tpoint to match duration of test / defined scenario is repeated
     void refactorTPoints(void);
-
-    
+    static int parseNetType(const string &);
+    void optimizeNetSettings(void);
 };
 
 #endif	/* SETUP_H */

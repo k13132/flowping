@@ -90,11 +90,13 @@ int cServer::run() {
         perror("setsockopt(SO_REUSEADDR) failed");
     }
 
-
-    int BufferSize = 1500*4096;
-    int sockOptSize = sizeof(BufferSize);
-    setsockopt(this->sock, SOL_SOCKET, SO_SNDBUF,&BufferSize,sockOptSize);
-    setsockopt(this->sock, SOL_SOCKET, SO_RCVBUF,&BufferSize,sockOptSize);
+    //some duplicities for better readability
+    int snd_BufferSize = setup->getSocketSndBufferSize();
+    int rcv_BufferSize = setup->getSocketRcvBufferSize();
+    int snd_sockOptSize = sizeof(snd_BufferSize);
+    int rcv_sockOptSize = sizeof(rcv_BufferSize);
+    setsockopt(this->sock, SOL_SOCKET, SO_SNDBUF,&snd_BufferSize,snd_sockOptSize);
+    setsockopt(this->sock, SOL_SOCKET, SO_RCVBUF,&rcv_BufferSize,rcv_sockOptSize);
 
     // Fill in the address structure
     bzero((char *) & saClient6, sizeof (saClient6));
@@ -363,11 +365,13 @@ void cServer::terminate() {
     ping_msg_t * tmsg = nullptr;
     std::cerr << "Terminate called" << std::endl;
     int16_t ret_size = 0;
-    uint8_t counter = 20;
+    uint16_t counter = setup->getMaxInvitePackets();
+    uint16_t delay_corrections;
     conn_t * conn;
     while (cbroker->getConnCount() && counter){
         //std::cerr << "Connection remaining: " << (std::uint16_t) cbroker->getConnCount() << std::endl;
         vector conn_ids = cbroker->getActiveConnIDs();
+        delay_corrections = 0;
         for (int conn_id : conn_ids) {
             conn = cbroker->getConnByID(conn_id);
             if (conn->finished) continue; //we do not expect finished connection here, but...
@@ -384,9 +388,12 @@ void cServer::terminate() {
             if (ret_size < 0){
                 std::cerr << "Unable to send packet" << std::endl;
             }
-            usleep(5000);
+            usleep(10000);  //10ms delay before next connection is targeted.
+            delay_corrections ++;
         }
-        usleep(50000);
+        if (setup->getInvitePacketRepeatDelay() > delay_corrections * 10000){
+            usleep(setup->getInvitePacketRepeatDelay() - delay_corrections * 10000);
+        }
         counter--;
     }
     cbroker->stop();

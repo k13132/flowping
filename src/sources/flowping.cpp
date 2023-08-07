@@ -135,18 +135,18 @@ int main(int argc, char** argv) {
     version.str("");
 
 #ifdef __x86_64__
-    version << "x86_64 3.0.2";
+    version << "x86_64 3.0.3";
     version << " (" << DD << " "<< TT << ")";
 #endif
 
 
 #ifdef __aarch64__
-    version << "arm_64 3.0.0 .::. F-Tester edition .::.";
+    version << "arm_64 3.0.3";
     version << " (" << DD << " "<< TT << ")";
 #endif
 
 #ifdef __arm__
-    version << "arm 3.0.0 .::. F-Tester edition .::.";
+    version << "arm 3.0.3";
     version << " (" << DD << " "<< TT << ")";
 #endif
 

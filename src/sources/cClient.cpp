@@ -109,7 +109,7 @@ int cClient::run_packetFactory() {
     }
     while (!setup->isDone() && !setup->isStop()) {
         //std::cout << "pbuffer size: " << setup->getTimedBufferSize()<<std::endl;
-        while (pkt_created && setup->getTimedBufferSize() < 96000) {
+        while (pkt_created && setup->getTimedBufferSize() < setup->getMaxTimedBufferSize()) {
             pkt_created = setup->prepNextPacket();
             if (setup->isStop()) {
                 return 0;
@@ -145,7 +145,7 @@ int cClient::run_receiver() {
     struct timeval tv;
     tv.tv_sec = 1;
     tv.tv_usec = 0;
-    int rcvBufferSize = 1500*4096;
+    int rcvBufferSize = setup->getSocketRcvBufferSize();
     int sockOptSize = sizeof(rcvBufferSize);
 
     if (setsockopt(this->sock[AF_INET6], SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0){
@@ -231,8 +231,8 @@ int cClient::run_sender() {
     delta = 0;
     clock_gettime(CLOCK_REALTIME, &sentTv); //FIX initial delta
 
-    for (unsigned i = 0; i< sizeof packet; i++){
-        packet[i] = (uint8_t)(rand() % 256);
+    for (unsigned char & i : packet){
+        i = (uint8_t)(rand() % 256);
     }
 
     ping_pkt = (struct ping_pkt_t*) (packet);
@@ -284,7 +284,7 @@ int cClient::run_sender() {
     while (not isSenderReceiverReady()){
         usleep(200000);
     }
-    int sndBufferSize = 1500*4096;
+    int sndBufferSize = setup->getSocketSndBufferSize();
     int sockOptSize = sizeof(sndBufferSize);
     setsockopt(this->sock[AF_INET6], SOL_SOCKET, SO_SNDBUF,&sndBufferSize,sockOptSize);
 
@@ -328,7 +328,7 @@ int cClient::run_sender() {
         this->addr_family = resAddr->ai_family;
 #endif
         //std::cout << "addr_family: " << this->addr_family << std::endl;
-        if (timeout < 25) {
+        if (timeout < setup->getMaxInvitePackets()) {
             //std::cerr << ping_msg->msg << " pkt_len:" << ping_msg->size <<std::endl;
             nRet = sendto(this->sock[this->addr_family], packet, ping_msg->size, 0, resAddr->ai_addr, resAddr->ai_addrlen);
             if (nRet < 0) {
@@ -336,7 +336,13 @@ int cClient::run_sender() {
                 close(this->sock[this->addr_family]);
                 exit(1);
             }
-            usleep(200000); //  5pkt/s
+            if (setup->getInvitePacketRepeatDelay()>500000){
+                for (int i=0;(i<100 && !setup->isStarted());i++){
+                    usleep(setup->getInvitePacketRepeatDelay()/100);
+                }
+            }else{
+                usleep(setup->getInvitePacketRepeatDelay());
+            }
             timeout++;
         }else{
 //            for (int i=0;i<resAddr->ai_addrlen;i++){
@@ -358,10 +364,16 @@ int cClient::run_sender() {
                 close(this->sock[this->addr_family]);
                 exit(1);
             }
-            usleep(200000); //  5pkt/s
+            if (setup->getInvitePacketRepeatDelay()>500000){
+                for (int i=0;(i<100 && !setup->isStarted());i++){
+                    usleep(setup->getInvitePacketRepeatDelay()/100);
+                }
+            }else{
+                usleep(setup->getInvitePacketRepeatDelay());
+            }
             timeout++;
         }
-        if (timeout == 50) { //try contact server fo 10s
+        if (timeout == setup->getMaxInvitePackets() * 2) { //try contact server fo 10s
             cerr << "Can't connect to server\n";
             exit(1);
         }

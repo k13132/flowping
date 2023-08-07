@@ -97,7 +97,6 @@
 #define MSG_TIMER_END 100
 #define MSG_SOCK_TIMEOUT 110
 
-
 #define TX 0
 #define RX 1
 
@@ -107,6 +106,12 @@
 #define NS_TDIFF(tv1,tv2) ( ((tv1).tv_sec-(tv2).tv_sec)*1000000000 +  ((tv1).tv_nsec-(tv2).tv_nsec) )
 #define NS_TIME(tv1) ( (tv1).tv_sec*1000000000 +  (tv1).tv_nsec )
 #define max(a,b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
+
+#define NET_TYPE_DEFAULT 0
+#define NET_TYPE_NBIOT 1
+#define NET_TYPE_EDGE 2
+#define NET_TYPE_HILAT 4
+#define NET_TYPE_LOWBW 8
 
 
 using namespace std;
@@ -251,6 +256,14 @@ struct timed_packet_t{
     uint32_t sec;
     uint32_t nsec;
     uint16_t len;
+};
+
+struct net_constants_t{
+    uint32_t timed_pkt_buffer_depth;
+    uint16_t invite_msg_max;
+    uint32_t invite_msg_repeat_delay_us;
+    int rcvbuf;
+    int sndbuf;
 };
 
 

@@ -1,7 +1,7 @@
 /*
  * File:   cSetup.cpp
  *
- * Copyright (C) 2016: Department of Telecommunication Engineering, FEE, CTU in Prague
+ * Copyright (C) 2023: Department of Telecommunication Engineering, FEE, CTU in Prague
  *
  * This file is part of FlowPing.
  *
@@ -18,7 +18,7 @@
  * GNU General Public License for more details
  *
  * You should have received a copy of the GNU General Public License
- * along with FlowPing.  If not, see <http://www.gnu.org/licenses/>.
+ * along with FlowPing. If not, see <http://www.gnu.org/licenses/>.
  *
  * Author: Ondrej Vondrous
  *         Department of Telecommunication Engineering
@@ -104,12 +104,67 @@ cSetup::cSetup(int argc, char **argv, string version) {
     this->fpsize = 64;
     this->fpsize_set = false;
     this->version = version;
+    this->net_type = NET_TYPE_DEFAULT;
 
     const std::filesystem::path pth;
     std::error_code ec;
 
-    while ((c = getopt(argc, argv, "JCXeEaSqDH6?w:d:p:c:h:s:i:F:f:u:vI:t:T:b:B:r:R:L:W:")) != EOF) {
+    //Defaults for ethernet network, wifi, LTE, 5G and similar network with low latency and hi bandwidth.
+    this->netConstants.invite_msg_max = 25;                        // 25 invite packets maximum
+    this->netConstants.invite_msg_repeat_delay_us = 200000;        // 5 packets per second
+    this->netConstants.timed_pkt_buffer_depth = 96000;
+    this->netConstants.rcvbuf = 1500*4096;
+    this->netConstants.sndbuf = 1500*4096;
+
+
+    //   --net_invite_max
+    //   --net_invite_repeat_delay [us]
+
+    struct option long_options[] =
+    {
+     {"nettype", required_argument, NULL, 8000},
+     {"so_rcvbuf", required_argument, NULL, 8010},
+     {"so_sndbuf", required_argument, NULL, 8011},
+     {"net_invite_max", required_argument, NULL, 8020},
+     {"net_invite_repeat_delay", required_argument, NULL, 8021},
+     {0,0,0,0}
+    };
+    const char *short_options = "JCXeEaSqDH6?w:d:p:c:h:s:i:F:f:u:vI:t:T:b:B:r:R:L:W:";
+    int option_index = 0;
+
+    while ((c = getopt_long(argc, argv, short_options, long_options, &option_index)) != EOF) {
         switch (c) {
+            case 8000:
+                this->nettype_par = true;
+                this->net_type = parseNetType(std::string(optarg));
+                if (this->net_type != NET_TYPE_DEFAULT) optimizeNetSettings();
+                break;
+            case 8010:
+                this->so_rcvbuf_par = true;
+                this->so_rcvbuf = atoi(optarg);
+                break;
+            case 8011:
+                this->so_sndbuf_par = true;
+                this->so_sndbuf = atoi(optarg);
+                break;
+            case 8020:
+                this->net_invite_max_par = true;
+                if (atoi(optarg) < 1) break;
+                if (atoi(optarg) > 100){
+                    this->net_invite_max = 100;
+                } else{
+                    this->net_invite_max = atoi(optarg);
+                }
+                break;
+            case 8021:
+                this->net_invite_repeat_delay_par = true;
+                if (atoi(optarg) < 0) break;
+                if (atoi(optarg) > 300000000){
+                    this->net_invite_repeat_delay = 300000000;
+                } else{
+                    this->net_invite_repeat_delay = atoi(optarg);
+                }
+                break;
             case 'v':
                 this->v_par = true;
                 break;
@@ -329,10 +384,38 @@ cSetup::cSetup(int argc, char **argv, string version) {
         this->sample_len = 0;
         this->L_par = false;
     }
+    if (so_rcvbuf_par){
+        this->netConstants.rcvbuf = so_rcvbuf;
+    }
+    if (so_sndbuf_par){
+        this->netConstants.sndbuf = so_sndbuf;
+    }
+    if (net_invite_max_par){
+        this->netConstants.invite_msg_max = net_invite_max;
+    }
+    if (net_invite_repeat_delay_par){
+        this->netConstants.invite_msg_repeat_delay_us = net_invite_repeat_delay;
+    }
 }
 
 cSetup::~cSetup() {
 
+}
+
+int cSetup::parseNetType(const string &str) {
+    if ((str == "NB-IoT")||(str == "NB-IOT") || (str == "nb-iot")){
+        return NET_TYPE_NBIOT;
+    }
+    if ((str == "Edge")||(str == "EDGE") || (str == "edge")){
+        return NET_TYPE_EDGE;
+    }
+    if ((str == "HiLat")||(str == "Hilat") || (str == "hilat")){
+        return NET_TYPE_HILAT;
+    }
+    if ((str == "LowBW")||(str == "Lowbw") || (str == "lowbw")){
+        return NET_TYPE_LOWBW;
+    }
+    return NET_TYPE_DEFAULT;
 }
 
 void cSetup::setFlowID(uint16_t flow_id){
@@ -417,10 +500,12 @@ void cSetup::usage() {
     cout << "|         [-v]                       Print version                                              |" << endl;
     cout << "|         [-D]                       Show unix timestamps                                       |" << endl;
     cout << "|         [-X]                       Asymmetric mode (TX Payload  is limited to 32 B)           |" << endl;
-    cout << "| Server:                                                                                       |" << endl;
+    cout << "|         [--so_rcvbuf] [6144000]    Socket receiver buffer size [Bytes]                        |" << endl;
+    cout << "|         [--so_sndbuf] [6144000]    Socket sender buffer size [Bytes]                          |" << endl;
+    cout << "| Server specific options:                                                                      |" << endl;
     cout << "|         [-S]                       Run as server                                              |" << endl;
     cout << "|         [-W]                       working directory                                          |" << endl;
-    cout << "| Client:                                                                                       |" << endl;
+    cout << "| Client specific options:                                                                      |" << endl;
     cout << "|         [-6]                       Prefer IPv6 over IPv4                                      |" << endl;
     cout << "|         [-a]                       Busy-loop mode! (100% CPU usage), more accurate bitrate    |" << endl;
     cout << "|         [-b kbit/s]                BitRate (first limit)                                      |" << endl;
@@ -439,8 +524,16 @@ void cSetup::usage() {
     cout << "|         [-R seconds]  [T3=T2]      T3 interval specification  (for i,I,b,B params)            |" << endl;
     cout << "|         [-u filename]              Read Interval and BitRate definitions from file            |" << endl;
     cout << "|         [-w seconds]  [unlimited]  Run test for specified time                                |" << endl;
+    cout << "|         [--nettype NET_TYPE]       Network specific optimizations [default, NB-IoT, Edge]     |" << endl;
     cout << " -----------------------------------------------------------------------------------------------" << endl;
 }
+
+//   hidden options
+//   --net_invite_max
+//   --net_invite_repeat_delay [us]
+//   --nettype [HiLAT, LowBW]
+
+
 
 int cSetup::getPort() {
     return this->port;
@@ -1015,4 +1108,63 @@ string cSetup::getWorkingDirectory() {
         return wdir;
     }
     return ".";
+}
+
+int cSetup::getNetType() {
+    return this->net_type;
+}
+
+uint64_t cSetup::getMaxTimedBufferSize() {
+    return this->netConstants.timed_pkt_buffer_depth;
+}
+
+int cSetup::getSocketRcvBufferSize() {
+    return this->netConstants.rcvbuf;
+}
+
+int cSetup::getSocketSndBufferSize() {
+    return this->netConstants.sndbuf;
+}
+
+uint16_t cSetup::getMaxInvitePackets() {
+    return this->netConstants.invite_msg_max;
+}
+
+uint32_t cSetup::getInvitePacketRepeatDelay() {
+    return this->netConstants.invite_msg_repeat_delay_us;
+}
+
+void cSetup::optimizeNetSettings() {
+    switch (this->net_type) {
+        case NET_TYPE_NBIOT:
+            this->netConstants.invite_msg_max = 4;                        // 4 invites only
+            this->netConstants.invite_msg_repeat_delay_us = 15000000;        // 15 second delay
+            this->netConstants.timed_pkt_buffer_depth = 200;
+            this->netConstants.rcvbuf = 1500*32;
+            this->netConstants.sndbuf = 1500*32;
+            break;
+        case NET_TYPE_EDGE:
+            this->netConstants.invite_msg_max = 12;
+            this->netConstants.invite_msg_repeat_delay_us = 5000000;
+            this->netConstants.timed_pkt_buffer_depth = 1000;
+            this->netConstants.rcvbuf = 1500*256;
+            this->netConstants.sndbuf = 1500*256;
+            break;
+        case NET_TYPE_HILAT:
+            this->netConstants.invite_msg_max = 10;
+            this->netConstants.invite_msg_repeat_delay_us = 1000000;
+            this->netConstants.timed_pkt_buffer_depth = 10000;
+            this->netConstants.rcvbuf = 1500*2048;
+            this->netConstants.sndbuf = 1500*2048;
+            break;
+        case NET_TYPE_LOWBW:
+            this->netConstants.invite_msg_max = 20;
+            this->netConstants.invite_msg_repeat_delay_us = 400000;
+            this->netConstants.timed_pkt_buffer_depth = 5000;
+            this->netConstants.rcvbuf = 1500*1024;
+            this->netConstants.sndbuf = 1500*1024;
+            break;
+        default:
+            break;
+    }
 }

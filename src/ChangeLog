@@ -1,3 +1,10 @@
+3.0.3
+    - long parameters
+    - nettype extension - optimization of handshake for NB-IoT and other networks [default | NB-IoT | Edge]
+    - so_rcvbuf & so_sndbuf options
+
+//FixME
+
 2.0.2 FT Edition
       - Bug FIX - CMD line T1, T2, T3 interval parsing
 2.0.1 FT Edition
