@@ -86,8 +86,8 @@ public:
     string getVersion(void);
     void setAddrFamily(sa_family_t family);
     sa_family_t getAddrFamily(void);
-    uint64_t getTime_t();
-    uint64_t getTime_T();
+    double getTime_t();
+    double getTime_T();
     double getTime_R();
     uint16_t getPacketSize();
     uint16_t getFirstPacketSize();

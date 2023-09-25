@@ -587,18 +587,16 @@ bool cSetup::outToFile() {
     return this->f_par;
 }
 
-uint64_t cSetup::getTime_t() {
-    return (uint64_t)this->time_t;
+double cSetup::getTime_t() {
+    return this->time_t;
 };
 
-uint64_t cSetup::getTime_T() {
-    return (uint64_t)this->time_T;
-
+double cSetup::getTime_T() {
+    return this->time_T;
 };
 
 double cSetup::getTime_R() {
     return this->time_R;
-
 };
 
 string cSetup::getHostname() {
@@ -656,11 +654,11 @@ double cSetup::getBchange() {
             T3 = this->getTime_T();
         }
         if (this->b_par && this->B_par) {
-            bchange = (this->rate_B - this->rate_b)*1000 / (T3 * 1000000000);
+            bchange = (this->rate_B - this->rate_b)*1000 / (uint64_t)(T3 * 1000000000);
             return bchange;
         }
         if (this->i_par && this->I_par) {
-            bchange = ((this->getPacketSize()*8 * 1000000000) / this->interval_I - (this->getPacketSize()*8 * 1000000000) / this->interval_i) / (T3 * 1000000000);
+            bchange = ((this->getPacketSize()*8 * 1000000000) / this->interval_I - (this->getPacketSize()*8 * 1000000000) / this->interval_i) / (uint64_t)(T3 * 1000000000);
             return bchange;
         }
     }
@@ -957,17 +955,20 @@ bool cSetup::prepNextPacket() {
         if (td_tmp.len == 0) {
             td_tmp = (tpoint_def_t) tpoints.front();
             s_tmp_rate = td_tmp.bitrate * 1000;
-            s_tmp_ts = (uint64_t) td_tmp.ts * 1000000000L;
+            s_tmp_ts = (uint64_t) (td_tmp.ts * 1000L) *1000000L;
             tmp_len = td_tmp.len;
             tmp_ts = s_tmp_ts;
             tpoints.pop();
         }
         td_tmp = (tpoint_def_t) tpoints.front();
-        e_tmp_ts = (uint64_t) td_tmp.ts * 1000000000L;
+        //std::cout << td_tmp << std::endl;
+        e_tmp_ts = (uint64_t) (td_tmp.ts * 1000L) *1000000L;
         e_tmp_rate = td_tmp.bitrate * 1000;
+        //std::cout << "comparator: start: " << s_tmp_ts << " end: " <<e_tmp_ts << " ts: "<< tmp_ts << std::endl;
         if (e_tmp_ts != s_tmp_ts) {
             if (tmp_ts < e_tmp_ts) {
                 tmp_ts = this->getNextPacketTS(tmp_ts, s_tmp_ts, e_tmp_ts, s_tmp_rate, e_tmp_rate, tmp_len);
+                //std::cout << "next ts: " << tmp_ts << std::endl;
                 if ((s_tmp_rate != 0) || (e_tmp_rate != 0)) {
                     if (tmp_ts < (this->deadline * 1000000000)) {
                         tpacket.ts = tmp_ts;
