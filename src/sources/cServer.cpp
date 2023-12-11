@@ -396,9 +396,11 @@ void cServer::terminate() {
         }
         counter--;
     }
+    std::cerr << "Stopping services" << std::endl;
     cbroker->stop();
     this->stop = true;
     setup->setDone(true);
+    std::cerr << "Server not running." << std::endl;
 }
 
 
