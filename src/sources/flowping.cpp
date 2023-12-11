@@ -40,6 +40,7 @@ cServer *server = nullptr;
 cMessageBroker * mbroker = nullptr;
 cConnectionBroker * cbroker = nullptr;
 cSlotTimer *stimer = nullptr;
+bool termInitiated = false;
 
 void * t_helper_sServer(void * arg) {
     server = (cServer *) arg;
@@ -92,6 +93,8 @@ void * t_helper_cSlotTimer(void * arg) {
 //Handle some basic signals
 void signalHandler(int sig) {
     if ((sig == SIGHUP) || (sig == SIGQUIT) || (sig == SIGTERM) || (sig == SIGINT)) { //SIG 3 //15 //2   QUIT
+        if (termInitiated) return;
+        termInitiated = true;
         if (setup->isServer()) {
             server->terminate();
         } else {
@@ -135,7 +138,7 @@ int main(int argc, char** argv) {
     version.str("");
 
 #ifdef __x86_64__
-    version << "x86_64 3.0.3fp-debug";
+    version << "x86_64 3.0.4";
     version << " (" << DD << " "<< TT << ")";
 #endif
 
