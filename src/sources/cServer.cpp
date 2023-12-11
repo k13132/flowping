@@ -373,6 +373,7 @@ void cServer::terminate() {
         vector conn_ids = cbroker->getActiveConnIDs();
         delay_corrections = 0;
         for (int conn_id : conn_ids) {
+            std::cerr << "Terminating connection: " << conn_id <<std::endl;
             conn = cbroker->getConnByID(conn_id);
             if (conn->finished) continue; //we do not expect finished connection here, but...
             tmsg = new ping_msg_t;
