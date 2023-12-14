@@ -7,7 +7,7 @@ https://flowping.fel.cvut.cz
 * ver. 3.x.x (Based on F-Tester edition flowping with basic icmp ping like client only output and rich client/server JSON Output)
   * used in current [F-Tester®](https://f-tester.fel.cvut.cz/en) 
   * server can handle multiple connection with multiple output JSON files.
-  * server try to terminate client connections.
+  * upon server termination server try to terminate client connections if possible.
   * sub-second timing of T1, T2, T3 intervals.
   * allows to set sending and receiving buffer sizes
   * handshake profiles for specific networks such as NB-IoT, Edge and other transfer capacity limited networks. 
