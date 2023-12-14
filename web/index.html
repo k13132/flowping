@@ -1,6 +1,6 @@
 <html>
     <head>
-        <title>FlowPing</title>
+        <title>FlowPing 3</title>
         <meta http-equiv="content-type" content="text/html;charset=utf-8" />
         <style>
             a{
@@ -19,28 +19,37 @@
 
     <body style="background-color: #dddddd;">
         <div style="padding: 10px; margin: auto; width: 820px; background-color: #ffffff;">
-            <h1>FlowPing - UDP based ping application</h1>
+            <h1>FlowPing 3</h1>
             <h3>Annotation</h3>
             <p>The FlowPing is an application which allow user to perform variety of network throughput and stress tests. Our application utilize UDP(User Datagram Protocol). Our application implements similar interface as in ICMP ping aplication and in addition allow user to perform stress test such as in iPerf application. Very importat feature of our application is possibility to operate with variable traffic rate and variable packet size. This feature allow user to measure network dynamic behavior in reaction on traffic amount change in tested network. </p>
-<h3>The most interesting features of FlowPing application</h3>
+<h3>Major Flowping 3 features</h3>
 <p>
 <ul>    
-<li>Unix time stamp with nano second resolution</li>
-<li>Variable traffic rate and packet size</li>
-<li>Real data can be used as packet payload</li>
-<li>High test complexity via test description file</li>
-<li>Advanced CPU scheduling options</li>
-<li>Special modes for performance and precision improvement</li>
-<li>Delayed report storing for maximum performance</li>
-<li>Output to STDOUT or file in ping, CSV and JSON format</li>
-<li>Setting server log file name via client command line</li>
-<li>Possibility to define Frame size or Payload size</li>
-<li>Socket binding to specific interface</li>
-<li>Asymmetric testing in both directions</li>
-<li>TX/RX bitrate and inter packet interval reporting</li>
+<li>Variable increasing or decreasing traffic rate (cmd line configurable).</li>
+<li>Complex test can be orchestrated via test description file.</li>
+<li>Special performance mode for throughput and precision improvement.</li>
+<li>Asymmetric testing in upstream and downstream.</li>
+<li>IoT and other low speed networks optimizations.</li>
+<li>One way delay measurements for both TX and RX direction.</li>
+<li>Simultaneous connection handling on server side.</li>
+<li>Simultaneous file output handling on server side.</li>
+<li>Output to STDOUT or file in ping, CSV and JSON format.</li>
+<li>IPv6 support.</li>
 </ul>
 </p>
-            <h3>Download</h3>
+
+
+<h3>IoT specific features</h3>
+<p>
+<ul>    
+<li>Support small UDP datagrams with 32B payload.</li>
+<li>Support short bursts of packets followed by defined pause.</li>
+<li>Handshake mechanism tuned to NBIoT networks and other low power/speed networks.</li>
+<li>Per packet reporting in ping or JSON format.</li>
+</ul>
+</p>
+
+<h3>Download</h3>
             GitHub repository :: <a href="https://github.com/k13132/flowping">https://github.com/k13132/flowping</a>
 
             <h3>Command line parameters</h3>
@@ -50,40 +59,39 @@
   -----------------------------------------------------------------------------------------------
  | Common:                                                                                       |
  |         [-?]                       Usage (Print this table)                                   |
- |         [-A]                       Raise priority to maximum in passive mode (RT if possible) |
- |         [-D]                       Print timestamps in ping output                            |
- |         [-e]                       Print current RX Bitrate (RX and TX on SERVER)             |
  |         [-f filename]              Store ping output in specified file                        |
  |         [-p port]     [2424]       Port number                                                |
+ |         [-e]                       Print current RX Bitrate (RX and TX on SERVER)             |
  |         [-q]                       Silent (suppress ping output to STDOUT)                    |
  |         [-v]                       Print version                                              |
+ |         [-D]                       Print timestamps in ping output                            |
  |         [-X]                       Asymetric mode (TX Payload  is limited to 32B)             |
+ [         [--so_rcvbuf] [6144000]    Socket receiver buffer size [Bytes]                        |
+ |         [--so_sndbuf] [6144000]    Socket sender buffer size [Bytes]                          |
  | Server:                                                                                       |
  |         [-S]                       Run as server                                              |
+ |         [-W]                       Working directory                                          |
  | Client:                                                                                       |
+ |         [-6]                       Prefer IPv6 over IPv4                                      |
  |         [-a]                       Busy-loop mode! (100% CPU usage), more accurate bitrate    |
  |         [-b kbit/s]                BitRate (Lower limit)                                      |
  |         [-B kbit/s]                BitRate (Upper limit)                                      |
  |         [-c count]    [unlimited]  Send specified number of packets                           |
- |         [-C]                       Output to CSV [;;;;;]                                      |
  |         [-d]                       Set source interface                                       |
- |         [-E]                       Print current TX bitrate                                   |
  |         [-F filename]              Send FileName to server (overide server settings)          |
  |         [-h hostname] [localhost]  Server hostname or IP address                              |
  |         [-H]                       Consider headers (Use frame size instead payload size)     |
  |         [-i seconds]  [1]          Interval between packets (Upper limit)                     |
  |         [-I seconds]  [1]          Interval between packets (Lower limit)                     |
- |         [-P]                       Packet size change from 32B to 1472B                       |
- |         [-Q]                       linux ping output compatibility                            |
+ |         [-J]                       Output to JSON                                             |
+ |         [-L]          [0]          Data sample interval (0 s - per packet mode)               |
  |         [-s size]     [64]         Payload size in Bytes                                      |
  |         [-t seconds]  [10]         T1 interval specification  (for i,I,b,B,P params)          |
  |         [-T seconds]  [10]         T2 interval specification  (for i,I,b,B,P params)          |
  |         [-R seconds]  [T3=T2]      T3 interval specification  (for i,I,b,B,P params)          |
  |         [-u filename]              Read Interval and BitRate definitions from file            |
- |         [-U]                       Fill packets with data from named pipe at /tmp/flowping    |
  |         [-w seconds]  [unlimited]  Run test for specified time                                |
- |         [-W]                       Precompute packet intervals, Busy-loop mode,               |
- |                                    delayed output file writes                                 |
+ |         [--nettype NET_TYPE]       Network specific optimizations [default, NB-IoT, Edge]     |
   -----------------------------------------------------------------------------------------------
 </PRE>
 <h3>Test description file formating</h3>
@@ -100,12 +108,12 @@
 </PRE>
 
 * Its necessary to start with zero time.<BR>
-* If packet size is to small or exceeds packet size limit, limit values are used<BR>
+* If packet size is to small or exceeds packet size limit, limit values are used.<BR>
 * Header is not a part of test description file. Test description file consist of raw data only.<BR>
-* Test duration is specified by parameter -w or by packet count by parameter -c.
+* Test duration is specified by parameter -w or by packet count by parameter -c.<BR>
+* Intervals with zero bitrate are possible.BR>
 
-
-<h3>Typical examples of usage</h3>
+<h3>Examples of usage</h3>
 <h4>Command line test definition</h4>
 <PRE>
 ./flowping -h example.net -b 256 -B 512 -t 30 -R 60 -T 90 -w 180 -s 500
@@ -161,155 +169,14 @@
 <i>Image 3: Shows outgoing (TX) traffic generated by processing test description file</i><br/>
 </center>
 
-<h3>CSV Output format</h3>
-<h4>Client</h4>
-<PRE>
-C_TimeStamp;C_Direction;C_PacketSize;C_From;C_Sequence;C_RTT;C_Delta;C_RX_Rate;C_To;C_TX_Rate;
-1407138077.467533;rx;64;localhost;1;0.24;2.000;256.00;
-1407138077.467291;tx;64;;1;;2.000;;localhost;256.00;;;
-1407138077.469551;rx;64;localhost;2;0.11;2.018;253.72;
-1407138077.469445;tx;64;;2;;2.141;;localhost;239.14;;;
-1407138077.471631;rx;64;localhost;3;0.10;2.080;246.15;
-</PRE>
-C_TimeStamp - Timestamp of packet was sent/received<BR>
-C_Direction - Indicates TX or RX direction of communication.<BR>
-C_PacketSize - Size of UDP payload or Ethernet Frame, determined by parameter [-H]<BR>
-C_From - Source (Client) hostname or ip address<BR>
-C_Sequence - Sequence number of packet<BR>
-C_RTT - Round Trip Time of packet<BR>
-C_Delta - Interval between received or sent packets<BR>
-C_RX_Rate - Receiving bitrate, cumputed from delta and packet size of only two packets.<BR>
-C_To - Destination (Server) hostname or ip address<BR>
-C_TX_Rate - Sending bitrate, cumputed from delta and packet size of only two packets.<BR>
-<h4>Server</h4>
-<PRE>
-S_TimeStamp;S_PacketSize;S_From;S_Sequence;S_TTL;S_Delta;S_RX_Rate;S_TX_Rate;
-1407138077.467359;64;127.0.0.1;1;xx;200.348;2.56;2.56;
-1407138077.469515;64;127.0.0.1;2;xx;2.156;237.48;237.48;
-1407138077.471598;64;127.0.0.1;3;xx;2.083;245.80;245.80;
-1407138077.473602;64;127.0.0.1;4;xx;2.004;255.49;255.49;
-1407138077.475610;64;127.0.0.1;5;xx;2.008;254.98;254.98;    
-</PRE>
-S_TimeStamp - Timestamp of packet was received<BR>
-S_PacketSize - Size of UDP payload or Ethernet Frame, determined by parameter [-H]<BR>
-S_From - Source (Client) hostname or ip address<BR>
-S_Sequence - Sequence number of packet<BR>
-S_TTL - Not implemented yet, value is always "xx"<BR>
-S_Delta - Interval between received packets<BR>
-S_RX_Rate - Receiving bitrate, cumputed from delta and packet size of only two packets.<BR>
-S_TX_Rate - Sending bitrate, cumputed from delta and packet size of only two packets.<BR>
-
-
-<h3>Change Log</h3>
-
-<p>
-Version 1.5.1<BR>
-&nbsp;&nbsp;&nbsp;&nbsp; New features:<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- possibility to build without STATS module ~20% performance gain<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- possibility to enable debug mode<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- improved platform detection<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;BugFix:<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- performance improvements [-W]<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- JSON output enhancements<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- minor bug fixes<BR>
-</p>
-
-<p>
-Version 1.5.0 adds new features.<BR>
-&nbsp;&nbsp;&nbsp;&nbsp; New features:<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- new stats module<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- modified build structure with single makefile<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- improved platform detection<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- realtime stats<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- JSON output<BR>
-</p>
-
-<p>
-Version 1.4.1 LICENCE CHANGE.<BR>
-&nbsp;&nbsp;&nbsp;&nbsp; Licence:<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- GNU GPLv3 since version 1.4.1<BR>
-</p>
-
-<p>
-Version 1.4.0e adds new features.<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;New features:<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- traffic generator is completely redesigned<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- zero bitrate support in complex profiles (via test description file)<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- send intervals for 32k packets are precomputed and stored in buffer<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- when buffer fill fall under 90%, buffer refill in separate thread is started.<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- packet buffer consumes aprox. 830KB of heap memory<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;BugFix:<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- performance and stability improvements<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- minor bug fixes<BR>
-</p>
-
-<p>
-Version 1.3.2 bug fix release.<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;BugFix:<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- minor bug fixes<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- AntiAsim mode fixed (-X on client side)<BR>
-</p>
-
-<p>
-Version 1.3.1 bug fix release.<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;BugFix:<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- minor bug fixes<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- test profile is repeated when profile data are exhausted<BR>
-</p>
-
-<p>
-Version 1.3.0 adds new features<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;New features:<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- run multiple clients vs. one server port<BR>
-</p>
-
-<p>
-Version 1.2.6 bug fix release.<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;BugFix:<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- fixed bug in 32b version with -W parameter and long tests<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- fixed bug with program termination with signals<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- added longer timeout after end of test<BR>
-</p>
-<p>
-Version 1.2.5 bug fix release.<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;BugFix:<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- when using parameters [-u] and [-W] together it was not posible to generate variable flow in previous 32 bit versions<BR>
-</p>
-<p>
-Version 1.2.4 bug fix release.<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;BugFix:<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- [-H] mode fix, reported speed on server was wrong<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- [-H] mode fix, generated traffic rate was wrong when reading test description from file<BR>
-</p>
-<p>
-Version 1.2.3 bug fix release.<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;BugFix:<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- minor bug fixes<BR>
-</p>
-
-<p>
-Version 1.2.0 adds new features and fixes several issues.<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;New features:<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Output in CSV format [-C]<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Possibility to precompute packet intervals before test start. [-W]<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Delayed file writes - all output is stored into file after test is finished. [-W]<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Asymetric mode is implemented also in client. [-X]<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;BugFix:<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Output formating<BR>
-</p>
-
-<p>
-Version 1.1.10 was first public release.
-</p>
 
 
 
-
-<h3>Licence information: since version 1.4.1</h3>
+<h3>Licence</h3>
 <p class=lic>
-Author: Ondrej Vondrous, KTT, CVUT<BR>
+Author: Ondrej Vondrous, KTT, FEE, CTU in Prague<BR>
 Email: ondrej.vondrous@fel.cvut.cz<BR>
-Copyright (C) 2016: Department of Telecommunication Engineering, FEE, CTU in Prague <BR>
+Copyright (C) 2023: Department of Telecommunication Engineering, FEE, CTU in Prague <BR>
 License: GNU GPLv3<BR>
 </p>
 <p class=lic>
@@ -330,27 +197,9 @@ along with FlowPing.  If not, see <a href=http://www.gnu.org/licenses/>http://ww
 <BR>
 <BR>
 
-<h3>Licence information: version including 1.4.0 and older</h3>
-<p class=lic>
-Author: Ondrej Vondrous, KTT, CVUT<BR>
-Email: ondrej.vondrous@fel.cvut.cz<BR>
-Copyright: Department of Telecommunication Engineering, FEE, CTU in Prague <BR>
-License: Creative Commons 3.0 BY-NC-SA<BR>
-</p>
-<p class=lic>
-FlowPing is free software: you can redistribute it and/or modify it under the terms of the Creative Commons BY-NC-SA License v 3.0.
-</p>
-<p class=lic>
-FlowPing is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY.<BR>
-</p>
-<p class=lic>
-You should have received a copy of the Creative Commons 3.0 BY-NC-SA License along with FlowPing.<BR>
-If not, see <a href=http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode>http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode</a><BR>
-</p>
-
 <p class=lic>
 <br/><br/><br/><hr/>
-This work was supported by the Grant of the Ministry of the Interior of the Czech Republic, No. VG20122014095, "Development of adaptable and data processing systems for high-speed, secure and reliable communication in extreme conditions", and was researched in cooperation with CERTICON.
+This work was supported by Technology Agency of the Czech Republic, Contract No. FW03010150, "Platform for reliable operation, provisioning and management of massive distributed IIoT structures."
 </div>
 </body>
 
