@@ -138,7 +138,7 @@ int main(int argc, char** argv) {
     version.str("");
 
 #ifdef __x86_64__
-    version << "x86_64 3.0.4";
+    version << "x86_64 3.0.4a";
     version << " (" << DD << " "<< TT << ")";
 #endif
 

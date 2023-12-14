@@ -504,7 +504,7 @@ void cSetup::usage() {
     cout << "|         [--so_sndbuf] [6144000]    Socket sender buffer size [Bytes]                          |" << endl;
     cout << "| Server specific options:                                                                      |" << endl;
     cout << "|         [-S]                       Run as server                                              |" << endl;
-    cout << "|         [-W]                       working directory                                          |" << endl;
+    cout << "|         [-W]                       Working directory                                          |" << endl;
     cout << "| Client specific options:                                                                      |" << endl;
     cout << "|         [-6]                       Prefer IPv6 over IPv4                                      |" << endl;
     cout << "|         [-a]                       Busy-loop mode! (100% CPU usage), more accurate bitrate    |" << endl;
